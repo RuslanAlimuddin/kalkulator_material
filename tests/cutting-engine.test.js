@@ -68,4 +68,37 @@ test("ukuran, jumlah, dan kerf tidak valid ditolak", () => {
   assert.throws(() => calculateCutting({ sheetW: 100, sheetH: 100, parts: [{ width: 1, height: 1, quantity: 0 }] }));
 });
 
+
+test("sisa diklasifikasikan jika lebar atau tinggi di bawah batas minimum", () => {
+  const r = calculateCutting({
+    sheetW: 100, sheetH: 100,
+    minRemainderW: 50, minRemainderH: 30,
+    parts: [{ width: 60, height: 100 }]
+  });
+  assert.equal(r.reusableRemainders.length, 1);
+  assert.equal(r.usableRemainders.length, 0);
+  assert.equal(r.tooSmallRemainders.length, 1);
+  assert.equal(r.tooSmallRemainders[0].width, 40);
+  assert.equal(r.tooSmallRemainders[0].height, 100);
+  assert.equal(r.tooSmallRemainderArea, 4000);
+  assert.equal(r.usableRemainderArea, 0);
+});
+
+test("sisa tepat pada batas minimum dinyatakan layak", () => {
+  const r = calculateCutting({
+    sheetW: 100, sheetH: 100,
+    minRemainderW: 40, minRemainderH: 100,
+    parts: [{ width: 60, height: 100 }]
+  });
+  assert.equal(r.usableRemainders.length, 1);
+  assert.equal(r.tooSmallRemainders.length, 0);
+});
+
+test("ukuran minimum sisa negatif ditolak", () => {
+  assert.throws(() => calculateCutting({
+    sheetW: 100, sheetH: 100, minRemainderW: -1,
+    parts: [{ width: 50, height: 50 }]
+  }), /tidak boleh negatif/);
+});
+
 console.log("Semua pengujian mesin pemotongan selesai.");

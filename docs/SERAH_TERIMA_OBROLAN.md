@@ -199,3 +199,29 @@ Minta pengguna membuka ZIP/folder `D:\\kalkulator_material_uji2` melalui Live Se
 6. Periksa console browser (F12 → Console) jika ada error; minta pengguna mengirim pesan error dan hasil layar jika terjadi.
 
 Jangan hapus fungsi `makeStok()` lama atau menyatakan integrasi final sebelum UI/regresi di atas selesai. Catatan teknis: diagram yang ada adalah diagram pemasangan pada bidang, bukan diagram pemotongan tiap lembar sumber. Kerf UI masih 0 cm; pengaturan kerf, arah serat, ukuran minimum sisa, dan inventaris stok sisa belum tersedia.
+
+
+## 15. Hasil uji browser setelah integrasi — 18 November 2026
+Pengguna telah menjalankan uji aplikasi melalui browser/Live Server dan melaporkan:
+- Pengujian A — nilai bawaan: semua normal.
+- Pengujian B — mode Presisi dan Ekonomis: terdapat sedikit perubahan nilai; tidak dilaporkan hasil yang janggal.
+- Pengujian C — kasus khusus strip panjang: semua hasil benar.
+- Pengujian D — harga material: hasil masuk akal.
+- Console browser: tidak ada pesan merah/error.
+
+Dengan laporan ini, validasi awal mencakup ketiga suite tes Node.js lokal pengguna (engine.test.js, cutting-engine.test.js, cutting-adapter.test.js) dan uji browser/Live Server untuk nilai bawaan, mode Presisi/Ekonomis, kasus strip panjang, serta harga.
+
+Catatan ketelitian: ini adalah hasil uji manual yang dilaporkan pengguna, bukan hasil pengujian otomatis browser. Belum berarti seluruh kombinasi pola, arah, alignment, variasi material, stok, dan pembelian sudah diuji menyeluruh. Sedikit perbedaan hasil antara Presisi dan Ekonomis dapat terjadi karena aturan pemanfaatan lembar sumbernya memang berbeda; jangan menganggap kedua mode harus menghasilkan angka sama.
+
+### Status tahap
+Integrasi awal mesin geometri → adapter → mesin pemotongan pada UI lulus uji awal pengguna. Fungsi lama makeStok() dan helper terkait masih dipertahankan sebagai cadangan. Branch main dan backup tidak disentuh.
+
+### Tahap pekerjaan selanjutnya
+1. Periksa kembali kode terbaru index.html, cutting-adapter.js, dan cutting-engine.js untuk memahami persis arti setiap angka yang ditampilkan.
+2. Pastikan istilah dan kategori hasil tidak menyesatkan: kebutuhan lembar sumber, grid/potongan yang dipakai ulang, sisa persegi panjang, area belum terklasifikasi, stok awal, jumlah pembelian, sisa lembar utuh, dan biaya.
+3. Periksa alur harga untuk harga per lembar dan harga per kemasan, termasuk pembulatan jumlah kemasan.
+4. Rencanakan pengembangan berikutnya secara bertahap: pengaturan kerf (lebar mata potong), batas ukuran minimum sisa yang dianggap layak pakai, aturan rotasi/arah serat per material, inventaris sisa stok, dan diagram tata letak pemotongan lembar sumber. Jangan menambahkan semua fitur sekaligus.
+5. Jangan hapus makeStok() sebelum ada audit pemakaian final dan tes regresi tambahan. Penghapusan helper lama harus menjadi perubahan terpisah.
+6. Jangan merge ke main tanpa persetujuan pengguna.
+
+Bukti yang tersedia: hasil tes Node.js lokal dan laporan uji manual browser dari pengguna pada 17–18 November 2026. Belum ada screenshot atau rekaman hasil browser yang disimpan sebagai artefak pengujian.

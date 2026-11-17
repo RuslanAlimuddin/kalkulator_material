@@ -35,3 +35,19 @@ check("Alignment tengah membatasi potongan tepi", {...base, pattern:"stack", ali
 assert.throws(() => calculateGeometry({...base, wallW:0}), /lebih dari 0/);
 assert.throws(() => calculateGeometry({...base, gap:-1}), /tidak boleh negatif/);
 console.log("Semua pengujian geometri selesai.");
+
+for (const pattern of ["stack","running","third"]) {
+  for (const direction of ["horizontal","vertikal"]) {
+    for (const alignment of ["TL","TC","TR","ML","MC","MR","BL","BC","BR"]) {
+      const r=calculateGeometry({...base,wallW:617,wallH:483,pattern,direction,alignment});
+      assert.ok(Math.abs(r.areaInstalled-r.areaWall)<0.01, pattern+" "+direction+" "+alignment+" harus menutup bidang tanpa nat");
+      for(let i=0;i<r.cells.length;i++) for(let j=i+1;j<r.cells.length;j++) {
+        const a=r.cells[i],b=r.cells[j];
+        const ox=Math.min(a.xStart+a.width,b.xStart+b.width)-Math.max(a.xStart,b.xStart);
+        const oy=Math.min(a.yStart+a.height,b.yStart+b.height)-Math.max(a.yStart,b.yStart);
+        assert.ok(!(ox>0.0001&&oy>0.0001),"Potongan tidak boleh tumpang tindih");
+      }
+    }
+  }
+}
+console.log("Matriks 54 kombinasi pola/arah/alignment lulus.");

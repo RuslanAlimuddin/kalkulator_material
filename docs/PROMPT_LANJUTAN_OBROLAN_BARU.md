@@ -25,15 +25,21 @@ Branch kerja: `pengembangan-mesin-hitung`
 Sekarang mulai dengan membaca dokumen serah-terima dan memeriksa status repo terbaru, lalu lanjutkan pekerjaan.
 
 
-## Status tambahan per 17 November 2026
-- Pengguna sudah menjalankan `node tests/engine.test.js` pada PC Windows dengan Node.js v24.18.0; seluruh tes geometri lulus.
-- Mesin pemotongan awal sudah ditambahkan: `assets/js/cutting-engine.js`.
-- Tesnya: `tests/cutting-engine.test.js`.
-- Desain dan batasannya: `docs/DESAIN_MESIN_PEMOTONGAN.md`.
-- Sebelum integrasi UI, minta pengguna mengunduh ZIP terbaru branch ini dan menjalankan:
-  ```cmd
-  node tests\engine.test.js
-  node tests\cutting-engine.test.js
-  ```
-- Pengujian cutting-engine baru lulus di pengujian JavaScript terisolasi, belum di Node.js PC pengguna.
-- Jangan menganggap cutting engine sudah terintegrasi. `index.html` masih memakai `makeStok()` lama. Integrasikan hanya setelah tes lokal kedua mesin lulus dan kontrak input-output diperiksa.
+## Status terakhir per 17 November 2026 — integrasi awal pemotongan
+- Pengguna menjalankan di PC Windows dan melaporkan lulus: `node tests/engine.test.js` dan `node tests/cutting-engine.test.js`.
+- Mesin geometri: `assets/js/engine.js`; tes: `tests/engine.test.js`.
+- Mesin pemotongan: `assets/js/cutting-engine.js`; tes: `tests/cutting-engine.test.js`.
+- Adapter baru: `assets/js/cutting-adapter.js`; tes baru: `tests/cutting-adapter.test.js`.
+- `index.html` sudah memuat dua modul pemotongan dan menggunakan adapter untuk menentukan lembar sumber. Koordinat grid pemasangan tetap dipertahankan agar visualisasi lama tidak berubah kontraknya.
+- Mode Presisi tetap satu lembar per grid, kecuali aturan strip panjang khusus. Mode Ekonomis mengemas potongan bersama dan mengizinkan rotasi.
+- Hasil UI sekarang membedakan sisa persegi panjang tercatat dan area belum terklasifikasi; jangan menyebut area belum terklasifikasi sebagai limbah.
+- `makeStok()` masih ada sebagai cadangan tetapi tidak lagi dipanggil oleh kalkulasi utama. Jangan hapus sebelum regresi browser selesai.
+- Tes adapter belum dijalankan di PC pengguna. Integrasi UI juga belum diverifikasi melalui browser/Live Server.
+
+**Langkah pertama obrolan berikutnya:** minta hasil tes lokal berikut dari ZIP terbaru branch:
+```cmd
+node tests\\engine.test.js
+node tests\\cutting-engine.test.js
+node tests\\cutting-adapter.test.js
+```
+Setelah ketiganya lulus, pandu uji browser mode Presisi/Ekonomis, kasus strip 600×100 cm, rotasi, harga per lembar, dan harga per kemasan. Jangan mengubah branch `main` atau menghapus backup.

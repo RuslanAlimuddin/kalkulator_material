@@ -515,8 +515,8 @@ function setMode(m){
   document.getElementById('btnPresisi').className='mode-btn'+(m==='presisi'?' active':'');
   document.getElementById('btnEkonomis').className='mode-btn'+(m==='ekonomis'?' active':'');
   document.getElementById('modeDesc').textContent=m==='presisi'
-    ?'Sisa potongan tidak dipakai ulang untuk pola biasa. Cocok untuk material bermotif. Khusus lembar panjang yang dipasang portrait dengan pola lurus, satu lembar tetap dapat dipotong menjadi beberapa bagian yang sama.'
-    :'Sisa potongan dipakai ulang selama masih cukup. Rotasi diizinkan. Cocok untuk triplek, GRC, kalsiboard.';
+    ?'Setiap grid dihitung memakai lembar sumber sendiri untuk pola biasa. Cocok untuk material bermotif. Khusus lembar panjang yang dipasang portrait dengan pola lurus, satu lembar tetap dapat menghasilkan beberapa potongan.'
+    :'Beberapa potongan dapat disusun pada lembar sumber yang sama selama ukurannya muat. Rotasi diizinkan. Cocok untuk triplek, GRC, kalsiboard.';
 }
 
 // ============================================================
@@ -679,7 +679,7 @@ function calc(){
 
   document.getElementById('metrics').innerHTML=`
     <div class="metric c-info"><div class="val">${totalSheets}</div><div class="lbl">Lembar kebutuhan</div><div class="sub">${cells.length} grid total</div></div>
-    <div class="metric c-good"><div class="val">${reuseCount}</div><div class="lbl">Grid reuse</div><div class="sub">tidak beli baru</div></div>
+    <div class="metric c-good"><div class="val">${reuseCount}</div><div class="lbl">Grid berbagi lembar</div><div class="sub">bukan stok sisa pekerjaan lama</div></div>
     <div class="metric"><div class="val">${areaDinding.toFixed(2)}</div><div class="lbl">Luas dinding (m²)</div><div class="sub">${(wallW/100).toFixed(2)}×${(wallH/100).toFixed(2)}m</div></div>
     <div class="metric c-good"><div class="val">${reusableAreaM2.toFixed(3)}</div><div class="lbl">Sisa persegi panjang (m²)</div><div class="sub">${cutting.reusableRemainders.length} bidang tercatat</div></div>
     <div class="metric c-warn"><div class="val">${unclassifiedAreaM2.toFixed(3)}</div><div class="lbl">Belum terklasifikasi (m²)</div><div class="sub">termasuk jalur potong / ruang tak terpakai</div></div>
@@ -712,7 +712,7 @@ Estimasi biaya per m² bidang: ${fmtRupiah(infoHarga.biayaPerM2Bidang)}`;
   if(c1>0)st+=`<tr><td>Dipotong 1 sisi</td><td class="hi">${c1}</td></tr>`;
   if(c2>0)st+=`<tr><td>Dipotong 2 sisi</td><td class="hi">${c2}</td></tr>`;
   if(c34>0)st+=`<tr><td>Dipotong 3–4 sisi</td><td class="hi">${c34}</td></tr>`;
-  if(reuseCount>0)st+=`<tr><td class="c-reuse">Dari sisa / lembar sama (reuse)</td><td class="c-reuse">${reuseCount}</td></tr>`;
+  if(reuseCount>0)st+=`<tr><td class="c-reuse">Potongan tambahan pada lembar yang sama</td><td class="c-reuse">${reuseCount}</td></tr>`;
   if(cutting.reusableRemainders.length>0)st+=`<tr><td>Sisa persegi panjang tercatat</td><td class="hi">${cutting.reusableRemainders.length} bidang</td></tr>`;
   st+=`<tr><td>Area belum terklasifikasi</td><td class="hi">${unclassifiedAreaM2.toFixed(3)} m²</td></tr>`;
   st+=`<tr><td style="font-weight:600;color:var(--text)">Total lembar sumber</td><td class="hi c-info">${totalSheets}</td></tr>`;
@@ -746,7 +746,7 @@ function drawViz(){
   const ctx=cv.getContext('2d');
   const dark=isDark();
   const note=document.getElementById('canvasNote');
-  note.textContent='Huruf = nomor lembar sumber. ↺ = dirotasi saat reuse. Warna = jumlah sisi yang dipotong.'+
+  note.textContent='Huruf = nomor lembar sumber. ↺ = potongan diputar 90°. Warna = kategori potongan; warna khusus menandai potongan lain pada lembar yang sama.'+
     (autoStripReuse?` Satu lembar panjang dimanfaatkan menjadi hingga ${potonganPerLembar} potongan.`:'');
   const MAX_W=Math.min(700,window.innerWidth-80);
   const MAX_H=450;
@@ -771,7 +771,7 @@ function drawViz(){
     <div class="li"><div class="ld" style="background:${C[1][0]};border:1px solid ${C[1][1]}"></div>Potong 1 sisi</div>
     <div class="li"><div class="ld" style="background:${C[2][0]};border:1px solid ${C[2][1]}"></div>Potong 2 sisi</div>
     <div class="li"><div class="ld" style="background:${C[3][0]};border:1px solid ${C[3][1]}"></div>Potong 3–4 sisi</div>
-    ${reuseCount>0?`<div class="li"><div class="ld" style="background:${C[4][0]};border:1px solid ${C[4][1]}"></div>Reuse sisa</div>`:''}
+    ${reuseCount>0?`<div class="li"><div class="ld" style="background:${C[4][0]};border:1px solid ${C[4][1]}"></div>Potongan lain pada lembar yang sama</div>`:''}
   `;
 
   cells.forEach(cell=>{

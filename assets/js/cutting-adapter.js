@@ -28,7 +28,8 @@
     if (geometry.cells.length === 0) {
       return {
         cells: [], sheetCount: 0, reuseCount: 0, sheets: [],
-        reusableRemainders: [], unclassifiedArea: 0,
+        reusableRemainders: [], usableRemainders: [], tooSmallRemainders: [],
+        usableRemainderArea: 0, tooSmallRemainderArea: 0, unclassifiedArea: 0,
         totalPartArea: 0, totalSheetArea: 0
       };
     }
@@ -36,6 +37,13 @@
     const kerf = input.kerf == null ? 0 : Number(input.kerf);
     if (!Number.isFinite(kerf) || kerf < 0) {
       throw new Error("Kerf tidak boleh negatif.");
+    }
+
+    const minRemainderW = input.minRemainderW == null ? 0 : Number(input.minRemainderW);
+    const minRemainderH = input.minRemainderH == null ? 0 : Number(input.minRemainderH);
+    if (!Number.isFinite(minRemainderW) || minRemainderW < 0 ||
+        !Number.isFinite(minRemainderH) || minRemainderH < 0) {
+      throw new Error("Ukuran minimum sisa tidak boleh negatif.");
     }
 
     const canReuse = input.mode === "ekonomis" || input.autoStripReuse === true;
@@ -48,6 +56,10 @@
     const placementsById = new Map();
     const sheets = [];
     let reusableRemainders = [];
+    let usableRemainders = [];
+    let tooSmallRemainders = [];
+    let usableRemainderArea = 0;
+    let tooSmallRemainderArea = 0;
     let unclassifiedArea = 0;
     let totalPartArea = 0;
     let totalSheetArea = 0;
@@ -56,7 +68,7 @@
       // Mode presisi: satu grid memakai satu lembar sendiri, sama seperti perilaku lama.
       sourceCells.forEach(cell => {
         const result = cutter.calculateCutting({
-          sheetW, sheetH, kerf,
+          sheetW, sheetH, kerf, minRemainderW, minRemainderH,
           allowRotation: false,
           parts: [{
             id: cell.id,
@@ -81,13 +93,21 @@
         reusableRemainders.push(...result.reusableRemainders.map(r => ({
           ...r, sheetId: sheets.length
         })));
+        usableRemainders.push(...result.usableRemainders.map(r => ({
+          ...r, sheetId: sheets.length
+        })));
+        tooSmallRemainders.push(...result.tooSmallRemainders.map(r => ({
+          ...r, sheetId: sheets.length
+        })));
+        usableRemainderArea += result.usableRemainderArea;
+        tooSmallRemainderArea += result.tooSmallRemainderArea;
         unclassifiedArea += result.unclassifiedArea;
         totalPartArea += result.totalPartArea;
         totalSheetArea += result.totalSheetArea;
       });
     } else {
       const result = cutter.calculateCutting({
-        sheetW, sheetH, kerf, allowRotation,
+        sheetW, sheetH, kerf, minRemainderW, minRemainderH, allowRotation,
         parts: sourceCells.map(cell => ({
           id: cell.id,
           width: cell.width,
@@ -109,6 +129,10 @@
       });
       sheets.push(...result.sheets);
       reusableRemainders = result.reusableRemainders;
+      usableRemainders = result.usableRemainders;
+      tooSmallRemainders = result.tooSmallRemainders;
+      usableRemainderArea = result.usableRemainderArea;
+      tooSmallRemainderArea = result.tooSmallRemainderArea;
       unclassifiedArea = result.unclassifiedArea;
       totalPartArea = result.totalPartArea;
       totalSheetArea = result.totalSheetArea;
@@ -138,6 +162,12 @@
       reuseCount: cells.filter(cell => cell.source === "reuse").length,
       sheets,
       reusableRemainders,
+      usableRemainders,
+      tooSmallRemainders,
+      usableRemainderArea,
+      tooSmallRemainderArea,
+      minRemainderW,
+      minRemainderH,
       unclassifiedArea,
       totalPartArea,
       totalSheetArea,

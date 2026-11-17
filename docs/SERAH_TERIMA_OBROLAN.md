@@ -241,3 +241,15 @@ Teks UI diperbaiki agar tidak menyebut potongan tambahan pada lembar yang sama s
 Pengujian yang telah dilaporkan pengguna tetap: tiga suite Node.js lulus dan uji manual Live Server berjalan normal tanpa error console. Perubahan teks UI ini belum diuji ulang di browser; perlu satu pemeriksaan visual singkat setelah ZIP terbaru diunduh. Jangan menghapus makeStok(); jangan merge ke main.
 
 Tahap setelah ini: buat rancangan ukuran minimum sisa layak pakai dan inventaris sisa lintas pekerjaan, dengan tes khusus. Kerf, arah serat/motif, dan diagram cutting layout per lembar tetap menjadi pengembangan terpisah.
+
+
+## 17. Klasifikasi sisa berdasarkan ukuran minimum — 18 November 2026
+Pengembangan ditambahkan pada branch pengembangan:
+- Parameter `minRemainderW` dan `minRemainderH` (cm), default 0.
+- Sisa dianggap memenuhi ukuran minimum hanya jika kedua dimensinya lolos.
+- Keluaran baru `usableRemainders`, `tooSmallRemainders`, dan luas masing-masing.
+- `reusableRemainders` tetap berisi seluruh ruang geometris untuk kompatibilitas; luas belum terklasifikasi tetap memakai semua ruang geometris.
+- UI memiliki input lebar/tinggi minimum dan kartu hasil terpisah untuk sisa yang memenuhi batas dan yang di bawah batas.
+- Klasifikasi ukuran tidak menjamin kondisi fisik atau kecocokan material.
+
+Tes baru ditambahkan untuk batas minimum, nilai tepat di batas, dan input negatif. Tes belum dijalankan di PC pengguna. Setelah commit, jalankan tiga suite Node.js dan uji browser singkat; jangan merge ke main.

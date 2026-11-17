@@ -57,7 +57,7 @@ Saat dokumen ini dibuat, branch pengembangan sudah memiliki:
 - `tests/engine.test.js`: pengujian dasar, validasi input, dan matriks 54 kombinasi pola × arah × alignment.
 - `docs/RENCANA_REFAKTOR.md`: urutan tahap refaktor.
 
-Pengujian pada sesi 17 November 2026: isi `tests/engine.test.js` dijalankan melalui runtime JavaScript terisolasi dengan shim untuk modul `node:assert`; seluruh 4 pengujian bernama dan matriks 54 kombinasi pola/arah/alignment lulus. Kasus regresi 600×100 cm dengan potongan 20×100 cm menghasilkan 30 potongan. Ini bukan pengujian Node.js di PC pengguna dan bukan pengujian browser/Live Server. Pengujian dengan Node.js dan Live Server tetap perlu dilakukan sebelum integrasi dinyatakan final.
+Pengujian pada sesi 17 November 2026: isi `tests/engine.test.js` dijalankan melalui runtime JavaScript terisolasi dengan shim untuk modul `node:assert`; seluruh 6 pengujian bernama dan matriks 54 kombinasi pola/arah/alignment lulus, termasuk nat 1 cm dan kasus strip 600×100 cm. Kasus regresi 600×100 cm dengan potongan 20×100 cm menghasilkan 30 potongan. Ini bukan pengujian Node.js di PC pengguna dan bukan pengujian browser/Live Server. Pengujian dengan Node.js dan Live Server tetap perlu dilakukan sebelum integrasi dinyatakan final.
 
 ## 7. Audit awal dan batasan yang masih harus ditangani
 - Fungsi `getInfoHarga()` di aplikasi lama sudah menghitung harga per lembar dari harga kemasan, jumlah kemasan dibulatkan ke atas, uang pembelian, sisa lembar utuh, harga per m² material, dan biaya pembelian per m² bidang.

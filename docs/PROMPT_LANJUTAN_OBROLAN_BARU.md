@@ -23,3 +23,17 @@ Branch kerja: `pengembangan-mesin-hitung`
 - Setelah perubahan penting, jalankan tes dan perbarui `docs/SERAH_TERIMA_OBROLAN.md` agar perpindahan obrolan berikutnya tetap mudah.
 
 Sekarang mulai dengan membaca dokumen serah-terima dan memeriksa status repo terbaru, lalu lanjutkan pekerjaan.
+
+
+## Status tambahan per 17 November 2026
+- Pengguna sudah menjalankan `node tests/engine.test.js` pada PC Windows dengan Node.js v24.18.0; seluruh tes geometri lulus.
+- Mesin pemotongan awal sudah ditambahkan: `assets/js/cutting-engine.js`.
+- Tesnya: `tests/cutting-engine.test.js`.
+- Desain dan batasannya: `docs/DESAIN_MESIN_PEMOTONGAN.md`.
+- Sebelum integrasi UI, minta pengguna mengunduh ZIP terbaru branch ini dan menjalankan:
+  ```cmd
+  node tests\engine.test.js
+  node tests\cutting-engine.test.js
+  ```
+- Pengujian cutting-engine baru lulus di pengujian JavaScript terisolasi, belum di Node.js PC pengguna.
+- Jangan menganggap cutting engine sudah terintegrasi. `index.html` masih memakai `makeStok()` lama. Integrasikan hanya setelah tes lokal kedua mesin lulus dan kontrak input-output diperiksa.

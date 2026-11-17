@@ -333,6 +333,7 @@ canvas{display:block}
 
 </div><!-- /container -->
 
+<script src="assets/js/engine.js"></script>
 <script>
 // ============================================================
 // DATA
@@ -632,14 +633,12 @@ function calc(){
     return;
   }
 
-  const g=getGrid(wallW,wallH,matW,matH,gapIn,al);
-  const{cols,rows,cutL,cutR,cutT,cutB}=g;
-
-  // Lembar panjang yang dipasang portrait dapat dipotong berulang mengikuti
-  // tinggi bidang. Contoh 600 cm menjadi enam potongan 100 cm.
-  // Khusus pola lurus (Stack Bond), ini dihitung otomatis meskipun mode Presisi aktif.
+  const geometry=MaterialEngine.calculateGeometry({
+    wallW,wallH,matW,matH,gap:gapIn,
+    pattern:curPattern,direction:curDir,alignment:curAlign
+  });
+  const {cols,rows}=geometry;
   const autoStripReuse=ori===0&&curPattern==='stack'&&rows===1&&matH>wallH+EPS;
-
   const cells=[];
   const stok=makeStok();
   let sheetId=0;
@@ -657,33 +656,12 @@ function calc(){
     return{source:'new',sheetId,rotated:false};
   }
 
-  if(curPattern==='stack'){
-    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
-      const isL=cutL>EPS&&c===0,isR=cutR>EPS&&c===cols-1;
-      const isT=cutT>EPS&&r===0,isB=cutB>EPS&&r===rows-1;
-      const W=cols===1?wallW:(isL?g.firstColW:(isR?g.lastColW:matW));
-      const H=rows===1?wallH:(isT?g.firstRowH:(isB?g.lastRowH:matH));
-      const nCuts=(isL?1:0)+(isR?1:0)+(isT?1:0)+(isB?1:0);
-      const xPos=cols===1?0:(c===0?0:(cutL>EPS?g.firstColW+(c-1)*(matW+gapIn):c*(matW+gapIn)));
-      const yPos=rows===1?0:(r===0?0:(cutT>EPS?g.firstRowH+(r-1)*(matH+gapIn):r*(matH+gapIn)));
-      const sr=getOrReuse(W,H,nCuts);
-      cells.push({xStart:xPos,yStart:yPos,width:W,height:H,nCuts,...sr});
-    }
-  } else if(curDir==='horizontal'){
-    let yPos=0;
-    for(let r=0;r<rows;r++){
-      const shift=rowShift(r,rows,matW,gapIn,al);
-      const isT=cutT>EPS&&r===0,isB=cutB>EPS&&r===rows-1;
-      const H=isT?g.firstRowH:(isB?g.lastRowH:matH);
-      const cTop=isT?cutT:0,cBot=isB?cutB:0;
-      calcRowCells(wallW,matW,gapIn,shift).forEach(rc=>{
-        const nCuts=(rc.cutLeft>EPS?1:0)+(rc.cutRight>EPS?1:0)+(cTop>EPS?1:0)+(cBot>EPS?1:0);
-        const sr=getOrReuse(rc.width,H,nCuts);
-        cells.push({xStart:rc.xStart,yStart:yPos,width:rc.width,height:H,nCuts,...sr});
-      });
-      yPos+=H+(r<rows-1?gapIn:0);
-    }
-  }
+  geometry.cells.forEach(gc=>{
+    const nCuts=(gc.cutLeft>EPS?1:0)+(gc.cutRight>EPS?1:0)+
+      (gc.cutTop>EPS?1:0)+(gc.cutBottom>EPS?1:0);
+    const sr=getOrReuse(gc.width,gc.height,nCuts);
+    cells.push({xStart:gc.xStart,yStart:gc.yStart,width:gc.width,height:gc.height,nCuts,...sr});
+  });
 
   const totalSheets=sheetId;
   const reuseCount=cells.filter(c=>c.source==='reuse').length;

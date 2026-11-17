@@ -267,7 +267,12 @@ canvas{display:block}
     <button class="mode-btn active" id="btnPresisi" onclick="setMode('presisi')">⬜ Presisi</button>
     <button class="mode-btn" id="btnEkonomis" onclick="setMode('ekonomis')">♻️ Ekonomis</button>
   </div>
-  <p class="mode-desc" id="modeDesc">Setiap grid menggunakan 1 lembar baru. Cocok untuk material finishing bermotif (keramik motif, wallpaper, HPL).</p>
+  <p class="mode-desc" id="modeDesc">Setiap grid dihitung memakai lembar sumber sendiri untuk pola biasa.</p>
+  <div class="g2" style="margin-top:10px">
+    <div class="f"><label>Lebar minimum sisa (cm)</label><input type="number" id="minSisaW" value="0" min="0" step="1"></div>
+    <div class="f"><label>Tinggi minimum sisa (cm)</label><input type="number" id="minSisaH" value="0" min="0" step="1"></div>
+  </div>
+  <p style="font-size:11px;color:var(--text3);margin-top:5px">Sisa dinyatakan layak jika lebar DAN tingginya memenuhi batas. Nilai 0 berarti tidak menerapkan batas pada sisi tersebut. Ini klasifikasi ukuran, bukan jaminan sisa cocok untuk semua pekerjaan.</p>
 </div>
 
 <!-- ============================================================
@@ -652,7 +657,9 @@ function calc(){
     mode:curMode,
     autoStripReuse,
     allowRotation:curMode==='ekonomis',
-    kerf:0
+    kerf:0,
+    minRemainderW:parseFloat(document.getElementById('minSisaW').value)||0,
+    minRemainderH:parseFloat(document.getElementById('minSisaH').value)||0
   });
   const cells=cutting.cells;
   const totalSheets=cutting.sheetCount;
@@ -664,6 +671,8 @@ function calc(){
   const areaDinding=(wallW*wallH)/10000;
   const areaMat=(matW*matH)/10000;
   const reusableAreaM2=cutting.reusableRemainders.reduce((sum,r)=>sum+r.area,0)/10000;
+  const usableAreaM2=cutting.usableRemainderArea/10000;
+  const tooSmallAreaM2=cutting.tooSmallRemainderArea/10000;
   const unclassifiedAreaM2=cutting.unclassifiedArea/10000;
 
   // Tarif material per m² dihitung dari harga per lembar dan luas satu lembar.
@@ -681,7 +690,8 @@ function calc(){
     <div class="metric c-info"><div class="val">${totalSheets}</div><div class="lbl">Lembar kebutuhan</div><div class="sub">${cells.length} grid total</div></div>
     <div class="metric c-good"><div class="val">${reuseCount}</div><div class="lbl">Grid berbagi lembar</div><div class="sub">bukan stok sisa pekerjaan lama</div></div>
     <div class="metric"><div class="val">${areaDinding.toFixed(2)}</div><div class="lbl">Luas dinding (m²)</div><div class="sub">${(wallW/100).toFixed(2)}×${(wallH/100).toFixed(2)}m</div></div>
-    <div class="metric c-good"><div class="val">${reusableAreaM2.toFixed(3)}</div><div class="lbl">Ruang persegi panjang tersisa (m²)</div><div class="sub">${cutting.reusableRemainders.length} bidang; belum disaring ukuran minimum</div></div>
+    <div class="metric c-good"><div class="val">${usableAreaM2.toFixed(3)}</div><div class="lbl">Sisa memenuhi batas ukuran (m²)</div><div class="sub">${cutting.usableRemainders.length} bidang</div>
+    <div class="metric c-warn"><div class="val">${tooSmallAreaM2.toFixed(3)}</div><div class="lbl">Sisa di bawah batas (m²)</div><div class="sub">${cutting.tooSmallRemainders.length} bidang</div></div></div>
     <div class="metric c-warn"><div class="val">${unclassifiedAreaM2.toFixed(3)}</div><div class="lbl">Belum terklasifikasi (m²)</div><div class="sub">termasuk jalur potong / ruang tak terpakai</div></div>
   `;
 
@@ -713,7 +723,8 @@ Estimasi biaya per m² bidang: ${fmtRupiah(infoHarga.biayaPerM2Bidang)}`;
   if(c2>0)st+=`<tr><td>Dipotong 2 sisi</td><td class="hi">${c2}</td></tr>`;
   if(c34>0)st+=`<tr><td>Dipotong 3–4 sisi</td><td class="hi">${c34}</td></tr>`;
   if(reuseCount>0)st+=`<tr><td class="c-reuse">Potongan tambahan pada lembar yang sama</td><td class="c-reuse">${reuseCount}</td></tr>`;
-  if(cutting.reusableRemainders.length>0)st+=`<tr><td>Sisa persegi panjang tercatat</td><td class="hi">${cutting.reusableRemainders.length} bidang</td></tr>`;
+  if(cutting.usableRemainders.length>0)st+=`<tr><td>Sisa memenuhi batas ukuran</td><td class="hi">${cutting.usableRemainders.length} bidang</td></tr>`;
+  if(cutting.tooSmallRemainders.length>0)st+=`<tr><td>Sisa di bawah batas ukuran</td><td class="hi">${cutting.tooSmallRemainders.length} bidang</td></tr>`;
   st+=`<tr><td>Area belum terklasifikasi</td><td class="hi">${unclassifiedAreaM2.toFixed(3)} m²</td></tr>`;
   st+=`<tr><td style="font-weight:600;color:var(--text)">Total lembar sumber</td><td class="hi c-info">${totalSheets}</td></tr>`;
   document.getElementById('sheetTable').innerHTML=st;

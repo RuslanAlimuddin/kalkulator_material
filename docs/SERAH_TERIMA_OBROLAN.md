@@ -225,3 +225,19 @@ Integrasi awal mesin geometri → adapter → mesin pemotongan pada UI lulus uji
 6. Jangan merge ke main tanpa persetujuan pengguna.
 
 Bukti yang tersedia: hasil tes Node.js lokal dan laporan uji manual browser dari pengguna pada 17–18 November 2026. Belum ada screenshot atau rekaman hasil browser yang disimpan sebagai artefak pengujian.
+
+
+## 16. Audit arti angka dan istilah UI — 18 November 2026
+Audit kode index.html, assets/js/cutting-adapter.js, assets/js/cutting-engine.js, dan docs/DESAIN_MESIN_PEMOTONGAN.md menemukan bahwa:
+- sheetCount adalah jumlah lembar sumber yang dipakai algoritma.
+- reuseCount menghitung potongan kedua dan seterusnya pada lembar sumber yang sama. Ini bukan pengambilan stok sisa dari pekerjaan lama.
+- reusableRemainders adalah ruang persegi panjang kosong yang tercatat pada lembar hasil saat ini; belum ada ukuran minimum sisa layak pakai.
+- unclassifiedArea bukan otomatis limbah.
+- Harga dihitung dari kebutuhan lembar algoritmik dan kemasan dibulatkan ke atas; stok awal/inventaris sisa belum mengurangi pembelian.
+- Visualisasi sekarang adalah diagram pemasangan, bukan diagram pemotongan tiap lembar.
+
+Teks UI diperbaiki agar tidak menyebut potongan tambahan pada lembar yang sama sebagai “dari sisa” atau menjanjikan “tidak beli baru”. Mode Ekonomis kini dijelaskan sebagai penyusunan beberapa potongan pada lembar sumber yang sama. Catatan rotasi juga diperjelas sebagai putaran 90 derajat.
+
+Pengujian yang telah dilaporkan pengguna tetap: tiga suite Node.js lulus dan uji manual Live Server berjalan normal tanpa error console. Perubahan teks UI ini belum diuji ulang di browser; perlu satu pemeriksaan visual singkat setelah ZIP terbaru diunduh. Jangan menghapus makeStok(); jangan merge ke main.
+
+Tahap setelah ini: buat rancangan ukuran minimum sisa layak pakai dan inventaris sisa lintas pekerjaan, dengan tes khusus. Kerf, arah serat/motif, dan diagram cutting layout per lembar tetap menjadi pengembangan terpisah.

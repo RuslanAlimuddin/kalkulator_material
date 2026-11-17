@@ -53,11 +53,11 @@ Branch `pengembangan-mesin-hitung` dibuat untuk pekerjaan refaktor. Dokumen renc
 ## 6. Status kode pada branch pengembangan
 Saat dokumen ini dibuat, branch pengembangan sudah memiliki:
 - `index.html`: antarmuka aplikasi dan integrasi pemanggilan `MaterialEngine.calculateGeometry(...)`.
-- `assets/js/engine.js`: modul geometri murni tanpa DOM, diekspor untuk browser dan Node.js. Menghasilkan koordinat potongan bidang, ukuran potongan tepi, pola Stack/Running/Third Bond, arah horizontal/vertikal, dan alignment.
+- `assets/js/engine.js`: modul geometri murni tanpa DOM, diekspor untuk browser dan Node.js. Menghasilkan koordinat potongan bidang, ukuran potongan tepi, pola Stack/Running/Third Bond, arah horizontal/vertikal, dan alignment. Properti `cols` ditambahkan sebagai alias kompatibilitas untuk pemanggilan UI lama, selain `columns`.
 - `tests/engine.test.js`: pengujian dasar, validasi input, dan matriks 54 kombinasi pola × arah × alignment.
 - `docs/RENCANA_REFAKTOR.md`: urutan tahap refaktor.
 
-Penting: keberadaan file tes bukan bukti bahwa tes sudah dijalankan. Pada sesi berikutnya, jalankan tes dan catat hasil aktual. Jangan menyatakan integrasi browser telah berhasil sebelum benar-benar diuji melalui Live Server.
+Pengujian pada sesi 17 November 2026: isi `tests/engine.test.js` dijalankan melalui runtime JavaScript terisolasi dengan shim untuk modul `node:assert`; seluruh 4 pengujian bernama dan matriks 54 kombinasi pola/arah/alignment lulus. Kasus regresi 600×100 cm dengan potongan 20×100 cm menghasilkan 30 potongan. Ini bukan pengujian Node.js di PC pengguna dan bukan pengujian browser/Live Server. Pengujian dengan Node.js dan Live Server tetap perlu dilakukan sebelum integrasi dinyatakan final.
 
 ## 7. Audit awal dan batasan yang masih harus ditangani
 - Fungsi `getInfoHarga()` di aplikasi lama sudah menghitung harga per lembar dari harga kemasan, jumlah kemasan dibulatkan ke atas, uang pembelian, sisa lembar utuh, harga per m² material, dan biaya pembelian per m² bidang.
@@ -68,6 +68,8 @@ Penting: keberadaan file tes bukan bukti bahwa tes sudah dijalankan. Pada sesi b
 - Pastikan kontrak data `engine.js` cocok dengan yang dipakai `index.html`, termasuk nama properti `rows/columns`, koordinat, dan jumlah potongan.
 - Periksa apakah tes 54 kombinasi benar-benar mencakup kondisi nat/gap lebih dari nol; jika belum, tambahkan tes khusus gap.
 - Kasus regresi penting: bidang 600×100 cm, material sumber 600×20 cm dipasang portrait sehingga bidang tertutup oleh 30 potongan berukuran 20×100 cm. Dengan enam potongan dari satu lembar, kebutuhan teoritisnya 5 lembar. Jangan menganggap modul geometri saja sudah menyelesaikan pemotongan sumber.
+
+Catatan perubahan terbaru: commit `04cbac9511fed3aad8f0815ec8b3aa0f9120e30a` pada branch pengembangan menambahkan alias `cols` pada hasil engine karena `index.html` lama membaca `geometry.cols`. Pengujian ulang terhadap engine setelah perubahan tetap lulus.
 
 ## 8. Rencana tahapan
 1. **Fondasi dan geometri:** jalankan tes engine, periksa kontrak integrasi UI, verifikasi pola, arah, alignment, gap, dan tepi bidang.

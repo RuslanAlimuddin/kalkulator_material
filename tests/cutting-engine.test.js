@@ -47,7 +47,7 @@ test("rotasi hanya digunakan jika diizinkan", () => {
 
 test("kerf menyisakan jarak antarpotongan", () => {
   const r = calculateCutting({
-    sheetW: 100, sheetH: 50, kerf: 2,
+    sheetW: 99, sheetH: 50, kerf: 2,
     parts: [{ width: 49, height: 50, quantity: 2 }]
   });
   assert.equal(r.sheetCount, 2);

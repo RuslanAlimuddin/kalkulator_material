@@ -51,3 +51,15 @@ for (const pattern of ["stack","running","third"]) {
   }
 }
 console.log("Matriks 54 kombinasi pola/arah/alignment lulus.");
+
+check("Nat mengurangi luas cakupan sesuai jarak", {...base,wallW:600,wallH:600,matW:110,matH:220,gap:1,pattern:"stack"}, r => {
+  assert.ok(r.coverageRatio < 1);
+  assert.ok(r.coverageRatio > 0.95);
+});
+check("Kasus strip 600×100 cm menghasilkan 30 potongan", {
+  wallW:600,wallH:100,matW:20,matH:600,gap:0,
+  pattern:"stack",direction:"horizontal",alignment:"BL"
+}, r => {
+  assert.equal(r.cells.length,30);
+  assert.ok(r.cells.every(c=>Math.abs(c.width-20)<0.001 && Math.abs(c.height-100)<0.001));
+});

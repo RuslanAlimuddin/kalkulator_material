@@ -44,3 +44,17 @@ node tests\\cutting-engine.test.js
 node tests\\cutting-adapter.test.js
 ```
 Setelah ketiganya lulus, pandu uji browser mode Presisi/Ekonomis, kasus strip 600×100 cm, rotasi, harga per lembar, dan harga per kemasan. Jangan mengubah branch `main` atau menghapus backup.
+
+
+## Status terbaru per 18 November 2026
+Pengguna telah mengonfirmasi hasil uji browser/Live Server: nilai bawaan normal; Presisi vs Ekonomis memiliki sedikit perbedaan angka; kasus strip panjang benar; harga material masuk akal; Console tidak memiliki pesan merah.
+
+Sebelumnya, pengguna juga melaporkan ketiga suite Node.js lokal lulus:
+
+    node tests\engine.test.js
+    node tests\cutting-engine.test.js
+    node tests\cutting-adapter.test.js
+
+Kesimpulan status: integrasi awal mesin geometri, adapter, dan mesin pemotongan sudah melewati tes unit lokal serta uji manual awal browser. Jangan ulangi tahap integrasi atau meminta pengguna menjalankan tes yang sama tanpa alasan. Lanjutkan dengan memeriksa kode dan makna hasil yang ditampilkan, audit laporan/stok/harga, lalu susun tahap pengembangan lanjutan. Perhatikan keterbatasan yang tercatat di bagian 15 docs/SERAH_TERIMA_OBROLAN.md.
+
+Tetap kerjakan hanya di branch pengembangan-mesin-hitung. Jangan mengubah main, jangan menghapus backup, dan jangan menghapus makeStok() sebelum audit pemakaian dan regresi terpisah.

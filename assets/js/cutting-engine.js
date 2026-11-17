@@ -104,10 +104,13 @@
     function place(part, candidate, sheet) {
       const free = candidate.free;
       const o = candidate.orientation;
-      const rightGap = free.width - o.width > kerf + EPS ? kerf : 0;
-      const bottomGap = free.height - o.height > kerf + EPS ? kerf : 0;
-      const rightWidth = free.width - o.width - rightGap;
-      const bottomHeight = free.height - o.height - bottomGap;
+      const extraW = free.width - o.width;
+      const extraH = free.height - o.height;
+      // Ruang yang lebih kecil dari kerf (lebar mata potong) tidak dianggap sisa pakai.
+      const rightGap = extraW > EPS ? Math.min(kerf, extraW) : 0;
+      const bottomGap = extraH > EPS ? Math.min(kerf, extraH) : 0;
+      const rightWidth = extraW - rightGap;
+      const bottomHeight = extraH - bottomGap;
 
       sheet.freeRects.splice(candidate.freeIndex, 1);
       if (rightWidth > EPS) {

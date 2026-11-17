@@ -73,4 +73,28 @@ test("input ukuran lembar tidak valid ditolak", () => {
   }), /lebih dari 0/);
 });
 
+
+test("adapter meneruskan batas minimum dan memisahkan sisa layak/tidak layak", () => {
+  const geometry = { cells: [{
+    xStart: 0, yStart: 0, width: 60, height: 100,
+    cutLeft: 0, cutRight: 40, cutTop: 0, cutBottom: 0
+  }] };
+  const r = calculateMaterialSources({
+    geometry, sheetW: 100, sheetH: 100, mode: "presisi",
+    minRemainderW: 50, minRemainderH: 30,
+    cuttingEngine: { calculateCutting }
+  });
+  assert.equal(r.reusableRemainders.length, 1);
+  assert.equal(r.usableRemainders.length, 0);
+  assert.equal(r.tooSmallRemainders.length, 1);
+  assert.equal(r.tooSmallRemainderArea, 4000);
+});
+
+test("adapter menolak ukuran minimum sisa negatif", () => {
+  assert.throws(() => calculateMaterialSources({
+    geometry: stripGeometry, sheetW: 20, sheetH: 600, mode: "presisi",
+    minRemainderW: -1, cuttingEngine: { calculateCutting }
+  }), /tidak boleh negatif/);
+});
+
 console.log("Semua pengujian adapter pemotongan selesai.");

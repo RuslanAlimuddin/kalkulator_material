@@ -334,6 +334,8 @@ canvas{display:block}
 </div><!-- /container -->
 
 <script src="assets/js/engine.js"></script>
+<script src="assets/js/cutting-engine.js"></script>
+<script src="assets/js/cutting-adapter.js"></script>
 <script>
 // ============================================================
 // DATA
@@ -639,39 +641,30 @@ function calc(){
   });
   const {cols,rows}=geometry;
   const autoStripReuse=ori===0&&curPattern==='stack'&&rows===1&&matH>wallH+EPS;
-  const cells=[];
-  const stok=makeStok();
-  let sheetId=0;
 
-  function getOrReuse(W,H,nCuts){
-    if((curMode==='ekonomis'||autoStripReuse)&&nCuts>0){
-      const res=stok.use(W,H);
-      if(res.found) return{source:'reuse',sheetId:res.fromSheet,rotated:res.rotated};
-      sheetId++;
-      if(matW-W>EPS)stok.add(matW-W,matH,sheetId);
-      if(matH-H>EPS)stok.add(W,matH-H,sheetId);
-      return{source:'new',sheetId,rotated:false};
-    }
-    sheetId++;
-    return{source:'new',sheetId,rotated:false};
-  }
-
-  geometry.cells.forEach(gc=>{
-    const nCuts=(gc.cutLeft>EPS?1:0)+(gc.cutRight>EPS?1:0)+
-      (gc.cutTop>EPS?1:0)+(gc.cutBottom>EPS?1:0);
-    const sr=getOrReuse(gc.width,gc.height,nCuts);
-    cells.push({xStart:gc.xStart,yStart:gc.yStart,width:gc.width,height:gc.height,nCuts,...sr});
+  // Adapter mempertahankan koordinat pemasangan, tetapi menentukan lembar sumber
+  // melalui mesin pemotongan 2D. Mode presisi tetap satu lembar per grid,
+  // kecuali aturan khusus strip panjang; mode ekonomis mengizinkan reuse dan rotasi.
+  const cutting=MaterialCuttingAdapter.calculateMaterialSources({
+    geometry,
+    sheetW:matW,
+    sheetH:matH,
+    mode:curMode,
+    autoStripReuse,
+    allowRotation:curMode==='ekonomis',
+    kerf:0
   });
-
-  const totalSheets=sheetId;
-  const reuseCount=cells.filter(c=>c.source==='reuse').length;
+  const cells=cutting.cells;
+  const totalSheets=cutting.sheetCount;
+  const reuseCount=cutting.reuseCount;
   const full=cells.filter(c=>c.nCuts===0&&c.source!=='reuse').length;
   const c1=cells.filter(c=>c.nCuts===1&&c.source!=='reuse').length;
   const c2=cells.filter(c=>c.nCuts===2&&c.source!=='reuse').length;
   const c34=cells.filter(c=>c.nCuts>=3&&c.source!=='reuse').length;
   const areaDinding=(wallW*wallH)/10000;
   const areaMat=(matW*matH)/10000;
-  const sisaM2=Math.max(0,totalSheets*areaMat-areaDinding);
+  const reusableAreaM2=cutting.reusableRemainders.reduce((sum,r)=>sum+r.area,0)/10000;
+  const unclassifiedAreaM2=cutting.unclassifiedArea/10000;
 
   // Tarif material per m² dihitung dari harga per lembar dan luas satu lembar.
   // Harga per dus/pack dihitung berdasarkan isi kemasan; biaya pembelian dibulatkan
@@ -688,7 +681,8 @@ function calc(){
     <div class="metric c-info"><div class="val">${totalSheets}</div><div class="lbl">Lembar kebutuhan</div><div class="sub">${cells.length} grid total</div></div>
     <div class="metric c-good"><div class="val">${reuseCount}</div><div class="lbl">Grid reuse</div><div class="sub">tidak beli baru</div></div>
     <div class="metric"><div class="val">${areaDinding.toFixed(2)}</div><div class="lbl">Luas dinding (m²)</div><div class="sub">${(wallW/100).toFixed(2)}×${(wallH/100).toFixed(2)}m</div></div>
-    <div class="metric c-warn"><div class="val">${sisaM2.toFixed(3)}</div><div class="lbl">Sisa terbuang (m²)</div><div class="sub">dari lembar dipotong</div></div>
+    <div class="metric c-good"><div class="val">${reusableAreaM2.toFixed(3)}</div><div class="lbl">Sisa persegi panjang (m²)</div><div class="sub">${cutting.reusableRemainders.length} bidang tercatat</div></div>
+    <div class="metric c-warn"><div class="val">${unclassifiedAreaM2.toFixed(3)}</div><div class="lbl">Belum terklasifikasi (m²)</div><div class="sub">termasuk jalur potong / ruang tak terpakai</div></div>
   `;
 
   // Rincian harga material dan konversi harga per meter persegi.
@@ -718,8 +712,10 @@ Estimasi biaya per m² bidang: ${fmtRupiah(infoHarga.biayaPerM2Bidang)}`;
   if(c1>0)st+=`<tr><td>Dipotong 1 sisi</td><td class="hi">${c1}</td></tr>`;
   if(c2>0)st+=`<tr><td>Dipotong 2 sisi</td><td class="hi">${c2}</td></tr>`;
   if(c34>0)st+=`<tr><td>Dipotong 3–4 sisi</td><td class="hi">${c34}</td></tr>`;
-  if(reuseCount>0)st+=`<tr><td class="c-reuse">Dari sisa (reuse)</td><td class="c-reuse">${reuseCount}</td></tr>`;
-  st+=`<tr><td style="font-weight:600;color:var(--text)">Total terpakai</td><td class="hi c-info">${totalSheets}</td></tr>`;
+  if(reuseCount>0)st+=`<tr><td class="c-reuse">Dari sisa / lembar sama (reuse)</td><td class="c-reuse">${reuseCount}</td></tr>`;
+  if(cutting.reusableRemainders.length>0)st+=`<tr><td>Sisa persegi panjang tercatat</td><td class="hi">${cutting.reusableRemainders.length} bidang</td></tr>`;
+  st+=`<tr><td>Area belum terklasifikasi</td><td class="hi">${unclassifiedAreaM2.toFixed(3)} m²</td></tr>`;
+  st+=`<tr><td style="font-weight:600;color:var(--text)">Total lembar sumber</td><td class="hi c-info">${totalSheets}</td></tr>`;
   document.getElementById('sheetTable').innerHTML=st;
 
   // Tabel info pola

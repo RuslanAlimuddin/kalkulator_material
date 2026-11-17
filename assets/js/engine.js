@@ -111,7 +111,7 @@
     const areaInstalled = cells.reduce((sum,c) => sum + c.width*c.height, 0);
     return {
       wallW, wallH, matW, matH, gap, pattern, direction, alignment,
-      columns: xBase.length, rows: yBase.length, cells,
+      columns: xBase.length, cols: xBase.length, rows: yBase.length, cells,
       areaInstalled, areaWall: wallW*wallH,
       // Gap area is intentionally not covered by panels.
       coverageRatio: areaInstalled/(wallW*wallH)

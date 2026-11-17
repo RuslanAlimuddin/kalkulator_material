@@ -670,7 +670,6 @@ function calc(){
   const c34=cells.filter(c=>c.nCuts>=3&&c.source!=='reuse').length;
   const areaDinding=(wallW*wallH)/10000;
   const areaMat=(matW*matH)/10000;
-  const reusableAreaM2=cutting.reusableRemainders.reduce((sum,r)=>sum+r.area,0)/10000;
   const usableAreaM2=cutting.usableRemainderArea/10000;
   const tooSmallAreaM2=cutting.tooSmallRemainderArea/10000;
   const unclassifiedAreaM2=cutting.unclassifiedArea/10000;
@@ -690,8 +689,8 @@ function calc(){
     <div class="metric c-info"><div class="val">${totalSheets}</div><div class="lbl">Lembar kebutuhan</div><div class="sub">${cells.length} grid total</div></div>
     <div class="metric c-good"><div class="val">${reuseCount}</div><div class="lbl">Grid berbagi lembar</div><div class="sub">bukan stok sisa pekerjaan lama</div></div>
     <div class="metric"><div class="val">${areaDinding.toFixed(2)}</div><div class="lbl">Luas dinding (m²)</div><div class="sub">${(wallW/100).toFixed(2)}×${(wallH/100).toFixed(2)}m</div></div>
-    <div class="metric c-good"><div class="val">${usableAreaM2.toFixed(3)}</div><div class="lbl">Sisa memenuhi batas ukuran (m²)</div><div class="sub">${cutting.usableRemainders.length} bidang</div>
-    <div class="metric c-warn"><div class="val">${tooSmallAreaM2.toFixed(3)}</div><div class="lbl">Sisa di bawah batas (m²)</div><div class="sub">${cutting.tooSmallRemainders.length} bidang</div></div></div>
+    <div class="metric c-good"><div class="val">${usableAreaM2.toFixed(3)}</div><div class="lbl">Sisa memenuhi batas ukuran (m²)</div><div class="sub">${cutting.usableRemainders.length} bidang</div></div>
+    <div class="metric c-warn"><div class="val">${tooSmallAreaM2.toFixed(3)}</div><div class="lbl">Sisa di bawah batas (m²)</div><div class="sub">${cutting.tooSmallRemainders.length} bidang</div></div>
     <div class="metric c-warn"><div class="val">${unclassifiedAreaM2.toFixed(3)}</div><div class="lbl">Belum terklasifikasi (m²)</div><div class="sub">termasuk jalur potong / ruang tak terpakai</div></div>
   `;
 

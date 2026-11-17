@@ -166,6 +166,13 @@
 
     const totalPartArea = parts.reduce((sum, part) => sum + part.area, 0);
     const totalSheetArea = sheets.length * sheetW * sheetH;
+    // Catat semua ruang persegi panjang, lalu klasifikasikan berdasarkan batas minimum.
+    const minRemainderW = input.minRemainderW == null ? 0 : Number(input.minRemainderW);
+    const minRemainderH = input.minRemainderH == null ? 0 : Number(input.minRemainderH);
+    if (!Number.isFinite(minRemainderW) || minRemainderW < 0 ||
+        !Number.isFinite(minRemainderH) || minRemainderH < 0) {
+      throw new Error("Ukuran minimum sisa tidak boleh negatif.");
+    }
     const reusableRemainders = sheets.flatMap(sheet =>
       sheet.freeRects.map(rect => ({
         sheetId: sheet.id,
@@ -176,7 +183,15 @@
         area: rect.width * rect.height
       }))
     );
+    const usableRemainders = reusableRemainders.filter(rect =>
+      rect.width + EPS >= minRemainderW && rect.height + EPS >= minRemainderH
+    );
+    const tooSmallRemainders = reusableRemainders.filter(rect =>
+      rect.width + EPS < minRemainderW || rect.height + EPS < minRemainderH
+    );
     const reusableArea = reusableRemainders.reduce((sum, rect) => sum + rect.area, 0);
+    const usableRemainderArea = usableRemainders.reduce((sum, rect) => sum + rect.area, 0);
+    const tooSmallRemainderArea = tooSmallRemainders.reduce((sum, rect) => sum + rect.area, 0);
 
     return {
       algorithm: "guillotine-best-fit",
@@ -185,11 +200,17 @@
       sheetH,
       kerf,
       allowRotation,
+      minRemainderW,
+      minRemainderH,
       partCount: parts.length,
       sheetCount: sheets.length,
       totalPartArea,
       totalSheetArea,
       reusableArea,
+      usableRemainders,
+      tooSmallRemainders,
+      usableRemainderArea,
+      tooSmallRemainderArea,
       unclassifiedArea: Math.max(0, totalSheetArea - totalPartArea - reusableArea),
       sheets: sheets.map(sheet => ({
         id: sheet.id,

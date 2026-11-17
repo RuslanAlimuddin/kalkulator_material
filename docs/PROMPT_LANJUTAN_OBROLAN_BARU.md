@@ -34,7 +34,8 @@ Sekarang mulai dengan membaca dokumen serah-terima dan memeriksa status repo ter
 - Mode Presisi tetap satu lembar per grid, kecuali aturan strip panjang khusus. Mode Ekonomis mengemas potongan bersama dan mengizinkan rotasi.
 - Hasil UI sekarang membedakan sisa persegi panjang tercatat dan area belum terklasifikasi; jangan menyebut area belum terklasifikasi sebagai limbah.
 - `makeStok()` masih ada sebagai cadangan tetapi tidak lagi dipanggil oleh kalkulasi utama. Jangan hapus sebelum regresi browser selesai.
-- Tes adapter belum dijalankan di PC pengguna. Integrasi UI juga belum diverifikasi melalui browser/Live Server.
+- Pengguna telah menjalankan ketiga suite di PC Windows dan melaporkan semuanya lulus: `node tests/engine.test.js`, `node tests/cutting-engine.test.js`, dan `node tests/cutting-adapter.test.js`.
+- Tes unit tiga lapisan sudah lulus secara lokal, tetapi integrasi UI belum diverifikasi melalui browser/Live Server.
 
 **Langkah pertama obrolan berikutnya:** minta hasil tes lokal berikut dari ZIP terbaru branch:
 ```cmd

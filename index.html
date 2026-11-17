@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalkulator Material Bangunan</title>
+<style>
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4f2ee;--bg2:#fff;--bg3:#eeecea;
+  --border:#e0ddd8;--border2:#ccc;
+  --text:#1a1a1a;--text2:#555;--text3:#888;
+  --info:#185FA5;--info-bg:#EAF3FC;--info-light:#D6E9FA;
+  --success:#3B6D11;--success-bg:#EAF3DE;
+  --warn:#854F0B;--warn-bg:#FAEEDA;
+  --glow:rgba(55,138,221,0.18);
+  --radius:10px;--radius-sm:6px;
+  --shadow:0 1px 4px rgba(0,0,0,0.08);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#111;--bg2:#1a1a1a;--bg3:#141414;
+  --border:#2a2a2a;--border2:#333;
+  --text:#e8e8e8;--text2:#aaa;--text3:#666;
+  --info:#85B7EB;--info-bg:#0C2A44;--info-light:#0C447C;
+  --success:#97C459;--success-bg:#1a2e0a;
+  --warn:#EF9F27;--warn-bg:#2a1e08;
+  --glow:rgba(55,138,221,0.2);
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:1rem}
+.container{max-width:780px;margin:0 auto}
+h1{font-size:18px;font-weight:600;color:var(--text);margin-bottom:4px}
+.subtitle{font-size:12px;color:var(--text3);margin-bottom:16px}
+
+/* ============================================================
+   SECTION CARD
+   ============================================================ */
+.sec{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:12px;box-shadow:var(--shadow)}
+.sec-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ============================================================
+   GRID HELPERS
+   ============================================================ */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+
+/* ============================================================
+   FORM FIELDS
+   ============================================================ */
+.f label{font-size:12px;color:var(--text2);display:block;margin-bottom:3px}
+.f input,.f select{width:100%;padding:7px 10px;font-size:14px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--bg3);color:var(--text);height:36px;transition:border-color .15s}
+.f input:focus,.f select:focus{outline:none;border-color:var(--info);box-shadow:0 0 0 2px var(--glow)}
+.f-row{display:flex;gap:8px;align-items:flex-end}
+.f-row .f{flex:1}
+.unit{font-size:12px;color:var(--text3);padding-bottom:8px;white-space:nowrap}
+
+/* ============================================================
+   OPT CARD (generic selectable card)
+   ============================================================ */
+.opt-card{
+  border:1.5px solid var(--border);
+  border-radius:var(--radius-sm);
+  background:var(--bg3);
+  cursor:pointer;padding:10px 8px 8px;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  transition:border-color .15s,box-shadow .15s,background .15s;
+  position:relative;font-family:inherit;
+}
+.opt-card:hover{border-color:var(--info)}
+.opt-card.active{
+  border:2px solid var(--info);
+  background:var(--info-bg);
+  box-shadow:0 0 0 3px var(--glow),0 0 12px 2px rgba(55,138,221,0.1);
+}
+.opt-card .clabel{font-size:11px;color:var(--text2);text-align:center;line-height:1.3}
+.opt-card.active .clabel{color:var(--info);font-weight:600}
+.opt-card .csub{font-size:10px;color:var(--text3);text-align:center}
+.opt-card.active .csub{color:var(--info);opacity:.8}
+
+/* ============================================================
+   ALIGNMENT PICKER (1 kotak 9 titik)
+   ============================================================ */
+.align-picker-wrap{display:flex;align-items:center;gap:20px}
+.align-picker{
+  width:120px;height:120px;
+  border:1.5px solid var(--border2);
+  border-radius:var(--radius-sm);
+  background:var(--bg3);
+  display:grid;grid-template-columns:repeat(3,1fr);
+  padding:12px;gap:0;flex-shrink:0;
+}
+.align-dot{
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;border-radius:4px;
+  transition:background .1s;
+}
+.align-dot:hover .dot-inner{transform:scale(1.4);background:var(--info)}
+.dot-inner{
+  width:10px;height:10px;border-radius:50%;
+  background:var(--border2);
+  transition:all .2s;
+}
+.align-dot.active .dot-inner{
+  background:var(--info);
+  transform:scale(1.5);
+  box-shadow:0 0 0 3px var(--glow),0 0 8px 2px rgba(55,138,221,0.3);
+}
+.align-info{flex:1}
+.align-name{font-size:15px;font-weight:600;color:var(--info);margin-bottom:4px}
+.align-desc{font-size:12px;color:var(--text2);line-height:1.5}
+
+/* ============================================================
+   MODE TOGGLE (simple, no visual preview)
+   ============================================================ */
+.mode-toggle{display:flex;gap:0;border:1px solid var(--border2);border-radius:var(--radius-sm);overflow:hidden;margin-bottom:8px}
+.mode-btn{flex:1;padding:9px;border:none;background:transparent;color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit;transition:all .15s}
+.mode-btn:hover{background:var(--bg3)}
+.mode-btn.active{background:var(--info-bg);color:var(--info);font-weight:600;box-shadow:inset 0 0 0 1.5px var(--info)}
+.mode-desc{font-size:12px;color:var(--text2);padding:6px 2px;line-height:1.5}
+
+/* ============================================================
+   PATTERN CARDS (dengan SVG preview)
+   ============================================================ */
+.pattern-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.dir-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.dir-section{display:none}
+
+/* ============================================================
+   HARGA MATERIAL
+   ============================================================ */
+.harga-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px;margin-top:10px}
+.harga-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.harga-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.kemasan-row{margin-top:6px;display:none}
+
+/* ============================================================
+   BUTTON HITUNG
+   ============================================================ */
+.btn-hitung{
+  width:100%;margin-top:12px;padding:11px;
+  border:none;border-radius:var(--radius-sm);
+  background:var(--info);color:#fff;
+  font-size:15px;font-weight:600;cursor:pointer;
+  font-family:inherit;transition:opacity .15s;
+  letter-spacing:.02em;
+}
+.btn-hitung:hover{opacity:.88}
+.btn-hitung:active{transform:scale(.99)}
+
+/* ============================================================
+   HASIL
+   ============================================================ */
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.metric{background:var(--bg3);border-radius:var(--radius-sm);padding:.7rem .8rem;text-align:center;border:1px solid var(--border)}
+.metric .val{font-size:20px;font-weight:700;color:var(--text)}
+.metric .lbl{font-size:11px;color:var(--text2);margin-top:2px}
+.metric .sub{font-size:10px;color:var(--text3);margin-top:1px}
+.metric.c-info .val{color:var(--info)}
+.metric.c-good .val{color:var(--success)}
+.metric.c-warn .val{color:var(--warn)}
+
+.harga-total-box{background:var(--info-bg);border:1px solid var(--info);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;display:none}
+.harga-total-box .ht-label{font-size:12px;color:var(--info);margin-bottom:2px}
+.harga-total-box .ht-val{font-size:22px;font-weight:700;color:var(--info)}
+.harga-total-box .ht-detail{font-size:11px;color:var(--text2);margin-top:4px;white-space:pre-line;line-height:1.55}
+
+.result-tables{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tbl-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+table.rtbl{width:100%;font-size:12px;border-collapse:collapse}
+table.rtbl th{font-size:11px;font-weight:600;color:var(--text2);text-align:left;padding:4px 8px;border-bottom:1px solid var(--border)}
+table.rtbl td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2)}
+table.rtbl tr:last-child td{border-bottom:none}
+table.rtbl td.hi{color:var(--text);font-weight:600}
+table.rtbl td.c-good{color:var(--success)}
+table.rtbl td.c-warn{color:var(--warn)}
+table.rtbl td.c-reuse{color:var(--success)}
+
+/* ============================================================
+   VISUALISASI
+   ============================================================ */
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+.ld{width:14px;height:14px;border-radius:3px;flex-shrink:0}
+.canvas-wrap{overflow:auto;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg3);padding:8px}
+canvas{display:block}
+.canvas-note{font-size:11px;color:var(--text3);margin-top:6px}
+
+/* ============================================================
+   HIDDEN
+   ============================================================ */
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🧱 Kalkulator Material Bangunan</h1>
+<p class="subtitle">Hitung kebutuhan material penutup bidang — dinding, lantai, plafon</p>
+
+<!-- ============================================================
+     DIMENSI DINDING
+     ============================================================ -->
+<div class="sec">
+  <div class="sec-title">Dimensi Bidang</div>
+  <div class="g2">
+    <div class="f"><label>Lebar / Horizontal (m)</label><input type="number" id="w" value="6" min="0.01" step="0.01"></div>
+    <div class="f"><label>Tinggi / Vertikal (m)</label><input type="number" id="h" value="6" min="0.01" step="0.01"></div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MATERIAL
+     ============================================================ -->
+<div class="sec">
+  <div class="sec-title">Material</div>
+
+  <!-- Detail material (editable) -->
+  <div class="g3">
+    <div class="f"><label>Nama material</label><input type="text" id="mn" value="Triplek"></div>
+    <div class="f"><label>Panjang (cm)</label><input type="number" id="mw" value="220" min="1"></div>
+    <div class="f"><label>Lebar (cm)</label><input type="number" id="mh" value="110" min="1"></div>
+  </div>
+  <div class="g2" style="margin-top:10px">
+    <div class="f"><label>Orientasi pemasangan</label>
+      <select id="ori">
+        <option value="0" selected>Portrait (panjang = vertikal)</option>
+        <option value="1">Landscape (panjang = horizontal)</option>
+      </select>
+    </div>
+    <div class="f"><label>Jarak nat / overlap (cm)</label><input type="number" id="gap" value="0" min="0" step="0.5"></div>
+  </div>
+
+  <!-- Harga -->
+  <div class="harga-box">
+    <div class="harga-title">Harga Material (opsional)</div>
+    <div class="harga-row">
+      <div class="f" style="flex:2"><label>Harga</label>
+        <input type="number" id="harga" placeholder="0" min="0" step="1000">
+      </div>
+      <div class="f"><label>Per</label>
+        <select id="hargaPer" onchange="toggleKemasan()">
+          <option value="satuan">Satuan (per lembar)</option>
+          <option value="kemasan">Kemasan (per dus/pack)</option>
+        </select>
+      </div>
+    </div>
+    <div class="kemasan-row" id="kemasanRow">
+      <div class="f-row">
+        <div class="f"><label>Isi kemasan</label><input type="number" id="isiKemasan" value="1" min="1" step="1"></div>
+        <div class="unit" style="padding-bottom:9px">lembar/kemasan</div>
+      </div>
+      <p style="font-size:11px;color:var(--text3);margin-top:4px">Harga per lembar = Harga kemasan ÷ isi kemasan</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODE PERHITUNGAN
+     ============================================================ -->
+<div class="sec">
+  <div class="sec-title">Mode Perhitungan</div>
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="btnPresisi" onclick="setMode('presisi')">⬜ Presisi</button>
+    <button class="mode-btn" id="btnEkonomis" onclick="setMode('ekonomis')">♻️ Ekonomis</button>
+  </div>
+  <p class="mode-desc" id="modeDesc">Setiap grid menggunakan 1 lembar baru. Cocok untuk material finishing bermotif (keramik motif, wallpaper, HPL).</p>
+</div>
+
+<!-- ============================================================
+     POLA SAMBUNGAN
+     ============================================================ -->
+<div class="sec">
+  <div class="sec-title">Pola Sambungan</div>
+  <div class="pattern-grid" id="patternCards"></div>
+  <div class="dir-section" id="dirSection">
+    <p style="font-size:12px;color:var(--text2);margin-bottom:6px;margin-top:2px">Arah geser:</p>
+    <div class="dir-grid" id="dirCards"></div>
+  </div>
+  <p style="font-size:11px;color:var(--text3);margin-top:8px" id="patternInfo"></p>
+</div>
+
+<!-- ============================================================
+     ALIGNMENT
+     ============================================================ -->
+<div class="sec">
+  <div class="sec-title">Posisi Pemasangan (Alignment)</div>
+  <div class="align-picker-wrap">
+    <div class="align-picker" id="alignPicker"></div>
+    <div class="align-info">
+      <div class="align-name" id="alignName">Bottom Left</div>
+      <div class="align-desc" id="alignDesc"></div>
+    </div>
+  </div>
+  <button class="btn-hitung" onclick="calc()">Hitung Kebutuhan Material</button>
+</div>
+
+<!-- ============================================================
+     HASIL
+     ============================================================ -->
+<div class="sec hidden" id="rsec">
+  <div class="sec-title">Hasil Perhitungan</div>
+  <div class="metric-grid" id="metrics"></div>
+  <div class="harga-total-box" id="hargaTotalBox">
+    <div class="ht-label">Estimasi Total Biaya Material</div>
+    <div class="ht-val" id="hargaTotalVal"></div>
+    <div class="ht-detail" id="hargaTotalDetail"></div>
+  </div>
+  <div class="result-tables">
+    <div>
+      <div class="tbl-title">Rincian Lembar</div>
+      <table class="rtbl" id="sheetTable"></table>
+    </div>
+    <div>
+      <div class="tbl-title">Info Pola & Potongan</div>
+      <table class="rtbl" id="patternTable"></table>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     VISUALISASI
+     ============================================================ -->
+<div class="sec hidden" id="vsec">
+  <div class="sec-title">Visualisasi 2D Layout</div>
+  <div class="legend" id="legend"></div>
+  <div class="canvas-wrap"><canvas id="cv"></canvas></div>
+  <p class="canvas-note" id="canvasNote">Huruf = nomor lembar sumber. ↺ = dirotasi saat reuse. Warna = jumlah sisi yang dipotong.</p>
+</div>
+
+</div><!-- /container -->
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const ALIGNS=[
+  {id:'TL',label:'Top Left',    ax:0,  ay:0,   desc:'Pemasangan mulai dari pojok kiri atas. Potongan di sisi kanan dan bawah.'},
+  {id:'TC',label:'Top Center',  ax:0.5,ay:0,   desc:'Pemasangan mulai dari tengah atas. Potongan merata di kiri-kanan, dan di bawah.'},
+  {id:'TR',label:'Top Right',   ax:1,  ay:0,   desc:'Pemasangan mulai dari pojok kanan atas. Potongan di sisi kiri dan bawah.'},
+  {id:'ML',label:'Middle Left', ax:0,  ay:0.5, desc:'Pemasangan mulai dari tengah kiri. Potongan merata atas-bawah, dan di kanan.'},
+  {id:'MC',label:'Middle Center',ax:0.5,ay:0.5,desc:'Pemasangan mulai dari tengah bidang. Potongan merata di semua 4 sisi. Paling estetis untuk finishing.'},
+  {id:'MR',label:'Middle Right',ax:1,  ay:0.5, desc:'Pemasangan mulai dari tengah kanan. Potongan merata atas-bawah, dan di kiri.'},
+  {id:'BL',label:'Bottom Left', ax:0,  ay:1,   desc:'Pemasangan mulai dari pojok kiri bawah. Potongan di sisi kanan dan atas.'},
+  {id:'BC',label:'Bottom Center',ax:0.5,ay:1,  desc:'Pemasangan mulai dari tengah bawah. Potongan merata di kiri-kanan, dan di atas.'},
+  {id:'BR',label:'Bottom Right',ax:1,  ay:1,   desc:'Pemasangan mulai dari pojok kanan bawah. Potongan di sisi kiri dan atas.'},
+];
+
+const PATTERNS=[
+  {id:'stack',  label:'Stack Bond', sub:'Lurus sejajar'},
+  {id:'running',label:'Running Bond',sub:'Geser ½ panel'},
+  {id:'third',  label:'Third Bond', sub:'Geser ⅓ panel'},
+];
+const DIRS=[
+  {id:'horizontal',label:'Horizontal',sub:'Geser antar baris'},
+  {id:'vertikal',  label:'Vertikal',  sub:'Geser antar kolom'},
+];
+
+let curPreset=0,curMode='presisi',curPattern='stack',curDir='horizontal',curAlign='BL';
+const EPS=0.05;
+
+// ============================================================
+// UTILS
+// ============================================================
+function toAlpha(n){let r='';while(n>0){r=String.fromCharCode(64+(n%26||26))+r;n=Math.floor((n-1)/26);}return r;}
+function toI(v){return Math.round(v*10000);}
+function fmt(v){return parseFloat(v.toFixed(2));}
+function fmtRupiah(v){return'Rp '+v.toLocaleString('id-ID');}
+function isDark(){return window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches;}
+
+// ============================================================
+// BUILD UI — ALIGNMENT PICKER
+// ============================================================
+function buildAlignPicker(){
+  const g=document.getElementById('alignPicker');g.innerHTML='';
+  ALIGNS.forEach(a=>{
+    const dot=document.createElement('div');
+    dot.className='align-dot'+(a.id===curAlign?' active':'');
+    dot.title=a.label;
+    dot.innerHTML='<div class="dot-inner"></div>';
+    dot.onclick=()=>{
+      curAlign=a.id;
+      buildAlignPicker();
+      document.getElementById('alignName').textContent=a.label;
+      document.getElementById('alignDesc').textContent=a.desc;
+    };
+    g.appendChild(dot);
+  });
+  const al=ALIGNS.find(a=>a.id===curAlign);
+  document.getElementById('alignName').textContent=al.label;
+  document.getElementById('alignDesc').textContent=al.desc;
+}
+
+// ============================================================
+// BUILD UI — PATTERN CARDS (dengan SVG preview statis)
+// ============================================================
+function patternSVG(type,dir){
+  const dark=isDark();
+  const bg=dark?'#1e2a3a':'#EAF3FC';
+  const fill=dark?'#1a3a6a':'#C0D8F0';
+  const stroke=dark?'#378ADD':'#185FA5';
+  const W=72,H=44;let lines=[];
+
+  if(type==='stack'){
+    const cw=W/2,rh=H/3;
+    for(let r=0;r<3;r++) for(let c=0;c<2;c++)
+      lines.push(`<rect x="${c*cw+.5}" y="${r*rh+.5}" width="${cw-1}" height="${rh-1}" fill="${fill}" stroke="${stroke}" stroke-width="0.8" rx="1"/>`);
+  } else if(type==='running'){
+    const cw=W/2,rh=H/3;
+    for(let r=0;r<3;r++){
+      const sh=r%2===0?0:cw/2;
+      for(let c=-1;c<3;c++){
+        const x=c*cw+sh;if(x+cw<=0||x>=W)continue;
+        const vx=Math.max(x,0),vw=Math.min(x+cw,W)-vx;
+        lines.push(`<rect x="${vx+.5}" y="${r*rh+.5}" width="${vw-1}" height="${rh-1}" fill="${fill}" stroke="${stroke}" stroke-width="0.8" rx="1"/>`);
+      }
+    }
+  } else {
+    const cw=W/2,rh=H/3,unit=cw/3;
+    for(let r=0;r<3;r++){
+      const sh=r*unit;
+      for(let c=-1;c<3;c++){
+        const x=c*cw+sh;if(x+cw<=0||x>=W)continue;
+        const vx=Math.max(x,0),vw=Math.min(x+cw,W)-vx;
+        lines.push(`<rect x="${vx+.5}" y="${r*rh+.5}" width="${vw-1}" height="${rh-1}" fill="${fill}" stroke="${stroke}" stroke-width="0.8" rx="1"/>`);
+      }
+    }
+  }
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:44px;border-radius:4px;background:${bg}">${lines.join('')}</svg>`;
+}
+
+function dirSVG(id){
+  const dark=isDark();
+  const bg=dark?'#1e2a3a':'#EAF3FC';
+  const fill=dark?'#1a3a6a':'#C0D8F0';
+  const stroke=dark?'#378ADD':'#185FA5';
+  const arr=dark?'#EF9F27':'#854F0B';
+  const W=72,H=44;let lines=[];
+  if(id==='horizontal'){
+    const cw=W/2,rh=H/3;
+    [[0,0],[1,cw/2],[2,0]].forEach(([r,sh])=>{
+      for(let c=-1;c<3;c++){
+        const x=c*cw+sh;if(x+cw<=0||x>=W)continue;
+        const vx=Math.max(x,0),vw=Math.min(x+cw,W)-vx;
+        lines.push(`<rect x="${vx+.5}" y="${r*rh+.5}" width="${vw-1}" height="${rh-1}" fill="${fill}" stroke="${stroke}" stroke-width="0.8" rx="1"/>`);
+      }
+    });
+    lines.push(`<defs><marker id="ah" markerWidth="5" markerHeight="5" refX="4" refY="2.5" orient="auto"><polygon points="0,0 5,2.5 0,5" fill="${arr}"/></marker></defs>`);
+    lines.push(`<line x1="6" y1="${H/2}" x2="${W-6}" y2="${H/2}" stroke="${arr}" stroke-width="1.5" marker-end="url(#ah)"/>`);
+  } else {
+    const ch=H/3,cw=W/2;
+    [[0,0],[1,ch/2]].forEach(([c,sh])=>{
+      for(let r=-1;r<4;r++){
+        const y=r*ch+sh;if(y+ch<=0||y>=H)continue;
+        const vy=Math.max(y,0),vh=Math.min(y+ch,H)-vy;
+        lines.push(`<rect x="${c*cw+.5}" y="${vy+.5}" width="${cw-1}" height="${vh-1}" fill="${fill}" stroke="${stroke}" stroke-width="0.8" rx="1"/>`);
+      }
+    });
+    lines.push(`<defs><marker id="av" markerWidth="5" markerHeight="5" refX="2.5" refY="4" orient="auto"><polygon points="0,0 5,0 2.5,5" fill="${arr}"/></marker></defs>`);
+    lines.push(`<line x1="${W/2}" y1="6" x2="${W/2}" y2="${H-6}" stroke="${arr}" stroke-width="1.5" marker-end="url(#av)"/>`);
+  }
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:44px;border-radius:4px;background:${bg}">${lines.join('')}</svg>`;
+}
+
+function buildPatternCards(){
+  const g=document.getElementById('patternCards');g.innerHTML='';
+  PATTERNS.forEach(p=>{
+    const btn=document.createElement('button');
+    btn.className='opt-card'+(p.id===curPattern?' active':'');
+    btn.innerHTML=`${patternSVG(p.id,curDir)}<span class="clabel">${p.label}</span><span class="csub">${p.sub}</span>`;
+    btn.onclick=()=>{
+      curPattern=p.id;
+      buildPatternCards();buildDirCards();
+      document.getElementById('dirSection').style.display=p.id==='stack'?'none':'block';
+      updatePatternInfo();
+    };
+    g.appendChild(btn);
+  });
+  document.getElementById('dirSection').style.display=curPattern==='stack'?'none':'block';
+  updatePatternInfo();
+}
+
+function buildDirCards(){
+  const g=document.getElementById('dirCards');g.innerHTML='';
+  DIRS.forEach(d=>{
+    const btn=document.createElement('button');
+    btn.className='opt-card'+(d.id===curDir?' active':'');
+    btn.innerHTML=`${dirSVG(d.id)}<span class="clabel">${d.label}</span><span class="csub">${d.sub}</span>`;
+    btn.onclick=()=>{curDir=d.id;buildDirCards();buildPatternCards();updatePatternInfo();};
+    g.appendChild(btn);
+  });
+}
+
+function updatePatternInfo(){
+  const p=PATTERNS.find(x=>x.id===curPattern);
+  let info=p.label;
+  if(curPattern!=='stack'){
+    const d=DIRS.find(x=>x.id===curDir);
+    info+=` — arah ${d.label}`;
+  }
+  document.getElementById('patternInfo').textContent=info;
+}
+
+// ============================================================
+// MODE
+// ============================================================
+function setMode(m){
+  curMode=m;
+  document.getElementById('btnPresisi').className='mode-btn'+(m==='presisi'?' active':'');
+  document.getElementById('btnEkonomis').className='mode-btn'+(m==='ekonomis'?' active':'');
+  document.getElementById('modeDesc').textContent=m==='presisi'
+    ?'Sisa potongan tidak dipakai ulang untuk pola biasa. Cocok untuk material bermotif. Khusus lembar panjang yang dipasang portrait dengan pola lurus, satu lembar tetap dapat dipotong menjadi beberapa bagian yang sama.'
+    :'Sisa potongan dipakai ulang selama masih cukup. Rotasi diizinkan. Cocok untuk triplek, GRC, kalsiboard.';
+}
+
+// ============================================================
+// HARGA
+// ============================================================
+function toggleKemasan(){
+  const per=document.getElementById('hargaPer').value;
+  document.getElementById('kemasanRow').style.display=per==='kemasan'?'block':'none';
+}
+
+function getInfoHarga(totalSheets,areaMaterialM2,areaBidangM2){
+  const harga=parseFloat(document.getElementById('harga').value)||0;
+  const per=document.getElementById('hargaPer').value;
+  const isi=Math.max(1,parseInt(document.getElementById('isiKemasan').value)||1);
+  if(harga<=0||areaMaterialM2<=0) return null;
+
+  const hargaPerLembar=per==='kemasan'?harga/isi:harga;
+  const hargaPerM2=hargaPerLembar/areaMaterialM2;
+  const jumlahKemasan=per==='kemasan'?Math.ceil(totalSheets/isi):0;
+  const lembarDibeli=per==='kemasan'?jumlahKemasan*isi:totalSheets;
+  const hargaTotal=per==='kemasan'?jumlahKemasan*harga:totalSheets*hargaPerLembar;
+  const sisaLembar=per==='kemasan'?Math.max(0,lembarDibeli-totalSheets):0;
+  const biayaPerM2Bidang=areaBidangM2>0?hargaTotal/areaBidangM2:0;
+
+  return {harga,per,isi,hargaPerLembar,hargaPerM2,jumlahKemasan,lembarDibeli,
+    sisaLembar,hargaTotal,biayaPerM2Bidang};
+}
+
+// ============================================================
+// KALKULASI GRID
+// ============================================================
+function getGrid(wallW,wallH,matW,matH,gapIn,al){
+  const iWW=toI(wallW),iWH=toI(wallH),iSW=toI(matW+gapIn),iSH=toI(matH+gapIn);
+  const cols=Math.floor(iWW/iSW)+((iWW%iSW)>toI(EPS)?1:0);
+  const rows=Math.floor(iWH/iSH)+((iWH%iSH)>toI(EPS)?1:0);
+  const overW=(cols*(matW+gapIn)-gapIn)-wallW;
+  const overH=(rows*(matH+gapIn)-gapIn)-wallH;
+  const cutL=parseFloat((overW*al.ax).toFixed(4));
+  const cutR=parseFloat((overW*(1-al.ax)).toFixed(4));
+  const cutT=parseFloat((overH*al.ay).toFixed(4));
+  const cutB=parseFloat((overH*(1-al.ay)).toFixed(4));
+  return{cols,rows,cutL,cutR,cutT,cutB,
+    firstColW:cols===1?wallW:matW-cutL,lastColW:cols===1?wallW:matW-cutR,
+    firstRowH:rows===1?wallH:matH-cutT,lastRowH:rows===1?wallH:matH-cutB};
+}
+
+function rowShift(r,rows,matW,gapIn,al){
+  if(curPattern==='stack') return 0;
+  const frac=curPattern==='running'?0.5:1/3;
+  const unit=matW*frac;
+  const refR=al.ay===1?rows-1:al.ay===0.5?Math.floor((rows-1)/2):0;
+  const dist=r-refR;
+  return((dist%3+3)%3)*unit%(matW+gapIn);
+}
+
+function calcRowCells(wallW,matW,gapIn,shift){
+  const cells=[];let x=-shift;
+  while(x<wallW-EPS){
+    const pe=x+matW,vs=Math.max(x,0),ve=Math.min(pe,wallW);
+    if(ve-vs>EPS) cells.push({xStart:vs,width:ve-vs,cutLeft:vs-x,cutRight:matW-(ve-x)});
+    x+=matW+gapIn;
+  }
+  return cells;
+}
+
+// ============================================================
+// STOK REUSE
+// ============================================================
+function makeStok(){
+  const items=[];
+  return{
+    add(w,h,fs){if(w>EPS&&h>EPS)items.push({w,h,fromSheet:fs});},
+    use(nw,nh){
+      for(let i=0;i<items.length;i++){
+        const s=items[i];
+        if(s.w>=nw-EPS&&s.h>=nh-EPS){
+          items.splice(i,1);
+          if(s.w-nw>EPS)items.push({w:s.w-nw,h:s.h,fromSheet:s.fromSheet});
+          if(s.h-nh>EPS)items.push({w:nw,h:s.h-nh,fromSheet:s.fromSheet});
+          return{found:true,fromSheet:s.fromSheet,rotated:false};
+        }
+      }
+      for(let i=0;i<items.length;i++){
+        const s=items[i];
+        if(s.h>=nw-EPS&&s.w>=nh-EPS){
+          items.splice(i,1);
+          if(s.h-nw>EPS)items.push({w:s.h-nw,h:s.w,fromSheet:s.fromSheet});
+          if(s.w-nh>EPS)items.push({w:nh,h:s.w-nh,fromSheet:s.fromSheet});
+          return{found:true,fromSheet:s.fromSheet,rotated:true};
+        }
+      }
+      return{found:false};
+    }
+  };
+}
+
+// ============================================================
+// MAIN CALC
+// ============================================================
+let lastCalc=null;
+
+function calc(){
+  const wallW=parseFloat(document.getElementById('w').value)*100;
+  const wallH=parseFloat(document.getElementById('h').value)*100;
+  const ori=parseInt(document.getElementById('ori').value);
+  const gapIn=parseFloat(document.getElementById('gap').value)||0;
+  const mn=document.getElementById('mn').value||'Material';
+  const rawL=parseFloat(document.getElementById('mw').value);
+  const rawS=parseFloat(document.getElementById('mh').value);
+  let matW,matH;
+  if(ori===1){matW=rawL;matH=rawS;}else{matW=rawS;matH=rawL;}
+  const al=ALIGNS.find(a=>a.id===curAlign);
+  if(!Number.isFinite(wallW)||!Number.isFinite(wallH)||wallW<=0||wallH<=0||
+     !Number.isFinite(rawL)||!Number.isFinite(rawS)||rawL<=0||rawS<=0||gapIn<0){
+    alert('Periksa kembali ukuran bidang, ukuran material, dan jarak nat. Ukuran bidang dan material harus lebih dari nol.');
+    return;
+  }
+
+  const g=getGrid(wallW,wallH,matW,matH,gapIn,al);
+  const{cols,rows,cutL,cutR,cutT,cutB}=g;
+
+  // Lembar panjang yang dipasang portrait dapat dipotong berulang mengikuti
+  // tinggi bidang. Contoh 600 cm menjadi enam potongan 100 cm.
+  // Khusus pola lurus (Stack Bond), ini dihitung otomatis meskipun mode Presisi aktif.
+  const autoStripReuse=ori===0&&curPattern==='stack'&&rows===1&&matH>wallH+EPS;
+
+  const cells=[];
+  const stok=makeStok();
+  let sheetId=0;
+
+  function getOrReuse(W,H,nCuts){
+    if((curMode==='ekonomis'||autoStripReuse)&&nCuts>0){
+      const res=stok.use(W,H);
+      if(res.found) return{source:'reuse',sheetId:res.fromSheet,rotated:res.rotated};
+      sheetId++;
+      if(matW-W>EPS)stok.add(matW-W,matH,sheetId);
+      if(matH-H>EPS)stok.add(W,matH-H,sheetId);
+      return{source:'new',sheetId,rotated:false};
+    }
+    sheetId++;
+    return{source:'new',sheetId,rotated:false};
+  }
+
+  if(curPattern==='stack'){
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
+      const isL=cutL>EPS&&c===0,isR=cutR>EPS&&c===cols-1;
+      const isT=cutT>EPS&&r===0,isB=cutB>EPS&&r===rows-1;
+      const W=cols===1?wallW:(isL?g.firstColW:(isR?g.lastColW:matW));
+      const H=rows===1?wallH:(isT?g.firstRowH:(isB?g.lastRowH:matH));
+      const nCuts=(isL?1:0)+(isR?1:0)+(isT?1:0)+(isB?1:0);
+      const xPos=cols===1?0:(c===0?0:(cutL>EPS?g.firstColW+(c-1)*(matW+gapIn):c*(matW+gapIn)));
+      const yPos=rows===1?0:(r===0?0:(cutT>EPS?g.firstRowH+(r-1)*(matH+gapIn):r*(matH+gapIn)));
+      const sr=getOrReuse(W,H,nCuts);
+      cells.push({xStart:xPos,yStart:yPos,width:W,height:H,nCuts,...sr});
+    }
+  } else if(curDir==='horizontal'){
+    let yPos=0;
+    for(let r=0;r<rows;r++){
+      const shift=rowShift(r,rows,matW,gapIn,al);
+      const isT=cutT>EPS&&r===0,isB=cutB>EPS&&r===rows-1;
+      const H=isT?g.firstRowH:(isB?g.lastRowH:matH);
+      const cTop=isT?cutT:0,cBot=isB?cutB:0;
+      calcRowCells(wallW,matW,gapIn,shift).forEach(rc=>{
+        const nCuts=(rc.cutLeft>EPS?1:0)+(rc.cutRight>EPS?1:0)+(cTop>EPS?1:0)+(cBot>EPS?1:0);
+        const sr=getOrReuse(rc.width,H,nCuts);
+        cells.push({xStart:rc.xStart,yStart:yPos,width:rc.width,height:H,nCuts,...sr});
+      });
+      yPos+=H+(r<rows-1?gapIn:0);
+    }
+  }
+
+  const totalSheets=sheetId;
+  const reuseCount=cells.filter(c=>c.source==='reuse').length;
+  const full=cells.filter(c=>c.nCuts===0&&c.source!=='reuse').length;
+  const c1=cells.filter(c=>c.nCuts===1&&c.source!=='reuse').length;
+  const c2=cells.filter(c=>c.nCuts===2&&c.source!=='reuse').length;
+  const c34=cells.filter(c=>c.nCuts>=3&&c.source!=='reuse').length;
+  const areaDinding=(wallW*wallH)/10000;
+  const areaMat=(matW*matH)/10000;
+  const sisaM2=Math.max(0,totalSheets*areaMat-areaDinding);
+
+  // Tarif material per m² dihitung dari harga per lembar dan luas satu lembar.
+  // Harga per dus/pack dihitung berdasarkan isi kemasan; biaya pembelian dibulatkan
+  // ke jumlah dus/pack utuh yang harus dibeli.
+  const infoHarga=getInfoHarga(totalSheets,areaMat,areaDinding);
+  const hargaTotal=infoHarga?infoHarga.hargaTotal:0;
+  const potonganPerLembar=autoStripReuse?Math.floor((matH+EPS)/(wallH+gapIn)):0;
+
+  // Tampilkan hasil
+  document.getElementById('rsec').classList.remove('hidden');
+  document.getElementById('vsec').classList.remove('hidden');
+
+  document.getElementById('metrics').innerHTML=`
+    <div class="metric c-info"><div class="val">${totalSheets}</div><div class="lbl">Lembar kebutuhan</div><div class="sub">${cells.length} grid total</div></div>
+    <div class="metric c-good"><div class="val">${reuseCount}</div><div class="lbl">Grid reuse</div><div class="sub">tidak beli baru</div></div>
+    <div class="metric"><div class="val">${areaDinding.toFixed(2)}</div><div class="lbl">Luas dinding (m²)</div><div class="sub">${(wallW/100).toFixed(2)}×${(wallH/100).toFixed(2)}m</div></div>
+    <div class="metric c-warn"><div class="val">${sisaM2.toFixed(3)}</div><div class="lbl">Sisa terbuang (m²)</div><div class="sub">dari lembar dipotong</div></div>
+  `;
+
+  // Rincian harga material dan konversi harga per meter persegi.
+  const htBox=document.getElementById('hargaTotalBox');
+  if(infoHarga){
+    htBox.style.display='block';
+    document.getElementById('hargaTotalVal').textContent=fmtRupiah(hargaTotal);
+    let detail=`Harga material: ${fmtRupiah(infoHarga.hargaPerM2)} per m²
+`+
+      `Kebutuhan: ${totalSheets} lembar × ${fmtRupiah(infoHarga.hargaPerLembar)} per lembar`;
+    if(infoHarga.per==='kemasan'){
+      detail+=`
+Pembelian: ${infoHarga.jumlahKemasan} dus/pack × ${fmtRupiah(infoHarga.harga)}`+
+        `
+Isi yang dibeli: ${infoHarga.lembarDibeli} lembar`+
+        `
+Sisa lembar utuh: ${infoHarga.sisaLembar} lembar`;
+    }
+    detail+=`
+Estimasi biaya per m² bidang: ${fmtRupiah(infoHarga.biayaPerM2Bidang)}`;
+    document.getElementById('hargaTotalDetail').textContent=detail;
+  } else {htBox.style.display='none';}
+
+  // Tabel rincian lembar
+  let st='<tr><th>Tipe</th><th>Jumlah</th></tr>';
+  if(full>0)st+=`<tr><td>Utuh (tidak dipotong)</td><td class="hi">${full}</td></tr>`;
+  if(c1>0)st+=`<tr><td>Dipotong 1 sisi</td><td class="hi">${c1}</td></tr>`;
+  if(c2>0)st+=`<tr><td>Dipotong 2 sisi</td><td class="hi">${c2}</td></tr>`;
+  if(c34>0)st+=`<tr><td>Dipotong 3–4 sisi</td><td class="hi">${c34}</td></tr>`;
+  if(reuseCount>0)st+=`<tr><td class="c-reuse">Dari sisa (reuse)</td><td class="c-reuse">${reuseCount}</td></tr>`;
+  st+=`<tr><td style="font-weight:600;color:var(--text)">Total terpakai</td><td class="hi c-info">${totalSheets}</td></tr>`;
+  document.getElementById('sheetTable').innerHTML=st;
+
+  // Tabel info pola
+  const pName=curPattern==='stack'?'Stack Bond':curPattern==='running'?'Running Bond':'Third Bond';
+  const geser=curPattern==='stack'?'—':`${fmt(matW*(curPattern==='running'?0.5:1/3))}cm`;
+  let pt=`<tr><th>Parameter</th><th>Nilai</th></tr>
+    <tr><td>Mode</td><td class="hi">${curMode==='presisi'?'Presisi':'Ekonomis'}</td></tr>
+    <tr><td>Pola sambungan</td><td class="hi">${pName}</td></tr>
+    <tr><td>Arah geser</td><td class="hi">${curPattern==='stack'?'—':curDir}</td></tr>
+    <tr><td>Besar geser</td><td class="hi">${geser}</td></tr>
+    <tr><td>Alignment</td><td class="hi">${al.label}</td></tr>
+    <tr><td>Orientasi material</td><td class="hi">${ori===1?'Landscape':'Portrait'}</td></tr>
+    ${autoStripReuse?`<tr><td>Potongan per lembar</td><td class="hi">${potonganPerLembar} bagian (${fmt(wallH)}×${fmt(matW)} cm)</td></tr>`:''}
+    ${infoHarga?`<tr><td>Harga bahan per m²</td><td class="hi">${fmtRupiah(infoHarga.hargaPerM2)}</td></tr>`:''}`;
+  document.getElementById('patternTable').innerHTML=pt;
+
+  lastCalc={wallW,wallH,matW,matH,al,mn,rawL,rawS,ori,cells,totalSheets,reuseCount,autoStripReuse,potonganPerLembar};
+  drawViz();
+}
+
+// ============================================================
+// VISUALISASI
+// ============================================================
+function drawViz(){
+  if(!lastCalc)return;
+  const{wallW,wallH,matW,matH,al,mn,rawL,rawS,ori,cells,totalSheets,reuseCount,autoStripReuse,potonganPerLembar}=lastCalc;
+  const cv=document.getElementById('cv');
+  const ctx=cv.getContext('2d');
+  const dark=isDark();
+  const note=document.getElementById('canvasNote');
+  note.textContent='Huruf = nomor lembar sumber. ↺ = dirotasi saat reuse. Warna = jumlah sisi yang dipotong.'+
+    (autoStripReuse?` Satu lembar panjang dimanfaatkan menjadi hingga ${potonganPerLembar} potongan.`:'');
+  const MAX_W=Math.min(700,window.innerWidth-80);
+  const MAX_H=450;
+  const scale=Math.min(MAX_W/wallW,MAX_H/wallH,4);
+  const cw=Math.round(wallW*scale)+2,ch=Math.round(wallH*scale)+2;
+  cv.width=cw;cv.height=ch;
+  ctx.fillStyle=dark?'#141414':'#f0eeea';
+  ctx.fillRect(0,0,cw,ch);
+
+  const C=dark?[
+    ['#0C447C','#85B7EB'],['#27500A','#97C459'],
+    ['#3B3210','#EF9F27'],['#3C3489','#AFA9EC'],['#252525','#777'],
+  ]:[
+    ['#D6E9FA','#185FA5'],['#C0DD97','#3B6D11'],
+    ['#FAEEDA','#854F0B'],['#EEEDFE','#534AB7'],['#E8E8E4','#999'],
+  ];
+
+  // Legend
+  const legEl=document.getElementById('legend');
+  legEl.innerHTML=`
+    <div class="li"><div class="ld" style="background:${C[0][0]};border:1px solid ${C[0][1]}"></div>Utuh</div>
+    <div class="li"><div class="ld" style="background:${C[1][0]};border:1px solid ${C[1][1]}"></div>Potong 1 sisi</div>
+    <div class="li"><div class="ld" style="background:${C[2][0]};border:1px solid ${C[2][1]}"></div>Potong 2 sisi</div>
+    <div class="li"><div class="ld" style="background:${C[3][0]};border:1px solid ${C[3][1]}"></div>Potong 3–4 sisi</div>
+    ${reuseCount>0?`<div class="li"><div class="ld" style="background:${C[4][0]};border:1px solid ${C[4][1]}"></div>Reuse sisa</div>`:''}
+  `;
+
+  cells.forEach(cell=>{
+    const px=1+Math.round(cell.xStart*scale);
+    const py=1+Math.round(cell.yStart*scale);
+    const dw=Math.max(2,Math.round(cell.width*scale));
+    const dh=Math.max(2,Math.round(cell.height*scale));
+    const ci=cell.source==='reuse'?4:Math.min(cell.nCuts,3);
+    ctx.fillStyle=C[ci][0];ctx.fillRect(px,py,dw,dh);
+    ctx.strokeStyle=C[ci][1];ctx.lineWidth=1;
+    ctx.strokeRect(px+.5,py+.5,dw-1,dh-1);
+    const lbl=toAlpha(cell.sheetId)+(cell.rotated?'↺':'');
+    const fs=Math.max(6,Math.min(11,dw*.3,dh*.4));
+    if(fs>=6){
+      ctx.fillStyle=C[ci][1];
+      ctx.font=`600 ${fs}px -apple-system,sans-serif`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(lbl,px+dw/2,py+dh/2);
+    }
+  });
+
+  ctx.strokeStyle=dark?'#555':'#888';ctx.lineWidth=2;
+  ctx.strokeRect(1,1,cw-2,ch-2);
+
+  // Footer label
+  ctx.fillStyle=dark?'rgba(20,20,20,.85)':'rgba(255,255,255,.85)';
+  ctx.fillRect(3,ch-20,Math.min(cw-6,400),17);
+  ctx.fillStyle=dark?'#aaa':'#555';
+  ctx.font=`10px -apple-system,sans-serif`;
+  ctx.textAlign='left';ctx.textBaseline='middle';
+  ctx.fillText(`${(wallW/100).toFixed(2)}m × ${(wallH/100).toFixed(2)}m  |  ${mn} ${rawL}×${rawS}cm  |  ${ALIGNS.find(a=>a.id===curAlign).label}  |  ${curPattern==='stack'?'Stack':curPattern==='running'?'Running':'Third'} Bond  |  ${curMode}`,7,ch-11);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+buildPatternCards();
+buildDirCards();
+buildAlignPicker();
+setMode('presisi');
+toggleKemasan();
+</script>
+</body>
+</html>

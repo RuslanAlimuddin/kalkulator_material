@@ -127,3 +127,20 @@ Teks antarmuka perlu menyebut `reuseCount` sebagai potongan tambahan pada lembar
 
 ### Langkah teknis berikutnya
 Prioritas berikutnya adalah menambahkan tes untuk klasifikasi sisa berdasarkan ukuran minimum, lalu merancang model inventaris sisa yang benar-benar dapat dipakai ulang lintas pekerjaan. Jangan menyamakan sisa persegi panjang hasil kalkulasi saat ini dengan stok inventaris yang sudah tersimpan.
+
+
+## Klasifikasi sisa berdasarkan ukuran minimum — 18 November 2026
+
+Mesin kini menerima:
+- `minRemainderW`: lebar minimum sisa (cm), default 0.
+- `minRemainderH`: tinggi minimum sisa (cm), default 0.
+
+Sisa dinyatakan memenuhi batas hanya jika lebar DAN tinggi sama-sama memenuhi nilai minimum. Nilai 0 menonaktifkan batas pada sisi tersebut. API tetap mengembalikan `reusableRemainders` sebagai seluruh ruang persegi panjang geometris untuk kompatibilitas, serta:
+- `usableRemainders` dan `usableRemainderArea`: memenuhi kedua batas.
+- `tooSmallRemainders` dan `tooSmallRemainderArea`: gagal memenuhi minimal satu batas.
+
+Luas belum terklasifikasi tetap dihitung memakai seluruh ruang persegi panjang geometris agar neraca luas tidak berubah akibat filter kelayakan. Status “layak” hanya berarti lolos ukuran minimum, belum menjamin cocok terhadap kebutuhan material/arah serat/kerusakan tepi.
+
+UI menyediakan dua input batas minimum, default 0 cm. Pengguna perlu memilih angka berdasarkan jenis material dan kebiasaan pemakaian; tidak ada angka minimum universal.
+
+Tes baru memeriksa sisa di bawah batas, tepat di batas, dan masukan negatif pada mesin serta adapter.

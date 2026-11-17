@@ -179,3 +179,23 @@ Status tes setelah integrasi:
 4. Kirim hasil ketiga tes. Jika semuanya lulus, lanjutkan uji tampilan browser untuk mode Presisi/Ekonomis, strip 600×100 cm, rotasi, harga per lembar, dan harga per kemasan.
 
 Jangan hapus `makeStok()` dahulu. Setelah adapter dan UI terbukti stabil, baru lakukan pembersihan helper lama dalam commit terpisah.
+
+
+## 14. Hasil tes adapter lokal pengguna — 17 November 2026
+Pengguna mengunduh branch terbaru ke `D:\\kalkulator_material_uji2` dan melaporkan ketiga suite Node.js berhasil:
+- `node engine.test.js`: tes geometri bernama, matriks 54 kombinasi, nat, dan kasus strip 600×100 cm lulus.
+- `node cutting-engine.test.js`: seluruh 7 kelompok tes mesin pemotongan lulus.
+- `node cutting-adapter.test.js`: seluruh 5 kelompok tes adapter lulus.
+
+Ini adalah hasil eksekusi Node.js lokal yang dilaporkan langsung oleh pengguna. Pengujian unit (tes fungsi terpisah) kini lengkap untuk tiga lapisan mesin. Namun, belum ada bukti uji browser/Live Server, interaksi UI, canvas, atau alur harga setelah integrasi.
+
+### Langkah berikutnya: uji browser/regresi UI
+Minta pengguna membuka ZIP/folder `D:\\kalkulator_material_uji2` melalui Live Server (atau server lokal yang biasa dipakai), lalu:
+1. Hitung dengan nilai awal aplikasi dan pastikan tidak ada pesan error; hasil dan diagram muncul.
+2. Uji mode Presisi dan Ekonomis dengan ukuran bidang/material yang sama; catat jumlah lembar, grid reuse, serta tabel rincian.
+3. Uji kasus strip panjang: material 20×600 cm dan bidang 600×100 cm; pastikan 30 grid dan 5 lembar sumber.
+4. Uji beberapa ukuran material dan pola (Stack, Running, Third), arah horizontal/vertikal, dan alignment.
+5. Isi harga per lembar; lalu uji harga per kemasan/dus dan jumlah isi. Pastikan estimasi total serta sisa lembar utuh masuk akal.
+6. Periksa console browser (F12 → Console) jika ada error; minta pengguna mengirim pesan error dan hasil layar jika terjadi.
+
+Jangan hapus fungsi `makeStok()` lama atau menyatakan integrasi final sebelum UI/regresi di atas selesai. Catatan teknis: diagram yang ada adalah diagram pemasangan pada bidang, bukan diagram pemotongan tiap lembar sumber. Kerf UI masih 0 cm; pengaturan kerf, arah serat, ukuran minimum sisa, dan inventaris stok sisa belum tersedia.

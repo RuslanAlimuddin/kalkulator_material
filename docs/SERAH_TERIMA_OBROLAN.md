@@ -134,3 +134,48 @@ Status validasi modul baru:
 3. Jika lulus, lanjutkan integrasi adapter dari `geometry.cells` ke `MaterialCuttingEngine.calculateCutting()`, dengan tetap mempertahankan diagram pemasangan.
 4. Integrasikan hasil susunan potongan ke UI secara bertahap; jangan hapus `makeStok()` sebelum penggantinya terbukti dan tes regresi tersedia.
 5. Pisahkan sisa persegi panjang, lembar utuh, stok, pembelian, dan limbah. Jangan menyimpulkan limbah hanya dari selisih luas.
+
+
+## 13. Integrasi awal mesin pemotongan — 17 November 2026
+Pengguna telah menjalankan kedua pengujian Node.js langsung di PC Windows dan mengirim hasil lulus:
+- `node tests/engine.test.js`: pengujian bernama, matriks 54 kombinasi pola/arah/alignment, nat, dan strip 600×100 cm semuanya lulus.
+- `node tests/cutting-engine.test.js`: seluruh 7 kelompok tes mesin pemotongan lulus.
+
+Setelah hasil tersebut diterima, adapter dan integrasi awal dibuat pada branch `pengembangan-mesin-hitung`:
+- `assets/js/cutting-adapter.js`: mengubah `geometry.cells` menjadi daftar potongan untuk mesin sumber. Adapter mempertahankan koordinat bidang untuk visualisasi lama.
+- `tests/cutting-adapter.test.js`: 5 kelompok tes untuk mode presisi, aturan strip panjang, mode ekonomis, kontrak data UI, dan validasi.
+- `index.html`: memuat `cutting-engine.js` dan `cutting-adapter.js`; kalkulasi lembar sumber sekarang memakai adapter, bukan pemanggilan `makeStok()`.
+- Kartu hasil memisahkan sisa persegi panjang tercatat dan area belum terklasifikasi. Area belum terklasifikasi tidak diberi label limbah.
+- CSS metrik memakai kolom adaptif agar lima metrik bisa menyesuaikan lebar layar.
+
+Perilaku integrasi sementara:
+- Mode Presisi: satu lembar sumber per grid, kecuali aturan khusus strip panjang yang mengizinkan beberapa potongan dari satu lembar.
+- Mode Ekonomis: potongan dapat disusun bersama pada lembar sumber; rotasi diizinkan karena deskripsi mode lama menyatakan rotasi boleh digunakan.
+- Kerf masih 0 cm secara default di UI. Belum ada pengaturan pengguna untuk kerf.
+- `makeStok()` dan helper grid lama sengaja belum dihapus sebagai cadangan; kalkulasi utama sudah tidak memanggilnya.
+- Diagram yang ada tetap diagram pemasangan pada bidang, bukan diagram pemotongan lembar sumber.
+
+Commit integrasi terbaru:
+- Adapter: `9d6404187687903f42d27d50f552032bf838a02c`
+- Tes adapter: `29cf4f214c258bd8eb260cc9aa2a79abeb7580be`
+- Integrasi adapter ke `index.html`: `88433d790d5508fa0e8c5134445e2f5216ab9775`
+- Tata letak metrik adaptif: `8b85674504455623e15fd8cac8390e1a7e103548`
+
+Status tes setelah integrasi:
+- Dua suite lama sudah terbukti lulus di Node.js PC pengguna sebelum integrasi.
+- Tes adapter baru sudah ditambahkan, tetapi BELUM dijalankan di Node.js PC pengguna.
+- Integrasi UI belum diverifikasi melalui browser/Live Server. Jangan menyatakan aplikasi final atau bebas regresi sebelum langkah berikut dilakukan.
+
+### Langkah pengguna berikutnya
+1. Unduh ZIP terbaru branch kerja: https://github.com/RuslanAlimuddin/kalkulator_material/archive/refs/heads/pengembangan-mesin-hitung.zip
+2. Ekstrak ke folder baru, misalnya `D:\\kalkulator_material_uji2` (jangan timpa folder uji lama).
+3. Buka CMD dan jalankan dari root proyek:
+   ```cmd
+   cd /d "D:\\kalkulator_material_uji2"
+   node tests\\engine.test.js
+   node tests\\cutting-engine.test.js
+   node tests\\cutting-adapter.test.js
+   ```
+4. Kirim hasil ketiga tes. Jika semuanya lulus, lanjutkan uji tampilan browser untuk mode Presisi/Ekonomis, strip 600×100 cm, rotasi, harga per lembar, dan harga per kemasan.
+
+Jangan hapus `makeStok()` dahulu. Setelah adapter dan UI terbukti stabil, baru lakukan pembersihan helper lama dalam commit terpisah.

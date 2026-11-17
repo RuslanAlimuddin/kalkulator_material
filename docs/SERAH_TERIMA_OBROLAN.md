@@ -103,3 +103,34 @@ Catatan perubahan terbaru: commit `04cbac9511fed3aad8f0815ec8b3aa0f9120e30a` pad
 Salin teks dari `docs/PROMPT_LANJUTAN_OBROLAN_BARU.md` atau gunakan template berikut:
 
 > Kita melanjutkan proyek Kalkulator Material Bangunan dari percakapan sebelumnya. Repositori GitHub: https://github.com/RuslanAlimuddin/kalkulator_material. Branch kerja: pengembangan-mesin-hitung. Baca terlebih dahulu docs/SERAH_TERIMA_OBROLAN.md dan semua dokumen/kode acuan yang disebutkan di dalamnya. Periksa kondisi repo terbaru, lalu lanjutkan tepat dari status terakhir yang benar-benar selesai. Jangan mengulang pekerjaan, jangan mengubah branch main, dan jangan menghapus backup. Kerjakan langsung di GitHub bila koneksi tersedia. Jelaskan dalam bahasa Indonesia sederhana dan catat progres terbaru di dokumen serah-terima.
+
+
+## 12. Progres setelah pengujian PC pengguna — 17 November 2026
+Pengguna berhasil menjalankan `node tests/engine.test.js` di PC Windows (Node.js v24.18.0). Hasil yang dikirim menunjukkan seluruh pengujian bernama, matriks 54 kombinasi, tes nat, dan kasus strip 600×100 cm lulus. Ini adalah bukti tes Node.js lokal untuk mesin geometri.
+
+Modul pemotongan awal kemudian ditambahkan di branch ini:
+- `assets/js/cutting-engine.js` — algoritma guillotine best-fit (heuristik), modul murni tanpa DOM.
+- `tests/cutting-engine.test.js` — pengujian untuk jumlah lembar, potongan tepat ukuran, beberapa potongan per lembar, rotasi, kerf, dan validasi.
+- `docs/DESAIN_MESIN_PEMOTONGAN.md` — API, asumsi, batasan, dan cara pengujian.
+
+Commit terkait:
+- Mesin pemotongan: `46c27ac8e63fe8269b44a03f763944c5bff5b71a`
+- Tes pemotongan: `38ad10f89ac25320d830592fb94b250d0800b613`
+- Koreksi kasus kerf: `cac7a25dbc32824d7de161bb282da632d3cd0819`
+- Perbaikan klasifikasi ruang lebih kecil dari kerf: `e889f17a707de8b25b5fc4add73582560e1eac55`
+- Tambahan tes kerf: `e616a2fc39225e799aecd59c1e41a3fcf96e42e1`
+- Dokumentasi desain: `feaca6c61321bfcf29d4ccb34b44d66b6a826e79`
+
+Status validasi modul baru:
+- Isi `tests/cutting-engine.test.js` dijalankan terhadap isi `assets/js/cutting-engine.js` yang diambil dari branch melalui pengujian JavaScript terisolasi; seluruh 7 kasus lulus.
+- Ini bukan eksekusi Node.js lokal. Pengguna perlu mengunduh ZIP branch terbaru dan menjalankan kedua perintah Node di dokumen desain.
+- Mesin pemotongan BELUM diintegrasikan ke `index.html`; fungsi lama `makeStok()` masih digunakan oleh UI.
+- Belum ada keputusan UI untuk arah serat/motif, batas rotasi tiap jenis material, atau ukuran minimum sisa pakai. Modul memakai default aman `allowRotation: false`; kerf default 0 dan dapat dikonfigurasi.
+- Hasil algoritma adalah heuristik dan tidak boleh disebut solusi optimal global.
+
+### Tugas berikutnya
+1. Minta pengguna mengunduh ZIP terbaru branch `pengembangan-mesin-hitung`.
+2. Jalankan `node tests\engine.test.js` dan `node tests\cutting-engine.test.js` dari folder root proyek.
+3. Jika lulus, lanjutkan integrasi adapter dari `geometry.cells` ke `MaterialCuttingEngine.calculateCutting()`, dengan tetap mempertahankan diagram pemasangan.
+4. Integrasikan hasil susunan potongan ke UI secara bertahap; jangan hapus `makeStok()` sebelum penggantinya terbukti dan tes regresi tersedia.
+5. Pisahkan sisa persegi panjang, lembar utuh, stok, pembelian, dan limbah. Jangan menyimpulkan limbah hanya dari selisih luas.

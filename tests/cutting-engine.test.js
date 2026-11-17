@@ -45,6 +45,15 @@ test("rotasi hanya digunakan jika diizinkan", () => {
   assert.equal(r.sheets[0].placements[0].rotated, true);
 });
 
+test("ruang lebih kecil dari kerf tidak dicatat sebagai sisa pakai", () => {
+  const r = calculateCutting({
+    sheetW: 100, sheetH: 50, kerf: 2,
+    parts: [{ width: 99, height: 50 }]
+  });
+  assert.equal(r.reusableRemainders.length, 0);
+  assert.equal(r.unclassifiedArea, 50);
+});
+
 test("kerf menyisakan jarak antarpotongan", () => {
   const r = calculateCutting({
     sheetW: 99, sheetH: 50, kerf: 2,

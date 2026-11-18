@@ -130,6 +130,43 @@ Batas tahap ini:
 - panel pratinjau planner, reservasi, pembatalan, dan penyelesaian pekerjaan belum dihubungkan ke halaman kalkulator;
 - tombol Hitung dan `makeStok()` tetap tidak berubah.
 
+## Penyimpanan snapshot dan pemulihan reservasi (IndexedDB v2)
+
+Database inventaris sekarang menggunakan versi 2. Migrasi versi 1 ke versi 2 mempertahankan object store dan data lama, menambahkan:
+
+- object store `plans` untuk menyimpan snapshot rencana yang disetujui;
+- index `reservations.planId` untuk menghubungkan reservasi dengan snapshot;
+- index `plans.jobId` dan `plans.status` untuk pencarian pemulihan.
+
+Saat `reservePlan()` dipanggil, snapshot rencana lengkap, seluruh record reservasi, dan perubahan status sumber menjadi `reserved` disimpan dalam satu transaksi IndexedDB. Rencana yang hanya menggunakan lembar baru tetap disimpan walaupun daftar reservasinya kosong.
+
+Snapshot menyimpan hasil planner yang telah disetujui, metadata material, arah serat, motif, dan ID reservasi. `restorePlan(planId)` membaca ulang snapshot serta seluruh reservasi aktif. Jika ada ID yang hilang, berlebih, atau tidak cocok, pemulihan dan penyelesaian diblokir; sistem tidak menghitung ulang rencana.
+
+Pembatalan dan penyelesaian memperbarui status snapshot dalam transaksi yang sama dengan pelepasan/penggunaan reservasi dan pencatatan sisa. Status snapshot:
+- `reserved`: pekerjaan telah disetujui dan masih aktif;
+- `cancelled`: reservasi telah dilepas;
+- `completed`: sumber telah dikonsumsi dan sisa hasil telah dicatat;
+- `legacy_recovery`: reservasi aktif versi 1 yang tidak mempunyai snapshot asli.
+
+Gunakan API workflow berikut untuk pemulihan:
+```js
+const activePlans = await workflow.getRecoveryPlans();
+const restoredPlan = await workflow.restorePlan(planId);
+
+// Untuk reservasi lama yang tidak memiliki snapshot:
+await workflow.cancelLegacyRecovery(legacyPlanId);
+```
+
+Reservasi lama tidak dibuatkan rencana palsu. Sistem menampilkannya sebagai `legacy_recovery`; pembatalan hanya dilakukan jika semua reservasi dan sumber stok masih cocok. Penyelesaian pekerjaan lama tanpa snapshot tidak diperbolehkan.
+
+Ekspor JSON sekarang memakai skema 2 dan menyertakan `plans`. Impor tetap menerima paket skema 1. Reservasi aktif yang diimpor dari paket lama otomatis diberi catatan pemulihan legacy agar stok terkunci tetap dapat ditemukan. Validator menerima paket versi 1 dan 2.
+
+Pengujian tambahan:
+- `tests/inventory-plan-recovery.test.js`: pemulihan setelah storage dibuka ulang, pembatalan, penyelesaian, rencana tanpa inventaris, ekspor/validasi, dan migrasi reservasi legacy.
+- `tests/browser/inventory-plan-recovery.test.js`: pemulihan snapshot setelah proses Chromium benar-benar ditutup dan dibuka kembali.
+- `.github/workflows/inventory-regression.yml`: menjalankan tes inventaris dan regresi geometri/cutting pada push ke cabang pengembangan.
+- `.github/workflows/browser-indexeddb.yml`: menjalankan pengujian IndexedDB nyata dan pemulihan setelah browser ditutup.
+
 ## Prinsip perlindungan
 
 - Tombol Hitung lama tetap menjalankan jalur kalkulasi lama.

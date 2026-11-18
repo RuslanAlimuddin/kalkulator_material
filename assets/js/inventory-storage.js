@@ -464,11 +464,12 @@
       const database = await db();
 
       await withTransaction(
-        database, ["remainders", "reservations", "movements"], "readwrite",
+        database, ["remainders", "reservations", "movements", "plans"], "readwrite",
         tx => {
           const reservations = tx.objectStore("reservations");
           const remainders = tx.objectStore("remainders");
           const movements = tx.objectStore("movements");
+          const plans = tx.objectStore("plans");
           const checked = [];
           let cursor = 0;
 
@@ -482,27 +483,19 @@
                 return;
               }
               checked.forEach(({ reservation, remainder }) => {
-                reservations.put({
-                  ...reservation,
-                  status: "released",
-                  releasedAt: timestamp
-                });
-                remainders.put({
-                  ...remainder,
-                  status: "available",
-                  updatedAt: timestamp,
-                  version: Number(remainder.version || 0) + 1
-                });
-                movements.add({
-                  id: makeId("MOV"),
-                  remainderId: remainder.id,
-                  type: "reservation_released",
-                  jobId: reservation.jobId,
-                  timestamp,
-                  fromStatus: "reserved",
-                  toStatus: "available",
-                  referenceId: reservation.id
-                });
+                reservations.put({ ...reservation, status: "released", releasedAt: timestamp });
+                remainders.put({ ...remainder, status: "available", updatedAt: timestamp, version: Number(remainder.version || 0) + 1 });
+                movements.add({ id: makeId("MOV"), remainderId: remainder.id, type: "reservation_released", jobId: reservation.jobId, timestamp, fromStatus: "reserved", toStatus: "available", referenceId: reservation.id });
+              });
+              const planIds = Array.from(new Set(checked.map(item => item.reservation.planId).filter(Boolean).concat(input.planId ? [input.planId] : [])));
+              planIds.forEach(planId => {
+                const request = plans.get(planId);
+                request.onsuccess = () => {
+                  const plan = request.result;
+                  if (plan && ["reserved", "legacy_recovery"].includes(plan.status)) {
+                    plans.put({ ...plan, status: "cancelled", cancelledAt: timestamp });
+                  }
+                };
               });
               return;
             }
@@ -638,6 +631,17 @@
         };
       });
       if (batches.length === 0 && newSheetDrafts.length === 0) {
+        if (!input.planId) return { consumedReservations: [], createdRemainders: [] };
+        const database = await db();
+        await withTransaction(database, ["plans"], "readwrite", tx => {
+          const plans = tx.objectStore("plans");
+          const request = plans.get(input.planId);
+          request.onsuccess = () => {
+            const plan = request.result;
+            if (!plan || plan.status !== "reserved") { tx.abort(); return; }
+            plans.put({ ...plan, status: "completed", completedAt: timestamp });
+          };
+        });
         return { consumedReservations: [], createdRemainders: [] };
       }
       const reservationIds = batches.map(item => item.reservationId);
@@ -653,11 +657,12 @@
       const database = await db();
       const createdRemainders = [];
       await withTransaction(
-        database, ["remainders", "reservations", "movements"], "readwrite",
+        database, ["remainders", "reservations", "movements", "plans"], "readwrite",
         tx => {
           const remainders = tx.objectStore("remainders");
           const reservations = tx.objectStore("reservations");
           const movements = tx.objectStore("movements");
+          const plans = tx.objectStore("plans");
           const checked = [];
           let cursor = 0;
 
@@ -719,6 +724,14 @@
                 toStatus: "available", referenceId: draft.sourceSheetId
               });
             });
+            if (input.planId) {
+              const planRequest = plans.get(input.planId);
+              planRequest.onsuccess = () => {
+                const savedPlan = planRequest.result;
+                if (!savedPlan || savedPlan.status !== "reserved") { tx.abort(); return; }
+                plans.put({ ...savedPlan, status: "completed", completedAt: timestamp });
+              };
+            }
           };
 
           const checkNext = () => {

@@ -377,6 +377,68 @@
       );
     }
 
+    async function consumeReservation(input) {
+      if (!input || !input.reservationId || !Array.isArray(input.remainders)) {
+        throw new Error("reservationId dan daftar sisa turunan wajib diisi.");
+      }
+      const database = await db();
+      const timestamp = input.timestamp || new Date().toISOString();
+      const drafts = input.remainders.map(item => {
+        if (!item || !Number.isFinite(item.widthCm) || item.widthCm <= 0 ||
+            !Number.isFinite(item.heightCm) || item.heightCm <= 0) {
+          throw new Error("Ukuran setiap sisa turunan harus lebih dari 0 cm.");
+        }
+        return { id: item.id || makeId("REM"), widthCm: item.widthCm, heightCm: item.heightCm };
+      });
+      if (new Set(drafts.map(item => item.id)).size !== drafts.length) {
+        throw new Error("ID sisa turunan tidak boleh duplikat.");
+      }
+      await withTransaction(database, ["remainders", "reservations", "movements"], "readwrite", tx => {
+        const rs = tx.objectStore("remainders");
+        const ss = tx.objectStore("reservations");
+        const ms = tx.objectStore("movements");
+        const rr = ss.get(input.reservationId);
+        rr.onsuccess = () => {
+          const reservation = rr.result;
+          if (!reservation || reservation.status !== "active") { tx.abort(); return; }
+          const sr = rs.get(reservation.remainderId);
+          sr.onsuccess = () => {
+            const source = sr.result;
+            if (!source || source.status !== "reserved" || source.condition !== "good") { tx.abort(); return; }
+            ss.put({ ...reservation, status: "consumed", consumedAt: timestamp });
+            rs.put({ ...source, status: "consumed", updatedAt: timestamp, version: Number(source.version || 0) + 1 });
+            ms.add({
+              id: makeId("MOV"), remainderId: source.id, type: "consumed",
+              jobId: reservation.jobId, timestamp, fromStatus: "reserved",
+              toStatus: "consumed", referenceId: reservation.id
+            });
+            drafts.forEach(draft => {
+              const record = {
+                id: draft.id, materialId: source.materialId,
+                widthCm: draft.widthCm, heightCm: draft.heightCm,
+                thicknessMm: source.thicknessMm, grainDirection: source.grainDirection,
+                motif: source.motif, rotationAllowed: source.rotationAllowed,
+                condition: "good", status: "available", originJobId: reservation.jobId,
+                sourceSheetId: input.sourceSheetId || source.sourceSheetId,
+                createdAt: timestamp, updatedAt: timestamp, version: 1
+              };
+              rs.add(record);
+              ms.add({
+                id: makeId("MOV"), remainderId: record.id, type: "remainder_created",
+                jobId: reservation.jobId, timestamp, fromStatus: null,
+                toStatus: "available", referenceId: source.id
+              });
+            });
+          };
+        };
+        return true;
+      });
+      return {
+        reservationId: input.reservationId,
+        createdRemainders: drafts.map(item => ({ ...item }))
+      };
+    }
+
     async function exportJSON() {
       const database = await db();
       const names = BUNDLE_STORES.concat(["meta"]);
@@ -478,6 +540,7 @@
       clear,
       reserveRemainder,
       releaseReservation,
+      consumeReservation,
       exportJSON,
       importJSON
     };

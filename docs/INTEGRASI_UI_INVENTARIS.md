@@ -158,7 +158,7 @@ const restoredPlan = await workflow.restorePlan(planId);
 await workflow.cancelLegacyRecovery(legacyPlanId);
 ```
 
-Reservasi lama tidak dibuatkan rencana palsu. Sistem menampilkannya sebagai `legacy_recovery`; pembatalan hanya dilakukan jika semua reservasi dan sumber stok masih cocok. Penyelesaian pekerjaan lama tanpa snapshot tidak diperbolehkan. `getRecoveryReport()` juga mendeteksi reservasi aktif tanpa snapshot, sumber yang berstatus reserved tanpa reservasi aktif, dan snapshot yang daftar reservasinya tidak cocok. Reservasi yang merupakan bagian dari snapshot tidak boleh dilepas atau dikonsumsi satu per satu; prosesnya harus melalui operasi seluruh rencana agar tidak meninggalkan sumber lain terkunci.
+Reservasi lama tidak dibuatkan rencana palsu. Sistem menampilkannya sebagai `legacy_recovery`; pembatalan hanya dilakukan jika semua reservasi dan sumber stok masih cocok. Penyelesaian pekerjaan lama tanpa snapshot tidak diperbolehkan. `getRecoveryReport()` juga mendeteksi reservasi aktif tanpa snapshot, sumber yang berstatus reserved tanpa reservasi aktif, sisa dengan reservasi ganda, reservasi yang sumbernya hilang, dan snapshot yang daftar reservasinya tidak cocok. Reservasi yang merupakan bagian dari snapshot tidak boleh dilepas atau dikonsumsi satu per satu; prosesnya harus melalui operasi seluruh rencana agar tidak meninggalkan sumber lain terkunci.
 
 Ekspor JSON sekarang memakai skema 2 dan menyertakan `plans`. Impor tetap menerima paket skema 1. Reservasi aktif yang diimpor dari paket lama otomatis diberi catatan pemulihan legacy agar stok terkunci tetap dapat ditemukan. Validator menerima paket versi 1 dan 2.
 

@@ -141,6 +141,21 @@
       if (item.legacy === true && item.status !== "legacy_recovery" && item.plan == null) {
         warnings.push({ path: p, message: "Reservasi lama tidak memiliki snapshot rencana." });
       }
+      if (item.reservationIds) item.reservationIds.forEach((reservationId, i) => {
+        const reservation = reservationById.get(reservationId);
+        if (!reservation) {
+          error(p + ".reservationIds[" + i + "]", "Reservasi yang dirujuk tidak ditemukan.");
+        } else if (reservation.planId !== item.id) {
+          error(p + ".reservationIds[" + i + "]", "Reservasi tidak terhubung kembali ke snapshot ini.");
+        } else {
+          const expectedStatus = item.status === "reserved" || item.status === "legacy_recovery"
+            ? "active"
+            : item.status === "cancelled" ? "released" : "consumed";
+          if (reservation.status !== expectedStatus) {
+            error(p + ".reservationIds[" + i + "]", "Status reservasi tidak sesuai dengan status snapshot.");
+          }
+        }
+      });
     });
 
     if (materials) materials.forEach((item, index) => {

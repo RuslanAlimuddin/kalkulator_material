@@ -121,6 +121,20 @@
       throw lastError || new Error("Reservasi rencana inventaris gagal.");
     }
 
+    async function getRecoveryPlans() {
+      if (typeof storage.getRecoveryPlans !== "function") {
+        throw new Error("Storage belum menyediakan daftar pemulihan rencana.");
+      }
+      return storage.getRecoveryPlans();
+    }
+
+    async function restorePlan(planId) {
+      if (typeof engine.restorePlan !== "function") {
+        throw new Error("Inventory engine belum menyediakan pemulihan snapshot.");
+      }
+      return engine.restorePlan(planId);
+    }
+
     async function cancel(reservedPlan, optionsForCancel) {
       return engine.cancelPlan({
         reservedPlan,
@@ -139,6 +153,8 @@
 
     return {
       readAvailableRemainders,
+      getRecoveryPlans,
+      restorePlan,
       preview,
       confirmPreview,
       calculateAndReserve,

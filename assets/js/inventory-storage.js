@@ -1032,6 +1032,12 @@
       const orphanedRemainders = remainders.filter(item =>
         item.status === "reserved" && !activeByRemainder.has(item.id)
       );
+      const multiplyReservedRemainders = Array.from(activeByRemainder.entries())
+        .filter(([, items]) => items.length > 1)
+        .map(([remainderId, items]) => ({ remainderId, reservationIds: items.map(item => item.id) }));
+      const reservationsWithoutSource = activeReservations.filter(item =>
+        !remainders.some(remainder => remainder.id === item.remainderId)
+      );
       const inconsistentPlans = activePlans.filter(plan => {
         const expected = Array.isArray(plan.reservationIds) ? plan.reservationIds.slice().sort() : [];
         const actual = activeReservations
@@ -1043,6 +1049,8 @@
         activeReservations,
         orphanedReservations,
         orphanedRemainders,
+        multiplyReservedRemainders,
+        reservationsWithoutSource,
         inconsistentPlans
       };
     }

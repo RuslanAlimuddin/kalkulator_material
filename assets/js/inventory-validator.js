@@ -242,6 +242,17 @@
       if (item.planId != null && !planById.has(item.planId)) {
         error(p + ".planId", "Snapshot rencana yang dirujuk tidak ditemukan.");
       }
+      if (item.planId != null && planById.has(item.planId)) {
+        const linkedPlan = planById.get(item.planId);
+        if (!Array.isArray(linkedPlan.reservationIds) || !linkedPlan.reservationIds.includes(item.id)) {
+          error(p + ".planId", "Snapshot tidak mencantumkan ID reservasi ini.");
+        }
+        const expectedStatus = linkedPlan.status === "reserved" || linkedPlan.status === "legacy_recovery"
+          ? "active" : linkedPlan.status === "cancelled" ? "released" : "consumed";
+        if (item.status !== expectedStatus) {
+          error(p + ".status", "Status reservasi tidak sesuai dengan status snapshot.");
+        }
+      }
       if (item.status === "active") {
         if (activeReservationByRemainder.has(item.remainderId)) {
           error(p + ".remainderId", "Satu sisa material memiliki lebih dari satu reservasi aktif.");

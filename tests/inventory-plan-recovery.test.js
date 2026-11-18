@@ -109,6 +109,26 @@ async function main() {
   assert.equal((await storage.get("plans", newOnly.planId)).status, "completed");
   console.log("LULUS: rencana tanpa stok inventaris tetap tersimpan dan dapat diselesaikan setelah reload.");
 
+  await storage.add("remainders", remainder("REC-REM-COMPLETE"));
+  const inventoryPlan = await afterReloadEngine.reservePlan({
+    plan: {
+      inventoryUsage: [{ remainderId: "REC-REM-COMPLETE", placedCount: 1 }],
+      usableRemainders: [], sheets: []
+    },
+    jobId: "JOB-COMPLETE-RELOAD",
+    material: { id: "MAT-RECOVERY", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },
+    timestamp: now
+  });
+  await storage.close();
+  storage = Storage.createStorage();
+  await storage.open();
+  const completionEngine = Engine.createInventoryEngine({ storage });
+  const restoredForCompletion = await completionEngine.restorePlan(inventoryPlan.planId);
+  await completionEngine.consumePlan({ reservedPlan: restoredForCompletion, timestamp: now });
+  assert.equal((await storage.get("plans", inventoryPlan.planId)).status, "completed");
+  assert.equal((await storage.get("remainders", "REC-REM-COMPLETE")).status, "consumed");
+  console.log("LULUS: rencana multi-sumber dipulihkan dan diselesaikan dari snapshot setelah reload.");
+
   await storage.close();
   await deleteDatabase();
   await createVersionOneDatabase();

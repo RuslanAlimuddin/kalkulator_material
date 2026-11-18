@@ -14,6 +14,8 @@
       (typeof MaterialInventoryMatcher !== "undefined" ? MaterialInventoryMatcher : null);
     const adapter = opts.cuttingAdapter ||
       (typeof MaterialCuttingAdapter !== "undefined" ? MaterialCuttingAdapter : null);
+    const defaultCutter = opts.cuttingEngine ||
+      (typeof MaterialCuttingEngine !== "undefined" ? MaterialCuttingEngine : null);
     if (!matcher || typeof matcher.findCandidates !== "function") {
       throw new Error("Matcher inventaris wajib disediakan.");
     }
@@ -57,6 +59,7 @@
       });
 
       const inventoryCells = new Map();
+      const availableRemainders = input.remainders.slice();
       const inventorySheets = [];
       const inventoryUsage = [];
       const inventoryUsable = [];
@@ -67,7 +70,7 @@
         guard += 1;
         const candidates = matcher.findCandidates({
           material: input.material,
-          remainders: input.remainders,
+          remainders: availableRemainders,
           parts: remaining.map(part => ({
             id: part.id, width: part.width, height: part.height
           })),
@@ -85,6 +88,9 @@
         if (!placed.size) break;
 
         const sheetId = "INVENTORY-" + inventorySheets.length + "-" + chosen.remainderId;
+        const selectedIndex = availableRemainders.findIndex(item => item && item.id === chosen.remainderId);
+        if (selectedIndex < 0) throw new Error("Unit inventaris terpilih sudah digunakan.");
+        availableRemainders.splice(selectedIndex, 1);
         const placements = chosen.placements.map(placement => {
           const part = remaining.find(item => item.id === placement.sourceId);
           if (!part) throw new Error("Penempatan inventaris merujuk potongan yang tidak dikenal.");
@@ -149,7 +155,7 @@
           kerf: input.kerf,
           minRemainderW: input.minRemainderW,
           minRemainderH: input.minRemainderH,
-          cuttingEngine: input.cuttingEngine
+          cuttingEngine: input.cuttingEngine || defaultCutter
         });
       }
 

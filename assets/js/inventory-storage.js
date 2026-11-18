@@ -778,6 +778,115 @@
       return { consumedReservations: reservationIds, createdRemainders };
     }
 
+    // Membuat unit sisa dan movement dalam satu transaksi agar tidak ada
+    // stok yang tercatat tanpa riwayat (atau sebaliknya).
+    async function createRemainder(record) {
+      if (!record || typeof record !== "object") {
+        throw new Error("Data sisa material wajib disediakan.");
+      }
+      const timestamp = record.createdAt || new Date().toISOString();
+      const remainder = {
+        ...record,
+        id: record.id || makeId("REM"),
+        condition: record.condition || "good",
+        status: "available",
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        version: 1
+      };
+      const required = ["materialId", "originJobId", "sourceSheetId", "grainDirection", "motif"];
+      if (required.some(key => typeof remainder[key] !== "string" || !remainder[key].trim()) ||
+          !Number.isFinite(remainder.widthCm) || remainder.widthCm <= 0 ||
+          !Number.isFinite(remainder.heightCm) || remainder.heightCm <= 0 ||
+          !Number.isFinite(remainder.thicknessMm) || remainder.thicknessMm <= 0 ||
+          typeof remainder.rotationAllowed !== "boolean" ||
+          !["good", "damaged", "unknown"].includes(remainder.condition)) {
+        throw new Error("Data sisa material tidak lengkap atau tidak valid.");
+      }
+      const database = await db();
+      await withTransaction(database, ["materials", "jobs", "remainders", "movements"], "readwrite", tx => {
+        const materials = tx.objectStore("materials");
+        const jobs = tx.objectStore("jobs");
+        const remainders = tx.objectStore("remainders");
+        const movements = tx.objectStore("movements");
+        const materialRequest = materials.get(remainder.materialId);
+        materialRequest.onsuccess = () => {
+          if (!materialRequest.result) { tx.abort(); return; }
+          const jobRequest = jobs.get(remainder.originJobId);
+          jobRequest.onsuccess = () => {
+            if (!jobRequest.result) { tx.abort(); return; }
+            remainders.add(remainder);
+            movements.add({
+              id: makeId("MOV"),
+              remainderId: remainder.id,
+              type: "created",
+              jobId: remainder.originJobId,
+              timestamp,
+              fromStatus: null,
+              toStatus: "available",
+              referenceId: remainder.sourceSheetId
+            });
+          };
+        };
+      });
+      return remainder;
+    }
+
+    // Mengubah kondisi atau membuang stok beserta riwayatnya secara atomik.
+    // Unit yang sedang dipesan/dikonsumsi tidak dapat diubah dari layar pengelolaan.
+    async function updateRemainderState(input) {
+      if (!input || typeof input.id !== "string" || !input.id.trim()) {
+        throw new Error("ID sisa material wajib diisi.");
+      }
+      const changes = input.changes || {};
+      const allowed = {};
+      if (changes.condition != null) {
+        if (!["good", "damaged", "unknown"].includes(changes.condition)) {
+          throw new Error("Kondisi material tidak dikenal.");
+        }
+        allowed.condition = changes.condition;
+      }
+      if (changes.status != null) {
+        if (changes.status !== "discarded") {
+          throw new Error("Perubahan status manual hanya boleh membuang stok.");
+        }
+        allowed.status = "discarded";
+      }
+      if (!Object.keys(allowed).length) throw new Error("Tidak ada perubahan status/kondisi.");
+      const timestamp = input.timestamp || new Date().toISOString();
+      const database = await db();
+      let updated;
+      await withTransaction(database, ["remainders", "movements"], "readwrite", tx => {
+        const remainders = tx.objectStore("remainders");
+        const movements = tx.objectStore("movements");
+        const request = remainders.get(input.id);
+        request.onsuccess = () => {
+          const current = request.result;
+          if (!current) { tx.abort(); return; }
+          if (!["available"].includes(current.status)) { tx.abort(); return; }
+          updated = {
+            ...current,
+            ...allowed,
+            updatedAt: timestamp,
+            version: Number(current.version || 0) + 1
+          };
+          remainders.put(updated);
+          const discarded = allowed.status === "discarded";
+          movements.add({
+            id: makeId("MOV"),
+            remainderId: current.id,
+            type: discarded ? "discarded" : "condition_changed",
+            jobId: input.jobId || current.originJobId,
+            timestamp,
+            fromStatus: current.status,
+            toStatus: updated.status,
+            referenceId: input.referenceId || null
+          });
+        };
+      });
+      return updated;
+    }
+
     async function exportJSON() {
       const database = await db();
       const names = BUNDLE_STORES.concat(["meta"]);

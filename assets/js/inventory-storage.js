@@ -496,6 +496,14 @@
                     tx.abort();
                     return;
                   }
+                  const expectedIds = Array.isArray(plan.reservationIds) ? plan.reservationIds.slice().sort() : [];
+                  const releasedIds = checked
+                    .filter(item => item.reservation.planId === planId)
+                    .map(item => item.reservation.id).sort();
+                  if (JSON.stringify(expectedIds) !== JSON.stringify(releasedIds)) {
+                    tx.abort();
+                    return;
+                  }
                   plans.put({ ...plan, status: "cancelled", cancelledAt: timestamp });
                 };
               });
@@ -732,6 +740,9 @@
               planRequest.onsuccess = () => {
                 const savedPlan = planRequest.result;
                 if (!savedPlan || savedPlan.status !== "reserved") { tx.abort(); return; }
+                const expectedIds = Array.isArray(savedPlan.reservationIds) ? savedPlan.reservationIds.slice().sort() : [];
+                const consumedIds = checked.map(item => item.reservation.id).sort();
+                if (JSON.stringify(expectedIds) !== JSON.stringify(consumedIds)) { tx.abort(); return; }
                 plans.put({ ...savedPlan, status: "completed", completedAt: timestamp });
               };
             }

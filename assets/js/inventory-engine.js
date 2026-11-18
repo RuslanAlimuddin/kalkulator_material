@@ -81,6 +81,12 @@
       }
       const reservations = input.reservedPlan.reservations;
       if (reservations.length === 0) {
+        if (input.reservedPlan.planId && typeof storage.updatePlanStatus === "function") {
+          await storage.updatePlanStatus({
+            planId: input.reservedPlan.planId, status: "cancelled",
+            timestamp: input.timestamp
+          });
+        }
         return { releasedReservations: [] };
       }
       if (typeof storage.releaseReservations !== "function") {
@@ -93,6 +99,7 @@
       }
       const releasedReservations = await storage.releaseReservations({
         reservationIds,
+        planId: input.reservedPlan.planId,
         timestamp: input.timestamp
       });
       return { releasedReservations };
@@ -162,15 +169,40 @@
             rotationAllowed: rotationPolicy !== "fixed"
           };
         });
-      if (reservations.length === 0 && newSheetRemainders.length === 0) {
-        return { consumedReservations: [], createdRemainders: [] };
-      }
       return storage.consumeReservations({
         reservations,
         newSheetRemainders,
         jobId,
+        planId: input.reservedPlan.planId,
         timestamp: input.timestamp
       });
+    }
+
+    async function restorePlan(planId) {
+      if (typeof planId !== "string" || !planId.trim()) {
+        throw new Error("ID snapshot rencana wajib diisi.");
+      }
+      const saved = await storage.get("plans", planId);
+      if (!saved || saved.status !== "reserved" || !saved.plan) {
+        throw new Error("Snapshot rencana aktif tidak ditemukan atau merupakan reservasi lama tanpa snapshot.");
+      }
+      const reservations = await storage.getByIndex("reservations", "planId", planId);
+      const active = reservations.filter(item => item.status === "active");
+      const reservationByRemainder = new Map(active.map(item => [item.remainderId, item.id]));
+      const inventoryUsage = (saved.plan.inventoryUsage || []).map(item => ({
+        ...item, reservationId: reservationByRemainder.get(item.remainderId)
+      }));
+      if (inventoryUsage.some(item => !item.reservationId)) {
+        throw new Error("Snapshot tidak cocok dengan reservasi aktif; penyelesaian diblokir demi keamanan stok.");
+      }
+      return {
+        planId: saved.id, plan: saved.plan, jobId: saved.jobId,
+        material: saved.material || null,
+        grainDirection: saved.grainDirection || null,
+        motif: saved.motif || null,
+        reservations: active,
+        inventoryUsage
+      };
     }
 
     async function consumeCuttingResult(input) {
@@ -200,7 +232,7 @@
       });
     }
 
-    return { reservePlan, cancelPlan, consumePlan, consumeReservation, consumeCuttingResult };
+    return { reservePlan, restorePlan, cancelPlan, consumePlan, consumeReservation, consumeCuttingResult };
   }
 
   return { createInventoryEngine };

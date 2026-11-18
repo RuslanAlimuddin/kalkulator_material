@@ -183,8 +183,9 @@
 
     async function add(storeName, record) {
       ensureStore(storeName);
-      if (!record || typeof record !== "object" || !record.id) {
-        throw new Error("Record harus berupa objek dan memiliki id.");
+      const key = storeName === "meta" ? record && record.key : record && record.id;
+      if (!record || typeof record !== "object" || key == null || key === "") {
+        throw new Error("Record harus memiliki " + (storeName === "meta" ? "key." : "id."));
       }
       const database = await db();
       return withTransaction(database, [storeName], "readwrite", tx =>
@@ -194,8 +195,9 @@
 
     async function put(storeName, record) {
       ensureStore(storeName);
-      if (!record || typeof record !== "object" || !record.id) {
-        throw new Error("Record harus berupa objek dan memiliki id.");
+      const key = storeName === "meta" ? record && record.key : record && record.id;
+      if (!record || typeof record !== "object" || key == null || key === "") {
+        throw new Error("Record harus memiliki " + (storeName === "meta" ? "key." : "id."));
       }
       const database = await db();
       return withTransaction(database, [storeName], "readwrite", tx =>

@@ -29,9 +29,16 @@
       }
       if (!input.material) throw new Error("Spesifikasi material wajib disediakan.");
       if (!Array.isArray(input.remainders)) throw new Error("Daftar inventaris harus berupa array.");
-      if (!input.newSheet || !(Number(input.newSheet.widthCm) > 0) ||
-          !(Number(input.newSheet.heightCm) > 0)) {
-        throw new Error("Ukuran lembar material baru wajib diisi.");
+      const newSheetW = Number(input.newSheet && input.newSheet.widthCm);
+      const newSheetH = Number(input.newSheet && input.newSheet.heightCm);
+      if (!Number.isFinite(newSheetW) || newSheetW <= 0 ||
+          !Number.isFinite(newSheetH) || newSheetH <= 0) {
+        throw new Error("Ukuran lembar material baru harus lebih dari 0.");
+      }
+      const remainderIds = input.remainders.map(item => item && item.id);
+      if (remainderIds.some(id => typeof id !== "string" || !id.trim()) ||
+          new Set(remainderIds).size !== remainderIds.length) {
+        throw new Error("Setiap unit inventaris harus memiliki ID unik.");
       }
 
       const originalCells = input.geometry.cells;
@@ -147,8 +154,8 @@
         };
         newResult = adapter.calculateMaterialSources({
           geometry: fallbackGeometry,
-          sheetW: Number(input.newSheet.widthCm),
-          sheetH: Number(input.newSheet.heightCm),
+          sheetW: newSheetW,
+          sheetH: newSheetH,
           mode: input.mode || "ekonomis",
           autoStripReuse: input.autoStripReuse === true,
           allowRotation: input.allowRotation === true,

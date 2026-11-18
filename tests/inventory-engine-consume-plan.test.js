@@ -37,15 +37,24 @@ async function main() {
       { remainderId: "CONSUME-2", placedCount: 1 }
     ],
     usableRemainders: [
-      { sourceRemainderId: "CONSUME-1", width: 20, height: 10 },
-      { sourceRemainderId: "CONSUME-2", width: 15, height: 8 }
+      { sourceRemainderId: "CONSUME-1", width: 20, height: 10, source: "inventory", sheetId: "INVENTORY-0-CONSUME-1" },
+      { sourceRemainderId: "CONSUME-2", width: 15, height: 8, source: "inventory", sheetId: "INVENTORY-1-CONSUME-2" },
+      { width: 18, height: 9, source: "new", sheetId: 1 }
+    ],
+    sheets: [
+      { id: "INVENTORY-0-CONSUME-1", source: "inventory" },
+      { id: "INVENTORY-1-CONSUME-2", source: "inventory" },
+      { id: 1, source: "new" }
     ],
     tooSmallRemainders: [
       { sourceRemainderId: "CONSUME-1", width: 2, height: 2 }
     ]
   };
   const reservedPlan = await engine.reservePlan({
-    plan, jobId: "JOB-TARGET", timestamp: now
+    plan, jobId: "JOB-TARGET",
+    material: { id: "MAT-CONSUME", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },
+    grainDirection: "none",
+    timestamp: now
   });
   const consumed = await engine.consumePlan({
     reservedPlan,
@@ -53,7 +62,7 @@ async function main() {
     timestamp: now
   });
   assert.equal(consumed.consumedReservations.length, 2);
-  assert.equal(consumed.createdRemainders.length, 2);
+  assert.equal(consumed.createdRemainders.length, 3);
   assert.equal((await storage.get("remainders", "CONSUME-1")).status, "consumed");
   assert.equal((await storage.get("remainders", "CONSUME-2")).status, "consumed");
   for (const item of reservedPlan.reservations) {
@@ -65,6 +74,13 @@ async function main() {
   assert.equal(child1.heightCm, 10);
   assert.equal(child1.sourceSheetId, "JOB-TARGET-SHEET-1");
   assert.equal(child2.sourceSheetId, "JOB-TARGET-SHEET-2");
+  const newSheetChild = consumed.createdRemainders.find(item => item.sourceType === "new");
+  assert.ok(newSheetChild);
+  assert.equal(newSheetChild.materialId, "MAT-CONSUME");
+  assert.equal(newSheetChild.originJobId, "JOB-TARGET");
+  assert.equal(newSheetChild.sourceSheetId, "JOB-TARGET-SHEET-NEW-1");
+  assert.equal(newSheetChild.widthCm, 18);
+  assert.equal(newSheetChild.heightCm, 9);
   assert.equal((await storage.getAll("remainders")).filter(item =>
     item.id.startsWith("REM-") && item.status === "available"
   ).length, 2);
@@ -98,11 +114,16 @@ async function main() {
         { remainderId: "CONSUME-ROLLBACK-2" }
       ],
       usableRemainders: [
-        { sourceRemainderId: "CONSUME-ROLLBACK-1", width: 12, height: 8 },
-        { sourceRemainderId: "CONSUME-ROLLBACK-2", width: 10, height: 6 }
-      ]
+        { sourceRemainderId: "CONSUME-ROLLBACK-1", width: 12, height: 8, source: "inventory" },
+        { sourceRemainderId: "CONSUME-ROLLBACK-2", width: 10, height: 6, source: "inventory" },
+        { width: 9, height: 7, source: "new", sheetId: 9 }
+      ],
+      sheets: [{ id: 9, source: "new" }]
     },
-    jobId: "JOB-TARGET", timestamp: now
+    jobId: "JOB-TARGET",
+    material: { id: "MAT-CONSUME", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },
+    grainDirection: "none",
+    timestamp: now
   });
   rollbackPlan.inventoryUsage[1].reservationId = "RESERVATION-TIDAK-ADA";
   await assert.rejects(engine.consumePlan({
@@ -121,7 +142,12 @@ async function main() {
       .filter(item => item.sourceSheetId === "JOB-ROLLBACK-1").length,
     0
   );
-  console.log("LULUS: kegagalan satu konsumsi membatalkan seluruh perubahan multi-sumber.");
+  assert.equal(
+    (await storage.getByIndex("remainders", "originJobId", "JOB-TARGET"))
+      .some(item => item.sourceSheetId === "JOB-ROLLBACK-NEW-9"),
+    false
+  );
+  console.log("LULUS: kegagalan satu konsumsi membatalkan perubahan sumber inventaris dan sisa lembar baru.");
 
   await storage.close();
   await deleteDatabase();

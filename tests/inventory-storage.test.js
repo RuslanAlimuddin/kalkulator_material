@@ -77,7 +77,7 @@ async function main() {
     );
     assert.equal(db.version, 2);
     assert.equal((await storage.get("meta", "schemaVersion")).value, 2);
-    const tx = db.transaction(["remainders", "reservations", "movements"], "readonly");
+    const tx = db.transaction(["remainders", "reservations", "movements", "plans"], "readonly");
     assert.ok(tx.objectStore("remainders").indexNames.contains("status"));
     assert.ok(tx.objectStore("remainders").indexNames.contains("materialId"));
     assert.ok(tx.objectStore("remainders").indexNames.contains("originJobId"));

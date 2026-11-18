@@ -66,6 +66,14 @@ test("rotasi mengikuti kebijakan material dan unit sisa", () => {
   assert.equal(rotated[0].allowRotation, true);
 });
 
+test("material berarah wajib menerima arah serat pekerjaan", () => {
+  assert.throws(() => matcher.findCandidates({
+    material: { ...material, grainRequired: true },
+    remainders: [{ ...base, id: "GRAIN-REQUIRED", widthCm: 100, heightCm: 60 }],
+    parts: [{ width: 20, height: 20 }]
+  }), /Arah serat wajib ditentukan/);
+});
+
 test("rotasi ditolak jika material berarah atau unit melarang rotasi", () => {
   const remainder = { ...base, id: "ROT2", widthCm: 50, heightCm: 100 };
   const parts = [{ width: 100, height: 50 }];

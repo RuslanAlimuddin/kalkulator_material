@@ -77,10 +77,14 @@ async function main() {
     });
   }
   await storage.add("remainders", remainder("REC-REM-1"));
+  await storage.add("remainders", remainder("REC-REM-2"));
 
   const reserved = await engine.reservePlan({
     plan: {
-      inventoryUsage: [{ remainderId: "REC-REM-1", placedCount: 1 }],
+      inventoryUsage: [
+        { remainderId: "REC-REM-1", placedCount: 1 },
+        { remainderId: "REC-REM-2", placedCount: 1 }
+      ],
       usableRemainders: [], sheets: []
     },
     jobId: "JOB-RECOVERY",
@@ -96,11 +100,20 @@ async function main() {
   assert.equal(validation.valid, true, JSON.stringify(validation.errors));
   assert.ok(exported.plans.plans.some(item => item.id === reserved.planId));
   assert.equal((await storage.get("remainders", "REC-REM-1")).status, "reserved");
+  assert.equal((await storage.get("remainders", "REC-REM-2")).status, "reserved");
   const reportBeforeReload = await storage.getRecoveryReport();
   assert.equal(reportBeforeReload.activePlans.length, 1);
-  assert.equal(reportBeforeReload.activeReservations.length, 1);
+  assert.equal(reportBeforeReload.activeReservations.length, 2);
   assert.deepEqual(reportBeforeReload.orphanedReservations, []);
   assert.deepEqual(reportBeforeReload.orphanedRemainders, []);
+  await assert.rejects(storage.releaseReservations({
+    reservationIds: [reserved.reservations[0].id],
+    planId: reserved.planId,
+    timestamp: now
+  }));
+  assert.equal((await storage.get("remainders", "REC-REM-1")).status, "reserved");
+  assert.equal((await storage.get("remainders", "REC-REM-2")).status, "reserved");
+  assert.equal((await storage.get("plans", reserved.planId)).status, "reserved");
   await storage.close();
 
   storage = Storage.createStorage();
@@ -108,11 +121,12 @@ async function main() {
   const recoveredEngine = Engine.createInventoryEngine({ storage });
   const recovered = await recoveredEngine.restorePlan(reserved.planId);
   assert.equal(recovered.planId, reserved.planId);
-  assert.equal(recovered.reservations.length, 1);
+  assert.equal(recovered.reservations.length, 2);
   assert.equal(recovered.inventoryUsage[0].reservationId, reserved.reservations[0].id);
   await recoveredEngine.cancelPlan({ reservedPlan: recovered, timestamp: now });
   assert.equal((await storage.get("plans", reserved.planId)).status, "cancelled");
   assert.equal((await storage.get("remainders", "REC-REM-1")).status, "available");
+  assert.equal((await storage.get("remainders", "REC-REM-2")).status, "available");
   const reportAfterCancel = await storage.getRecoveryReport();
   assert.equal(reportAfterCancel.activePlans.length, 0);
   assert.equal(reportAfterCancel.activeReservations.length, 0);

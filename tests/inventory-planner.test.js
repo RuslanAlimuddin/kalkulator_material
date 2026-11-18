@@ -42,7 +42,7 @@ test("planner memakai sisa inventaris lebih dahulu lalu lembar baru untuk kekura
   assert.equal(r.newSheetCount, 1);
   assert.equal(r.sheetCount, 2);
   assert.equal(r.cells.filter(c => c.source === "inventory").length, 1);
-  assert.equal(r.cells.filter(c => c.source === "new").length, 2);
+  assert.equal(r.cells.filter(c => c.sourceType === "new").length, 2);
   assert.equal(r.inventoryUsage[0].remainderId, "REM-1");
 });
 
@@ -90,7 +90,7 @@ test("planner mempertahankan semua koordinat geometri dan setiap potongan mendap
     r.cells.map(c => [c.xStart, c.yStart, c.width, c.height]),
     geometry.cells.map(c => [c.xStart, c.yStart, c.width, c.height])
   );
-  assert.ok(r.cells.every(c => c.source === "new"));
+  assert.ok(r.cells.every(c => c.sourceType === "new"));
 });
 
 test("planner menolak geometri dan ukuran lembar baru yang tidak valid", () => {

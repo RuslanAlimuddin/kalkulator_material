@@ -24,7 +24,7 @@ Tes Node.js memakai `fake-indexeddb` untuk menguji transaksi tanpa browser. Tes 
 
 ## Hasil verifikasi terakhir
 
-Commit: `9fcc522cb7ea0109559df53bb21cee549c20782a`
+Commit: `3fd6c5108d567d5a455e704f244654f8313bcb2d`
 
 - Suite inventaris: sukses.
 - Suite regresi: sukses.
@@ -32,6 +32,6 @@ Commit: `9fcc522cb7ea0109559df53bb21cee549c20782a`
 - IndexedDB browser: sukses; data tetap ada setelah browser ditutup dan dibuka kembali.
 
 Tautan:
-- [Pengujian inventaris dan regresi](https://github.com/RuslanAlimuddin/kalkulator_material/actions/runs/44315165970)
-- [Pengujian reservasi massal](https://github.com/RuslanAlimuddin/kalkulator_material/actions/runs/44315158680)
-- [Pengujian IndexedDB browser](https://github.com/RuslanAlimuddin/kalkulator_material/actions/runs/44315158872)
+- [Pengujian inventaris dan regresi](https://github.com/RuslanAlimuddin/kalkulator_material/actions/runs/44315674650)
+- [Pengujian reservasi massal](https://github.com/RuslanAlimuddin/kalkulator_material/actions/runs/44315674816)
+- [Pengujian IndexedDB browser](https://github.com/RuslanAlimuddin/kalkulator_material/actions/runs/44315674692)

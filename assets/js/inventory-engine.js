@@ -70,6 +70,10 @@
       );
       return {
         plan: input.plan,
+        jobId: input.jobId,
+        material: input.material || null,
+        grainDirection: input.grainDirection || null,
+        motif: input.motif || null,
         reservations,
         inventoryUsage: input.plan.inventoryUsage.map(item => ({
           ...item,
@@ -109,9 +113,6 @@
       }
       const plan = input.reservedPlan.plan;
       const usage = input.reservedPlan.inventoryUsage;
-      if (usage.length === 0) {
-        return { consumedReservations: [], createdRemainders: [] };
-      }
       if (typeof storage.consumeReservations !== "function") {
         throw new Error("Storage belum mendukung konsumsi multi-reservasi atomik.");
       }
@@ -142,8 +143,40 @@
         };
       });
 
+      const material = input.reservedPlan.material;
+      const jobId = input.reservedPlan.jobId;
+      const newSheetRemainders = plan.usableRemainders
+        .filter(item => item.source === "new")
+        .map(item => {
+          if (!material || !material.id || !jobId) {
+            throw new Error("Metadata material dan pekerjaan wajib tersedia untuk menyimpan sisa lembar baru.");
+          }
+          const sheet = plan.sheets.find(candidate =>
+            String(candidate.id) === String(item.sheetId) && candidate.source === "new"
+          );
+          if (!sheet) throw new Error("Lembar baru asal sisa tidak ditemukan dalam rencana.");
+          const rotationPolicy = material.rotationPolicy || "fixed";
+          return {
+            materialId: material.id,
+            originJobId: jobId,
+            sourceSheetId: input.sourceSheetIdPrefix
+              ? input.sourceSheetIdPrefix + "-NEW-" + sheet.id
+              : (input.sourceSheetId || ("JOB-" + jobId + "-NEW-" + sheet.id)),
+            widthCm: Number(item.width),
+            heightCm: Number(item.height),
+            thicknessMm: Number(material.thicknessMm),
+            grainDirection: input.grainDirection || input.reservedPlan.grainDirection || "none",
+            motif: input.motif || input.reservedPlan.motif || material.motif || "plain",
+            rotationAllowed: rotationPolicy !== "fixed"
+          };
+        });
+      if (reservations.length === 0 && newSheetRemainders.length === 0) {
+        return { consumedReservations: [], createdRemainders: [] };
+      }
       return storage.consumeReservations({
         reservations,
+        newSheetRemainders,
+        jobId,
         timestamp: input.timestamp
       });
     }

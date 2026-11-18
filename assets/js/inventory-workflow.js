@@ -55,6 +55,9 @@
           const reservedPlan = await engine.reservePlan({
             plan,
             jobId: input.jobId,
+            material: input.plannerInput.material,
+            grainDirection: input.plannerInput.grainDirection,
+            motif: input.plannerInput.motif,
             timestamp: input.timestamp
           });
           return {

@@ -623,8 +623,9 @@
     }
 
     async function consumeReservations(input) {
-      if (!input || !Array.isArray(input.reservations) || input.reservations.length === 0) {
-        throw new Error("Daftar reservasi wajib diisi untuk konsumsi massal.");
+      if (!input || !Array.isArray(input.reservations) ||
+          !Array.isArray(input.newSheetRemainders)) {
+        throw new Error("reservations dan newSheetRemainders harus berupa array.");
       }
       const timestamp = input.timestamp || new Date().toISOString();
       const batches = input.reservations.map((item, index) => {
@@ -632,32 +633,46 @@
             !item.reservationId.trim() || !Array.isArray(item.remainders)) {
           throw new Error("Data konsumsi reservasi ke-" + (index + 1) + " tidak valid.");
         }
-        const drafts = item.remainders.map((remainder, remainderIndex) => {
+        const drafts = item.remainders.map(remainder => {
           if (!remainder || !Number.isFinite(remainder.widthCm) || remainder.widthCm <= 0 ||
               !Number.isFinite(remainder.heightCm) || remainder.heightCm <= 0) {
-            throw new Error("Ukuran sisa turunan pada reservasi ke-" +
-              (index + 1) + " tidak valid.");
+            throw new Error("Ukuran sisa turunan pada reservasi ke-" + (index + 1) + " tidak valid.");
           }
-          return {
-            id: remainder.id || makeId("REM"),
-            widthCm: remainder.widthCm,
-            heightCm: remainder.heightCm
-          };
+          return { id: remainder.id || makeId("REM"), widthCm: remainder.widthCm, heightCm: remainder.heightCm };
         });
+        return { reservationId: item.reservationId, sourceSheetId: item.sourceSheetId || null, drafts };
+      });
+      const newSheetDrafts = input.newSheetRemainders.map((item, index) => {
+        if (!item || typeof item.materialId !== "string" || !item.materialId.trim() ||
+            typeof item.originJobId !== "string" || !item.originJobId.trim() ||
+            typeof item.sourceSheetId !== "string" || !item.sourceSheetId.trim() ||
+            !Number.isFinite(item.widthCm) || item.widthCm <= 0 ||
+            !Number.isFinite(item.heightCm) || item.heightCm <= 0 ||
+            !Number.isFinite(item.thicknessMm) || item.thicknessMm <= 0 ||
+            typeof item.grainDirection !== "string" || !item.grainDirection.trim() ||
+            typeof item.motif !== "string" || !item.motif.trim() ||
+            typeof item.rotationAllowed !== "boolean") {
+          throw new Error("Data sisa lembar baru ke-" + (index + 1) + " tidak lengkap atau tidak valid.");
+        }
         return {
-          reservationId: item.reservationId,
-          sourceSheetId: item.sourceSheetId || null,
-          drafts
+          id: item.id || makeId("REM"), materialId: item.materialId,
+          originJobId: item.originJobId, sourceSheetId: item.sourceSheetId,
+          widthCm: item.widthCm, heightCm: item.heightCm,
+          thicknessMm: item.thicknessMm, grainDirection: item.grainDirection,
+          motif: item.motif, rotationAllowed: item.rotationAllowed
         };
       });
-
+      if (batches.length === 0 && newSheetDrafts.length === 0) {
+        return { consumedReservations: [], createdRemainders: [] };
+      }
       const reservationIds = batches.map(item => item.reservationId);
-      const descendantIds = batches.flatMap(item => item.drafts.map(draft => draft.id));
+      const allCreatedIds = batches.flatMap(item => item.drafts.map(draft => draft.id))
+        .concat(newSheetDrafts.map(item => item.id));
       if (new Set(reservationIds).size !== reservationIds.length) {
         throw new Error("ID reservasi untuk konsumsi massal tidak boleh duplikat.");
       }
-      if (new Set(descendantIds).size !== descendantIds.length) {
-        throw new Error("ID sisa turunan tidak boleh duplikat.");
+      if (new Set(allCreatedIds).size !== allCreatedIds.length) {
+        throw new Error("ID sisa turunan atau sisa lembar baru tidak boleh duplikat.");
       }
 
       const database = await db();
@@ -671,77 +686,71 @@
           const checked = [];
           let cursor = 0;
 
-          // Baca dan validasi seluruh sumber sebelum menulis satu pun perubahan.
-          // Semua konsumsi dan sisa turunannya kemudian disimpan dalam transaksi sama.
-          const checkNext = () => {
-            if (cursor >= batches.length) {
-              const sourceIds = checked.map(item => item.source.id);
-              if (new Set(sourceIds).size !== sourceIds.length) {
-                tx.abort();
-                return;
-              }
-
-              batches.forEach((batch, index) => {
-                const { reservation, source } = checked[index];
-                reservations.put({
-                  ...reservation, status: "consumed", consumedAt: timestamp
-                });
-                remainders.put({
-                  ...source,
-                  status: "consumed",
-                  updatedAt: timestamp,
-                  version: Number(source.version || 0) + 1
-                });
-                movements.add({
-                  id: makeId("MOV"),
-                  remainderId: source.id,
-                  type: "consumed",
-                  jobId: reservation.jobId,
-                  timestamp,
-                  fromStatus: "reserved",
-                  toStatus: "consumed",
-                  referenceId: reservation.id
-                });
-
-                batch.drafts.forEach(draft => {
-                  const record = {
-                    id: draft.id,
-                    materialId: source.materialId,
-                    widthCm: draft.widthCm,
-                    heightCm: draft.heightCm,
-                    thicknessMm: source.thicknessMm,
-                    grainDirection: source.grainDirection,
-                    motif: source.motif,
-                    rotationAllowed: source.rotationAllowed,
-                    condition: "good",
-                    status: "available",
-                    originJobId: reservation.jobId,
-                    sourceSheetId: batch.sourceSheetId || source.sourceSheetId,
-                    createdAt: timestamp,
-                    updatedAt: timestamp,
-                    version: 1
-                  };
-                  createdRemainders.push({
-                    ...record,
-                    reservationId: reservation.id,
-                    sourceRemainderId: source.id
-                  });
-                  remainders.add(record);
-                  movements.add({
-                    id: makeId("MOV"),
-                    remainderId: record.id,
-                    type: "remainder_created",
-                    jobId: reservation.jobId,
-                    timestamp,
-                    fromStatus: null,
-                    toStatus: "available",
-                    referenceId: source.id
-                  });
-                });
-              });
+          const commitChanges = () => {
+            const sourceIds = checked.map(item => item.source.id);
+            if (new Set(sourceIds).size !== sourceIds.length) {
+              tx.abort();
               return;
             }
+            batches.forEach((batch, index) => {
+              const { reservation, source } = checked[index];
+              reservations.put({ ...reservation, status: "consumed", consumedAt: timestamp });
+              remainders.put({
+                ...source, status: "consumed", updatedAt: timestamp,
+                version: Number(source.version || 0) + 1
+              });
+              movements.add({
+                id: makeId("MOV"), remainderId: source.id, type: "consumed",
+                jobId: reservation.jobId, timestamp, fromStatus: "reserved",
+                toStatus: "consumed", referenceId: reservation.id
+              });
+              batch.drafts.forEach(draft => {
+                const record = {
+                  id: draft.id, materialId: source.materialId,
+                  widthCm: draft.widthCm, heightCm: draft.heightCm,
+                  thicknessMm: source.thicknessMm, grainDirection: source.grainDirection,
+                  motif: source.motif, rotationAllowed: source.rotationAllowed,
+                  condition: "good", status: "available", originJobId: reservation.jobId,
+                  sourceSheetId: batch.sourceSheetId || source.sourceSheetId,
+                  createdAt: timestamp, updatedAt: timestamp, version: 1
+                };
+                createdRemainders.push({
+                  ...record, sourceType: "inventory",
+                  reservationId: reservation.id, sourceRemainderId: source.id
+                });
+                remainders.add(record);
+                movements.add({
+                  id: makeId("MOV"), remainderId: record.id, type: "remainder_created",
+                  jobId: reservation.jobId, timestamp, fromStatus: null,
+                  toStatus: "available", referenceId: source.id
+                });
+              });
+            });
+            newSheetDrafts.forEach(draft => {
+              const record = {
+                id: draft.id, materialId: draft.materialId,
+                widthCm: draft.widthCm, heightCm: draft.heightCm,
+                thicknessMm: draft.thicknessMm, grainDirection: draft.grainDirection,
+                motif: draft.motif, rotationAllowed: draft.rotationAllowed,
+                condition: "good", status: "available", originJobId: draft.originJobId,
+                sourceSheetId: draft.sourceSheetId,
+                createdAt: timestamp, updatedAt: timestamp, version: 1
+              };
+              createdRemainders.push({ ...record, sourceType: "new" });
+              remainders.add(record);
+              movements.add({
+                id: makeId("MOV"), remainderId: record.id, type: "remainder_created",
+                jobId: draft.originJobId, timestamp, fromStatus: null,
+                toStatus: "available", referenceId: draft.sourceSheetId
+              });
+            });
+          };
 
+          const checkNext = () => {
+            if (cursor >= batches.length) {
+              commitChanges();
+              return;
+            }
             const batch = batches[cursor];
             const reservationRequest = reservations.get(batch.reservationId);
             reservationRequest.onsuccess = () => {
@@ -763,15 +772,10 @@
               };
             };
           };
-
           checkNext();
         }
       );
-
-      return {
-        consumedReservations: batches.map(item => item.reservationId),
-        createdRemainders
-      };
+      return { consumedReservations: reservationIds, createdRemainders };
     }
 
     async function exportJSON() {

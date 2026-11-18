@@ -964,6 +964,36 @@
       }));
     }
 
+    async function getRecoveryPlans() {
+      const plans = await getAll("plans");
+      return plans.filter(plan => ["reserved", "legacy_recovery"].includes(plan.status));
+    }
+
+    async function updatePlanStatus(input) {
+      if (!input || typeof input.planId !== "string" || !input.planId.trim() ||
+          !["cancelled", "completed"].includes(input.status)) {
+        throw new Error("planId dan status akhir rencana wajib valid.");
+      }
+      const timestamp = input.timestamp || new Date().toISOString();
+      const database = await db();
+      let updated = null;
+      await withTransaction(database, ["plans"], "readwrite", tx => {
+        const plans = tx.objectStore("plans");
+        const request = plans.get(input.planId);
+        request.onsuccess = () => {
+          const current = request.result;
+          if (!current || current.status !== "reserved") { tx.abort(); return; }
+          updated = {
+            ...current, status: input.status,
+            cancelledAt: input.status === "cancelled" ? timestamp : current.cancelledAt || null,
+            completedAt: input.status === "completed" ? timestamp : current.completedAt || null
+          };
+          plans.put(updated);
+        };
+      });
+      return updated;
+    }
+
     async function close() {
       if (!dbPromise) return;
       const database = await dbPromise;
@@ -988,6 +1018,8 @@
       releaseReservations,
       consumeReservation,
       consumeReservations,
+      getRecoveryPlans,
+      updatePlanStatus,
       createRemainder,
       updateRemainderState,
       exportJSON,

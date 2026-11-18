@@ -942,11 +942,25 @@
           const records = bundle[name] && Array.isArray(bundle[name][name])
             ? bundle[name][name] : [];
           records.forEach(record => {
+            const importedRecord = name === "reservations" && record.status === "active" && !record.planId
+              ? { ...record, planId: "LEGACY-" + record.id }
+              : record;
             if (importMode === "merge") {
-              // add() sengaja menolak ID bentrok agar tidak ada penimpaan diam-diam.
-              stores[name].add(record);
+              stores[name].add(importedRecord);
             } else {
-              stores[name].put(record);
+              stores[name].put(importedRecord);
+            }
+            if (name === "reservations" && importedRecord.status === "active" && importedRecord.planId &&
+                importedRecord.planId.indexOf("LEGACY-") === 0) {
+              stores.plans.put({
+                id: importedRecord.planId, jobId: importedRecord.jobId, plan: null,
+                material: null, grainDirection: null, motif: null,
+                reservationIds: [importedRecord.id], status: "legacy_recovery",
+                legacy: true,
+                recoveryNote: "Reservasi impor lama tidak memiliki snapshot rencana pemotongan.",
+                createdAt: importedRecord.createdAt, completedAt: null,
+                cancelledAt: null, schemaVersion: 1
+              });
             }
           });
         });

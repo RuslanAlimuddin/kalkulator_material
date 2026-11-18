@@ -142,6 +142,70 @@ async function main() {
     assert.equal(movements[0].type, "reserved");
   });
 
+  await test("reservasi massal mengunci semua unit dalam satu transaksi", async () => {
+    await storage.importJSON(bundle("BATCH-1"), "merge");
+    await storage.importJSON(bundle("BATCH-2"), "merge");
+    const results = await storage.reserveRemainders({
+      remainderIds: ["REM-BATCH-1", "REM-BATCH-2"],
+      jobId: "JOB-A",
+      timestamp: now
+    });
+    assert.equal(results.length, 2);
+    assert.deepEqual(
+      results.map(item => item.remainderId),
+      ["REM-BATCH-1", "REM-BATCH-2"]
+    );
+    for (const id of ["REM-BATCH-1", "REM-BATCH-2"]) {
+      assert.equal((await storage.get("remainders", id)).status, "reserved");
+      const reservations = await storage.getByIndex("reservations", "remainderId", id);
+      assert.equal(reservations.filter(item => item.status === "active").length, 1);
+      const movements = await storage.getByIndex("movements", "remainderId", id);
+      assert.equal(movements.filter(item => item.type === "reserved").length, 1);
+    }
+  });
+
+  await test("reservasi massal gagal seluruhnya jika satu unit tidak layak", async () => {
+    await storage.importJSON(bundle("BATCH-ROLLBACK-1"), "merge");
+    await storage.importJSON(bundle("BATCH-ROLLBACK-2"), "merge");
+    await storage.update("remainders", "REM-BATCH-ROLLBACK-2", {
+      condition: "damaged"
+    });
+
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-BATCH-ROLLBACK-1", "REM-BATCH-ROLLBACK-2"],
+      jobId: "JOB-A",
+      timestamp: now
+    }));
+
+    assert.equal(
+      (await storage.get("remainders", "REM-BATCH-ROLLBACK-1")).status,
+      "available"
+    );
+    assert.equal(
+      (await storage.get("remainders", "REM-BATCH-ROLLBACK-2")).status,
+      "available"
+    );
+    assert.equal(
+      (await storage.getByIndex("reservations", "remainderId", "REM-BATCH-ROLLBACK-1"))
+        .filter(item => item.status === "active").length,
+      0
+    );
+    assert.equal(
+      (await storage.getByIndex("movements", "remainderId", "REM-BATCH-ROLLBACK-1"))
+        .filter(item => item.type === "reserved").length,
+      0
+    );
+  });
+
+  await test("reservasi massal menolak ID kosong atau duplikat sebelum transaksi", async () => {
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-A", "REM-A"], jobId: "JOB-A"
+    }), /unik/);
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: [""], jobId: "JOB-A"
+    }), /valid/);
+  });
+
   await test("dua pekerjaan yang bersaing hanya dapat memperoleh satu reservasi", async () => {
     await storage.importJSON(bundle("RACE"), "merge");
     const attempts = await Promise.allSettled([

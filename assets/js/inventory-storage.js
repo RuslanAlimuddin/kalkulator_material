@@ -537,6 +537,158 @@
       };
     }
 
+    async function consumeReservations(input) {
+      if (!input || !Array.isArray(input.reservations) || input.reservations.length === 0) {
+        throw new Error("Daftar reservasi wajib diisi untuk konsumsi massal.");
+      }
+      const timestamp = input.timestamp || new Date().toISOString();
+      const batches = input.reservations.map((item, index) => {
+        if (!item || typeof item.reservationId !== "string" ||
+            !item.reservationId.trim() || !Array.isArray(item.remainders)) {
+          throw new Error("Data konsumsi reservasi ke-" + (index + 1) + " tidak valid.");
+        }
+        const drafts = item.remainders.map((remainder, remainderIndex) => {
+          if (!remainder || !Number.isFinite(remainder.widthCm) || remainder.widthCm <= 0 ||
+              !Number.isFinite(remainder.heightCm) || remainder.heightCm <= 0) {
+            throw new Error("Ukuran sisa turunan pada reservasi ke-" +
+              (index + 1) + " tidak valid.");
+          }
+          return {
+            id: remainder.id || makeId("REM"),
+            widthCm: remainder.widthCm,
+            heightCm: remainder.heightCm
+          };
+        });
+        return {
+          reservationId: item.reservationId,
+          sourceSheetId: item.sourceSheetId || null,
+          drafts
+        };
+      });
+
+      const reservationIds = batches.map(item => item.reservationId);
+      const descendantIds = batches.flatMap(item => item.drafts.map(draft => draft.id));
+      if (new Set(reservationIds).size !== reservationIds.length) {
+        throw new Error("ID reservasi untuk konsumsi massal tidak boleh duplikat.");
+      }
+      if (new Set(descendantIds).size !== descendantIds.length) {
+        throw new Error("ID sisa turunan tidak boleh duplikat.");
+      }
+
+      const database = await db();
+      const createdRemainders = [];
+      await withTransaction(
+        database, ["remainders", "reservations", "movements"], "readwrite",
+        tx => {
+          const remainders = tx.objectStore("remainders");
+          const reservations = tx.objectStore("reservations");
+          const movements = tx.objectStore("movements");
+          const checked = [];
+          let cursor = 0;
+
+          // Baca dan validasi seluruh sumber sebelum menulis satu pun perubahan.
+          // Semua konsumsi dan sisa turunannya kemudian disimpan dalam transaksi sama.
+          const checkNext = () => {
+            if (cursor >= batches.length) {
+              const sourceIds = checked.map(item => item.source.id);
+              if (new Set(sourceIds).size !== sourceIds.length) {
+                tx.abort();
+                return;
+              }
+
+              batches.forEach((batch, index) => {
+                const { reservation, source } = checked[index];
+                reservations.put({
+                  ...reservation, status: "consumed", consumedAt: timestamp
+                });
+                remainders.put({
+                  ...source,
+                  status: "consumed",
+                  updatedAt: timestamp,
+                  version: Number(source.version || 0) + 1
+                });
+                movements.add({
+                  id: makeId("MOV"),
+                  remainderId: source.id,
+                  type: "consumed",
+                  jobId: reservation.jobId,
+                  timestamp,
+                  fromStatus: "reserved",
+                  toStatus: "consumed",
+                  referenceId: reservation.id
+                });
+
+                batch.drafts.forEach(draft => {
+                  const record = {
+                    id: draft.id,
+                    materialId: source.materialId,
+                    widthCm: draft.widthCm,
+                    heightCm: draft.heightCm,
+                    thicknessMm: source.thicknessMm,
+                    grainDirection: source.grainDirection,
+                    motif: source.motif,
+                    rotationAllowed: source.rotationAllowed,
+                    condition: "good",
+                    status: "available",
+                    originJobId: reservation.jobId,
+                    sourceSheetId: batch.sourceSheetId || source.sourceSheetId,
+                    createdAt: timestamp,
+                    updatedAt: timestamp,
+                    version: 1
+                  };
+                  createdRemainders.push({
+                    ...record,
+                    reservationId: reservation.id,
+                    sourceRemainderId: source.id
+                  });
+                  remainders.add(record);
+                  movements.add({
+                    id: makeId("MOV"),
+                    remainderId: record.id,
+                    type: "remainder_created",
+                    jobId: reservation.jobId,
+                    timestamp,
+                    fromStatus: null,
+                    toStatus: "available",
+                    referenceId: source.id
+                  });
+                });
+              });
+              return;
+            }
+
+            const batch = batches[cursor];
+            const reservationRequest = reservations.get(batch.reservationId);
+            reservationRequest.onsuccess = () => {
+              const reservation = reservationRequest.result;
+              if (!reservation || reservation.status !== "active") {
+                tx.abort();
+                return;
+              }
+              const sourceRequest = remainders.get(reservation.remainderId);
+              sourceRequest.onsuccess = () => {
+                const source = sourceRequest.result;
+                if (!source || source.status !== "reserved" || source.condition !== "good") {
+                  tx.abort();
+                  return;
+                }
+                checked.push({ reservation, source });
+                cursor += 1;
+                checkNext();
+              };
+            };
+          };
+
+          checkNext();
+        }
+      );
+
+      return {
+        consumedReservations: batches.map(item => item.reservationId),
+        createdRemainders
+      };
+    }
+
     async function exportJSON() {
       const database = await db();
       const names = BUNDLE_STORES.concat(["meta"]);
@@ -640,6 +792,7 @@
       reserveRemainders,
       releaseReservation,
       consumeReservation,
+      consumeReservations,
       exportJSON,
       importJSON
     };

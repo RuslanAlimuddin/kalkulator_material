@@ -1003,6 +1003,44 @@
       return plans.filter(plan => ["reserved", "legacy_recovery"].includes(plan.status));
     }
 
+    async function getRecoveryReport() {
+      const results = await Promise.all([
+        getAll("plans"), getAll("reservations"), getAll("remainders")
+      ]);
+      const plans = results[0];
+      const reservations = results[1];
+      const remainders = results[2];
+      const activeReservations = reservations.filter(item => item.status === "active");
+      const activeByRemainder = new Map();
+      activeReservations.forEach(item => {
+        const list = activeByRemainder.get(item.remainderId) || [];
+        list.push(item);
+        activeByRemainder.set(item.remainderId, list);
+      });
+      const planById = new Map(plans.map(item => [item.id, item]));
+      const activePlans = plans.filter(item => ["reserved", "legacy_recovery"].includes(item.status));
+      const orphanedReservations = activeReservations.filter(item => {
+        const plan = item.planId && planById.get(item.planId);
+        return !plan || !Array.isArray(plan.reservationIds) || !plan.reservationIds.includes(item.id);
+      });
+      const orphanedRemainders = remainders.filter(item =>
+        item.status === "reserved" && !activeByRemainder.has(item.id)
+      );
+      const inconsistentPlans = activePlans.filter(plan => {
+        const expected = Array.isArray(plan.reservationIds) ? plan.reservationIds.slice().sort() : [];
+        const actual = activeReservations
+          .filter(item => item.planId === plan.id).map(item => item.id).sort();
+        return JSON.stringify(expected) !== JSON.stringify(actual);
+      });
+      return {
+        activePlans,
+        activeReservations,
+        orphanedReservations,
+        orphanedRemainders,
+        inconsistentPlans
+      };
+    }
+
     async function updatePlanStatus(input) {
       if (!input || typeof input.planId !== "string" || !input.planId.trim() ||
           !["cancelled", "completed"].includes(input.status)) {
@@ -1053,6 +1091,7 @@
       consumeReservation,
       consumeReservations,
       getRecoveryPlans,
+      getRecoveryReport,
       updatePlanStatus,
       createRemainder,
       updateRemainderState,

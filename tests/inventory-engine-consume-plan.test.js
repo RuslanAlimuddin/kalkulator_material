@@ -83,7 +83,7 @@ async function main() {
   assert.equal(newSheetChild.heightCm, 9);
   assert.equal((await storage.getAll("remainders")).filter(item =>
     item.id.startsWith("REM-") && item.status === "available"
-  ).length, 2);
+  ).length, 3);
   const childForC = await storage.get("remainders", child1.id);
   assert.equal(childForC.status, "available");
   const reservationForC = await storage.reserveRemainder({

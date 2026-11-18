@@ -1059,11 +1059,29 @@
       const reservationsWithoutSource = activeReservations.filter(item =>
         !remainders.some(remainder => remainder.id === item.remainderId)
       );
-      const inconsistentPlans = activePlans.filter(plan => {
+
+      // Periksa seluruh siklus hidup, bukan hanya rencana yang masih aktif.
+      // Reservasi harus mengikuti status akhir rencana yang menaunginya.
+      const expectedReservationStatus = {
+        reserved: "active",
+        legacy_recovery: "active",
+        cancelled: "released",
+        completed: "consumed"
+      };
+      const inconsistentReservations = reservations.filter(item => {
+        if (!item.planId) return false; // Reservasi legacy tanpa tautan ditangani terpisah.
+        const plan = planById.get(item.planId);
+        if (!plan) return false; // Ditangani oleh orphanedReservations.
+        const expectedStatus = expectedReservationStatus[plan.status];
+        return !expectedStatus || item.status !== expectedStatus;
+      });
+      const inconsistentPlans = plans.filter(plan => {
+        const expectedStatus = expectedReservationStatus[plan.status];
         const expected = Array.isArray(plan.reservationIds) ? plan.reservationIds.slice().sort() : [];
-        const actual = activeReservations
-          .filter(item => item.planId === plan.id).map(item => item.id).sort();
-        return JSON.stringify(expected) !== JSON.stringify(actual);
+        const linked = reservations.filter(item => item.planId === plan.id);
+        const actual = linked.map(item => item.id).sort();
+        if (!expectedStatus || JSON.stringify(expected) !== JSON.stringify(actual)) return true;
+        return linked.some(item => item.status !== expectedStatus);
       });
       return {
         activePlans,
@@ -1072,7 +1090,8 @@
         orphanedRemainders,
         multiplyReservedRemainders,
         reservationsWithoutSource,
-        inconsistentPlans
+        inconsistentPlans,
+        inconsistentReservations
       };
     }
 

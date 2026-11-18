@@ -105,6 +105,31 @@ Operasi ini dalam satu transaksi:
 
 Sisa dari lembar baru juga dapat disimpan walaupun pekerjaan tidak memakai inventaris lama.
 
+## Implementasi UI pengelolaan — tahap awal
+
+Halaman pengelolaan pertama tersedia pada `inventaris.html`, dengan pengendali `assets/js/inventory-ui.js`. Halaman ini dapat dibuka langsung melalui Live Server atau server lokal repository. Halaman kalkulator utama belum diubah pada tahap ini.
+
+Fitur yang tersedia:
+- katalog material dan pencatatan pekerjaan;
+- pencatatan unit sisa dengan material, ukuran, pekerjaan asal, dan ID lembar sumber;
+- daftar stok dengan pencarian dan filter status;
+- ringkasan stok tersedia, dipesan, dikonsumsi, serta rusak/dibuang;
+- perubahan kondisi unit dan pembuangan stok yang masih tersedia;
+- riwayat pergerakan;
+- impor dan ekspor JSON.
+
+Pencatatan sisa menggunakan `storage.createRemainder()`: pemeriksaan referensi material/pekerjaan, penyimpanan sisa, dan pembuatan movement dilakukan dalam satu transaksi IndexedDB. Perubahan kondisi atau pembuangan menggunakan `storage.updateRemainderState()`, juga bersama movement dalam satu transaksi. Unit yang berstatus reserved atau consumed tidak dapat diubah melalui UI pengelolaan.
+
+Pengujian tambahan:
+- `tests/inventory-ui-storage.test.js`: transaksi pencatatan, perubahan kondisi, pembuangan, dan validasi paket.
+- `tests/browser/inventory-ui.test.js`: alur UI Chromium, pencatatan data, riwayat, dan persistensi setelah reload.
+- Kedua pengujian dimasukkan ke workflow inventaris dan workflow Chromium.
+
+Batas tahap ini:
+- halaman pengelolaan sudah berdiri sendiri dan belum diberi tautan navigasi dari `index.html`;
+- panel pratinjau planner, reservasi, pembatalan, dan penyelesaian pekerjaan belum dihubungkan ke halaman kalkulator;
+- tombol Hitung dan `makeStok()` tetap tidak berubah.
+
 ## Prinsip perlindungan
 
 - Tombol Hitung lama tetap menjalankan jalur kalkulasi lama.

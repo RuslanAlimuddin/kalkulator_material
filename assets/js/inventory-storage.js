@@ -992,6 +992,8 @@
       releaseReservations,
       consumeReservation,
       consumeReservations,
+      createRemainder,
+      updateRemainderState,
       exportJSON,
       importJSON
     };

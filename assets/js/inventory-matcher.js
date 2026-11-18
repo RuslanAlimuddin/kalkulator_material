@@ -71,11 +71,20 @@
         const sheetW = positive(remainder.widthCm, "Lebar sisa");
         const sheetH = positive(remainder.heightCm, "Tinggi sisa");
         const allowRotation = canRotate(remainder, input.material, input);
+        // Saring potongan yang secara individual mustahil muat. Dengan begitu
+        // satu potongan besar tidak menggugurkan kandidat yang masih berguna
+        // untuk potongan lain pada pekerjaan yang sama.
+        const individuallyFitting = parts.filter(part => {
+          const normal = part.width <= sheetW && part.height <= sheetH;
+          const rotated = allowRotation && part.height <= sheetW && part.width <= sheetH;
+          return normal || rotated;
+        });
+        if (individuallyFitting.length === 0) return;
         let result;
         try {
           result = cutter.calculateCutting({
             sheetW, sheetH, kerf, allowRotation,
-            minRemainderW, minRemainderH, parts
+            minRemainderW, minRemainderH, parts: individuallyFitting
           });
         } catch (_) {
           return;

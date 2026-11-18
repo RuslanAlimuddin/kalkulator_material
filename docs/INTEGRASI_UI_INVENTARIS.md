@@ -126,6 +126,23 @@ Batas tahap B:
 - belum ada perubahan stok otomatis;
 - kesesuaian tampilan visual akhir masih perlu pemeriksaan browser setelah tes otomatis lulus.
 
+## Integrasi reservasi pada kalkulator utama — tahap C
+
+Panel kalkulator sekarang menyediakan alur persetujuan dan pengelolaan reservasi:
+- **Setujui dan Kunci Sumber** memanggil `bridge.confirm(preview)` dan menyimpan snapshot sekaligus mengunci semua sisa inventaris yang dipakai. Lembar baru tidak dikunci karena belum merupakan stok inventaris.
+- **Reservasi Aktif** membaca daftar snapshot berstatus `reserved` dan memulihkannya melalui `workflow.restorePlan()` saat halaman dibuka kembali.
+- **Batalkan Reservasi** memanggil `bridge.cancel()` untuk melepas seluruh sumber rencana secara atomik. Reservasi legacy tanpa snapshot hanya dapat dibatalkan, tidak dapat diselesaikan.
+- **Selesaikan Pemotongan** tersedia setelah pekerjaan fisik benar-benar selesai. Pengguna dapat mengubah awalan ID lembar sumber; `bridge.complete()` mengonsumsi semua sumber inventaris dan mencatat sisa dari sumber lama maupun lembar baru.
+
+Setiap tindakan meminta konfirmasi pengguna. Jika pemulihan snapshot gagal atau audit menemukan hubungan stok yang tidak konsisten, panel tidak menawarkan penyelesaian untuk rencana tersebut dan menampilkan peringatan. Sistem tidak menebak atau melepas stok yang tidak dapat diverifikasi.
+
+Pengujian browser `tests/browser/inventory-preview.test.js` diperluas untuk menguji pratinjau tanpa mutasi, persetujuan dan penguncian, pemulihan setelah reload, pembatalan, penyelesaian, konsumsi sumber, dan pencatatan sisa turunan. Hasil pengujian harus dinyatakan lulus hanya setelah workflow Chromium selesai.
+
+Batas tahap C:
+- belum ada pembaruan status pekerjaan menjadi closed otomatis;
+- ID lembar sumber adalah awalan yang dapat diedit pengguna, bukan integrasi dengan label fisik atau sistem barcode;
+- pemeriksaan visual tata letak panel tetap diperlukan pada browser pengguna.
+
 ## Implementasi UI pengelolaan — tahap awal
 
 Halaman pengelolaan pertama tersedia pada `inventaris.html`, dengan pengendali `assets/js/inventory-ui.js`. Halaman ini dapat dibuka langsung melalui Live Server atau server lokal repository. Halaman kalkulator utama belum diubah pada tahap ini.

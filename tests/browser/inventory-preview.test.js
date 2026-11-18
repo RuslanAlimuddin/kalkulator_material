@@ -64,20 +64,34 @@ async function main() {
       await storage.close();
     });
 
-    await page.locator("#inventoryRefreshCatalog").click();
-    await page.locator("#inventoryMaterial").selectOption("MAT-PREVIEW");
-    await page.locator("#inventoryJob").selectOption("JOB-PREVIEW");
-    await page.locator("#w").fill("4");
-    await page.locator("#h").fill("1");
-    await page.locator("#mw").fill("220");
-    await page.locator("#mh").fill("110");
-    await page.locator("#ori").selectOption("1");
+    async function chooseInputs() {
+      await page.locator("#inventoryRefreshCatalog").click();
+      await page.locator("#inventoryMaterial").selectOption("MAT-PREVIEW");
+      await page.locator("#inventoryJob").selectOption("JOB-PREVIEW");
+      await page.locator("#w").fill("4");
+      await page.locator("#h").fill("1");
+      await page.locator("#mw").fill("220");
+      await page.locator("#mh").fill("110");
+      await page.locator("#ori").selectOption("1");
+    }
+    async function readStatus() {
+      return page.evaluate(async () => {
+        const storage = MaterialInventoryStorage.createStorage({
+          validator: MaterialInventoryValidator
+        });
+        const remainder = await storage.get("remainders", "REM-PREVIEW");
+        await storage.close();
+        return remainder.status;
+      });
+    }
+
+    await chooseInputs();
 
     // Tombol Hitung lama tetap menjalankan fungsi kalkulasi sebelumnya.
     await page.locator('button[onclick="calc()"]').click();
     await page.locator("#rsec:not(.hidden)").waitFor();
 
-    // Pratinjau harus mengutamakan sisa inventaris lalu menghitung kekurangan dari lembar baru.
+    // Pratinjau menggabungkan sisa inventaris dan lembar baru tanpa mutasi stok.
     await page.locator("#inventoryPreviewButton").click();
     await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
     const summary = await page.locator("#inventoryPreviewSummary").textContent();
@@ -85,18 +99,77 @@ async function main() {
     assert.match(summary, /Lembar baru: 1/);
     await page.locator("#inventoryPreviewSources").getByText(/REM-PREVIEW/).waitFor();
     await page.locator("#inventoryPreviewSources").getByText(/Lembar baru/).waitFor();
+    assert.equal(await readStatus(), "available", "Pratinjau tidak boleh mengubah status stok.");
 
-    const status = await page.evaluate(async () => {
+    // Persetujuan mengunci sumber yang sama persis dengan hasil pratinjau.
+    await page.locator("#inventoryConfirmButton").click();
+    await page.locator('#inventoryActivePlans [data-plan-id]').waitFor();
+    assert.equal(await readStatus(), "reserved");
+    const savedPlanId = await page.locator("#inventoryActivePlans [data-plan-id]").getAttribute("data-plan-id");
+    assert.ok(savedPlanId);
+    assert.match(await page.locator("#inventoryActivePlans").textContent(), /JOB-PREVIEW/);
+
+    // Pemulihan setelah reload harus menampilkan reservasi yang masih aktif.
+    await page.reload();
+    const recoveredCard = page.locator('#inventoryActivePlans [data-plan-id="' + savedPlanId + '"]');
+    await recoveredCard.waitFor();
+    assert.match(await recoveredCard.textContent(), /Selesaikan pemotongan/);
+    assert.equal(await readStatus(), "reserved");
+
+    // Pembatalan mengembalikan seluruh sumber inventaris menjadi tersedia.
+    page.once("dialog", dialog => dialog.accept());
+    await recoveredCard.locator('button[data-action="cancel"]').click();
+    await page.waitForFunction(async () => {
       const storage = MaterialInventoryStorage.createStorage({
         validator: MaterialInventoryValidator
       });
       const remainder = await storage.get("remainders", "REM-PREVIEW");
       await storage.close();
-      return remainder.status;
+      return remainder.status === "available";
     });
-    assert.equal(status, "available", "Pratinjau tidak boleh mengubah status stok.");
+    assert.equal(await readStatus(), "available");
+
+    // Uji persetujuan dan penyelesaian kedua: sumber lama dikonsumsi dan sisa baru dicatat.
+    await chooseInputs();
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+    await page.locator("#inventoryConfirmButton").click();
+    const completionCard = page.locator('#inventoryActivePlans [data-plan-id]').first();
+    await completionCard.waitFor();
+    page.once("dialog", dialog => dialog.accept());
+    await completionCard.locator('button[data-action="complete"]').click();
+
+    await page.waitForFunction(async () => {
+      const storage = MaterialInventoryStorage.createStorage({
+        validator: MaterialInventoryValidator
+      });
+      const remainder = await storage.get("remainders", "REM-PREVIEW");
+      const created = await storage.getAll("remainders");
+      await storage.close();
+      return remainder.status === "consumed" && created.length > 1;
+    });
+    const finalState = await page.evaluate(async () => {
+      const storage = MaterialInventoryStorage.createStorage({
+        validator: MaterialInventoryValidator
+      });
+      const remainder = await storage.get("remainders", "REM-PREVIEW");
+      const created = await storage.getAll("remainders");
+      const plans = await storage.getAll("plans");
+      const reservations = await storage.getAll("reservations");
+      await storage.close();
+      return {
+        sourceStatus: remainder.status,
+        childRemainders: created.filter(item => item.id !== "REM-PREVIEW"),
+        completedPlans: plans.filter(item => item.status === "completed"),
+        consumedReservations: reservations.filter(item => item.status === "consumed")
+      };
+    });
+    assert.equal(finalState.sourceStatus, "consumed");
+    assert.ok(finalState.childRemainders.length >= 1);
+    assert.ok(finalState.completedPlans.length >= 1);
+    assert.ok(finalState.consumedReservations.length >= 1);
     assert.deepEqual(errors, []);
-    console.log("LULUS: panel pratinjau menggabungkan sisa inventaris dan lembar baru tanpa mengubah stok; tombol Hitung lama tetap bekerja.");
+    console.log("LULUS: pratinjau tidak mengubah stok; persetujuan mengunci sumber; reservasi pulih setelah reload; pembatalan melepas stok; penyelesaian mengonsumsi sumber dan mencatat sisa baru; tombol Hitung lama tetap bekerja.");
   } finally {
     if (context) await context.close();
     await new Promise(resolve => server.close(resolve));

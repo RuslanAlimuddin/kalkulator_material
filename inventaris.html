@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventaris Sisa Material — Kalkulator Material</title>
+<style>
+:root{color-scheme:light;--bg:#f4f2ee;--panel:#fff;--line:#dedbd5;--text:#202124;--muted:#666;--blue:#185fa5;--bluebg:#eaf3fc;--green:#3b6d11;--greenbg:#eaf3de;--orange:#854f0b;--orangebg:#faeeda;--red:#a12622;--redbg:#fcebea}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1200px;margin:0 auto;padding:24px}h1{font-size:25px;margin:0 0 4px}.subtitle{color:var(--muted);margin:0 0 20px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:16px 0}.toolbar a,.toolbar button,button{border:1px solid var(--line);background:#fff;color:var(--text);border-radius:7px;padding:8px 12px;cursor:pointer;text-decoration:none;font:inherit}.toolbar .primary,button.primary{background:var(--blue);border-color:var(--blue);color:#fff}.danger{color:var(--red);border-color:#e7b6b3}
+.notice{padding:10px 12px;border-radius:8px;background:var(--greenbg);color:var(--green);margin:12px 0}.notice.error{background:var(--redbg);color:var(--red)}
+.summary{display:grid;grid-template-columns:repeat(6,minmax(110px,1fr));gap:10px}.metric,.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}.metric strong{display:block;font-size:24px}.metric span{font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0 10px}.tabs button.active{background:var(--bluebg);border-color:#9fc4e6;color:var(--blue);font-weight:650}
+.panel h2{font-size:18px;margin:0 0 12px}.panel h3{font-size:14px;margin:18px 0 8px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}.field input,.field select{width:100%;padding:9px;border:1px solid var(--line);border-radius:7px;font:inherit;background:#fff}.field.check{display:flex;align-items:center;gap:8px;padding-top:22px}.field.check label{margin:0}
+form{margin-bottom:18px}form button{margin-top:12px}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:8px;background:#fff}table{border-collapse:collapse;width:100%;min-width:760px;font-size:13px}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid #ece9e4;vertical-align:top}th{background:#f7f6f3;color:#555;font-weight:650;white-space:nowrap}tr:last-child td{border-bottom:0}td small{display:block;color:var(--muted);font-size:11px;overflow-wrap:anywhere}.size{white-space:nowrap;font-weight:650}.pill{display:inline-block;padding:2px 8px;border-radius:20px;background:#eee;font-size:11px}.pill.available{background:var(--greenbg);color:var(--green)}.pill.reserved{background:var(--orangebg);color:var(--orange)}.pill.consumed{background:var(--bluebg);color:var(--blue)}.pill.discarded{background:var(--redbg);color:var(--red)}.empty{text-align:center;color:var(--muted);padding:22px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.filters input{flex:1;min-width:220px;padding:9px;border:1px solid var(--line);border-radius:7px;font:inherit}.filters select{padding:9px;border:1px solid var(--line);border-radius:7px;font:inherit}
+.hint{font-size:12px;color:var(--muted);margin:8px 0}.back{color:var(--blue);text-decoration:none}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+@media(max-width:850px){.summary{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.wrap{padding:14px}.summary{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}h1{font-size:21px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<a class="back" href="index.html">← Kembali ke Kalkulator Material</a>
+<h1>Inventaris Sisa Material</h1>
+<p class="subtitle">Kelola stok fisik lintas pekerjaan, telusuri asal sisa, dan simpan cadangan secara offline di perangkat ini.</p>
+<div class="toolbar">
+<button id="exportButton">Ekspor cadangan JSON</button>
+<button id="importButton">Impor JSON</button>
+<select id="importMode" aria-label="Mode impor"><option value="merge">Gabungkan data</option><option value="replace">Ganti seluruh data</option></select>
+<input id="importFile" type="file" accept="application/json,.json" hidden>
+</div>
+<div id="notice" class="notice" role="status" hidden></div>
+<section class="summary" aria-label="Ringkasan inventaris">
+<div class="metric"><strong id="countMaterials">0</strong><span>Jenis material</span></div>
+<div class="metric"><strong id="countJobs">0</strong><span>Pekerjaan</span></div>
+<div class="metric"><strong id="countAvailable">0</strong><span>Stok tersedia</span></div>
+<div class="metric"><strong id="countReserved">0</strong><span>Stok dipesan</span></div>
+<div class="metric"><strong id="countConsumed">0</strong><span>Stok dikonsumsi</span></div>
+<div class="metric"><strong id="countDiscarded">0</strong><span>Rusak / dibuang</span></div>
+</section>
+<nav class="tabs" id="tabs">
+<button class="active" data-tab="stock">Daftar Stok</button><button data-tab="materials">Material</button>
+<button data-tab="jobs">Pekerjaan</button><button data-tab="history">Riwayat</button>
+</nav>
+<section class="panel" data-panel="stock">
+<h2>Daftar sisa material</h2>
+<div class="filters"><input id="searchStock" type="search" placeholder="Cari material, ID, pekerjaan, atau lembar sumber…">
+<select id="statusFilter"><option value="all">Semua status</option><option value="available">Tersedia</option><option value="reserved">Dipesan</option><option value="consumed">Dikonsumsi</option><option value="discarded">Dibuang</option></select><span id="stockCount" class="hint">0 unit</span></div>
+<div class="table-wrap"><table><thead><tr><th>Material / ID sisa</th><th>Ukuran</th><th>Pekerjaan asal</th><th>Lembar sumber</th><th>Status / kondisi</th><th>Tindakan</th></tr></thead><tbody id="stockTable"></tbody></table></div>
+<h3>Catat sisa material baru</h3>
+<form id="remainderForm">
+<div class="grid">
+<div class="field"><label for="remainderMaterial">Jenis material</label><select id="remainderMaterial" required></select></div>
+<div class="field"><label for="remainderJob">Pekerjaan asal</label><select id="remainderJob" required></select></div>
+<div class="field"><label for="sourceSheet">ID lembar sumber</label><input id="sourceSheet" required placeholder="Contoh: JOB-A-SHEET-01"></div>
+<div class="field"><label for="remainderWidth">Lebar sisa (cm)</label><input id="remainderWidth" type="number" min="0.01" step="0.01" required></div>
+<div class="field"><label for="remainderHeight">Tinggi sisa (cm)</label><input id="remainderHeight" type="number" min="0.01" step="0.01" required></div>
+<div class="field"><label for="remainderGrain">Arah serat</label><input id="remainderGrain" value="none" required></div>
+<div class="field"><label for="remainderCondition">Kondisi awal</label><select id="remainderCondition"><option value="good">Baik</option><option value="unknown">Belum diperiksa</option><option value="damaged">Rusak</option></select></div>
+</div><button class="primary" type="submit">Simpan sisa material</button>
+<p class="hint">Pencatatan sisa dan riwayat pembentukannya disimpan dalam satu transaksi IndexedDB.</p>
+</form>
+</section>
+<section class="panel" data-panel="materials" hidden>
+<h2>Katalog material</h2>
+<div class="table-wrap"><table><thead><tr><th>Nama / ID</th><th>Kategori</th><th>Ketebalan</th><th>Motif</th><th>Rotasi</th><th>Status</th></tr></thead><tbody id="materialsTable"></tbody></table></div>
+<h3>Tambah jenis material</h3>
+<form id="materialForm">
+<div class="grid">
+<div class="field"><label for="materialName">Nama material</label><input id="materialName" required placeholder="Contoh: Keramik motif batu"></div>
+<div class="field"><label for="materialCategory">Kategori</label><input id="materialCategory" required placeholder="keramik, triplek, GRC…"></div>
+<div class="field"><label for="materialThickness">Ketebalan (mm)</label><input id="materialThickness" type="number" min="0.01" step="0.01" required></div>
+<div class="field"><label for="materialSurface">Permukaan (opsional)</label><input id="materialSurface" placeholder="glossy, matte…"></div>
+<div class="field"><label for="materialMotif">Motif</label><input id="materialMotif" value="plain" required></div>
+<div class="field"><label for="materialRotation">Kebijakan rotasi</label><select id="materialRotation"><option value="free">Bebas</option><option value="quarter_turn">Putar 90°</option><option value="fixed">Tidak boleh diputar</option></select></div>
+<div class="field check"><input id="materialGrain" type="checkbox"><label for="materialGrain">Memiliki arah serat wajib</label></div>
+</div><button class="primary" type="submit">Tambah material</button>
+</form>
+</section>
+<section class="panel" data-panel="jobs" hidden>
+<h2>Daftar pekerjaan</h2>
+<div class="table-wrap"><table><thead><tr><th>Nama / ID</th><th>Status</th><th>Dibuat</th><th>Ditutup</th></tr></thead><tbody id="jobsTable"></tbody></table></div>
+<h3>Catat pekerjaan baru</h3>
+<form id="jobForm"><div class="field"><label for="jobName">Nama pekerjaan</label><input id="jobName" required placeholder="Contoh: Pemasangan rumah A"></div>
+<button class="primary" type="submit">Tambah pekerjaan</button></form>
+</section>
+<section class="panel" data-panel="history" hidden>
+<h2>Riwayat pergerakan stok</h2><p class="hint">Menampilkan hingga 100 peristiwa terbaru. Riwayat lama tetap tersimpan di database.</p>
+<div class="table-wrap"><table><thead><tr><th>Waktu</th><th>Peristiwa</th><th>ID sisa</th><th>Pekerjaan</th><th>Perubahan status</th></tr></thead><tbody id="movementTable"></tbody></table></div>
+</section>
+</main>
+<script src="assets/js/inventory-validator.js"></script>
+<script src="assets/js/inventory-storage.js"></script>
+<script src="assets/js/inventory-ui.js"></script>
+</body></html>

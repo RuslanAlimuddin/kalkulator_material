@@ -213,7 +213,6 @@
         $(id).addEventListener("change", clearPreview);
       });
       await refreshCatalog();
-      $("inventoryPreviewButton").disabled = false;
     } catch (error) {
       message("Fitur pratinjau inventaris belum dapat dibuka: " + (error.message || error), true);
     }

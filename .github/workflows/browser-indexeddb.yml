@@ -31,3 +31,5 @@ jobs:
         run: node tests/browser/inventory-plan-recovery.test.js
       - name: Uji antarmuka inventaris pada Chromium
         run: node tests/browser/inventory-ui.test.js
+      - name: Uji pratinjau inventaris pada kalkulator utama
+        run: node tests/browser/inventory-preview.test.js

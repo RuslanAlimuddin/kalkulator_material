@@ -139,6 +139,18 @@ async function main() {
   assert.equal(recovered.planId, reserved.planId);
   assert.equal(recovered.reservations.length, 2);
   assert.equal(recovered.inventoryUsage[0].reservationId, reserved.reservations[0].id);
+
+  // Laporan harus mendeteksi reservasi aktif yang tertinggal pada rencana batal.
+  const originalPlan = await storage.get("plans", reserved.planId);
+  await storage.put("plans", { ...originalPlan, status: "cancelled" });
+  const inconsistentReport = await storage.getRecoveryReport();
+  assert.ok(inconsistentReport.inconsistentPlans.some(item => item.id === reserved.planId));
+  assert.ok(inconsistentReport.inconsistentReservations.some(item =>
+    item.planId === reserved.planId && item.status === "active"
+  ));
+  await storage.put("plans", originalPlan);
+  console.log("LULUS: laporan mendeteksi reservasi aktif yang tidak sesuai dengan rencana cancelled.");
+
   await recoveredEngine.cancelPlan({ reservedPlan: recovered, timestamp: now });
   assert.equal((await storage.get("plans", reserved.planId)).status, "cancelled");
   assert.equal((await storage.get("remainders", "REC-REM-1")).status, "available");
@@ -146,7 +158,9 @@ async function main() {
   const reportAfterCancel = await storage.getRecoveryReport();
   assert.equal(reportAfterCancel.activePlans.length, 0);
   assert.equal(reportAfterCancel.activeReservations.length, 0);
-  console.log("LULUS: snapshot dan reservasi dapat dipulihkan setelah storage ditutup dan dibuka kembali; pembatalan memperbarui stok dan snapshot.");
+  assert.deepEqual(reportAfterCancel.inconsistentPlans, []);
+  assert.deepEqual(reportAfterCancel.inconsistentReservations, []);
+  console.log("LULUS: pembatalan sah menghasilkan laporan tanpa ketidaksesuaian reservasi.");
 
   const newOnly = await recoveredEngine.reservePlan({
     plan: { inventoryUsage: [], usableRemainders: [], sheets: [] },
@@ -160,7 +174,10 @@ async function main() {
   const newOnlyRestored = await afterReloadEngine.restorePlan(newOnly.planId);
   await afterReloadEngine.consumePlan({ reservedPlan: newOnlyRestored, timestamp: now });
   assert.equal((await storage.get("plans", newOnly.planId)).status, "completed");
-  console.log("LULUS: rencana tanpa stok inventaris tetap tersimpan dan dapat diselesaikan setelah reload.");
+  const reportAfterComplete = await storage.getRecoveryReport();
+  assert.deepEqual(reportAfterComplete.inconsistentPlans, []);
+  assert.deepEqual(reportAfterComplete.inconsistentReservations, []);
+  console.log("LULUS: rencana tanpa stok inventaris selesai dan laporan tetap konsisten setelah reload.");
 
   await storage.add("remainders", remainder("REC-REM-COMPLETE"));
   const inventoryPlan = await afterReloadEngine.reservePlan({

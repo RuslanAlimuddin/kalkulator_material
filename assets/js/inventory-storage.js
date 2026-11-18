@@ -83,8 +83,14 @@
           store.createIndex("jobId", "jobId", { unique: false });
           store.createIndex("timestamp", "timestamp", { unique: false });
         }
+        let metaStore;
         if (!db.objectStoreNames.contains("meta")) {
-          db.createObjectStore("meta", { keyPath: "key" });
+          metaStore = db.createObjectStore("meta", { keyPath: "key" });
+        } else {
+          metaStore = request.transaction.objectStore("meta");
+        }
+        if (event.oldVersion < 1) {
+          metaStore.put({ key: "schemaVersion", value: 1, updatedAt: new Date().toISOString() });
         }
         // event.oldVersion tersedia untuk migrasi mendatang.
         void event.oldVersion;
@@ -128,7 +134,11 @@
         reject(error);
         return;
       }
-      done.then(() => resolve(result)).catch(reject);
+      // Pasang handler penolakan pada hasil request sejak awal. Jika transaksi
+      // abort, promise request juga dapat reject sebelum handler transaksi berjalan.
+      const resultPromise = Promise.resolve(result);
+      resultPromise.catch(() => {});
+      done.then(() => resolve(resultPromise)).catch(reject);
     });
   }
 
@@ -203,6 +213,29 @@
       return withTransaction(database, [storeName], "readwrite", tx =>
         requestResult(tx.objectStore(storeName).put(record))
       );
+    }
+
+    async function update(storeName, id, changes) {
+      ensureStore(storeName);
+      if (storeName === "meta") {
+        throw new Error("Gunakan put() untuk memperbarui meta berdasarkan key.");
+      }
+      if (!id || !changes || typeof changes !== "object" || Array.isArray(changes)) {
+        throw new Error("ID dan objek perubahan wajib diisi.");
+      }
+      const database = await db();
+      return withTransaction(database, [storeName], "readwrite", tx => {
+        const store = tx.objectStore(storeName);
+        const request = store.get(id);
+        request.onsuccess = () => {
+          if (!request.result) {
+            tx.abort();
+            return;
+          }
+          store.put({ ...request.result, ...changes, id });
+        };
+        return id;
+      });
     }
 
     async function remove(storeName, id) {
@@ -347,20 +380,23 @@
     async function exportJSON() {
       const database = await db();
       const names = BUNDLE_STORES.concat(["meta"]);
-      const tx = database.transaction(names, "readonly");
+      const tx = database.transaction(names, "readwrite");
       const done = transactionDone(tx);
       const requests = BUNDLE_STORES.map(name =>
         requestResult(tx.objectStore(name).getAll())
       );
-      const metaRequest = requestResult(tx.objectStore("meta").getAll());
+      const metaStore = tx.objectStore("meta");
+      const metaRequest = requestResult(metaStore.getAll());
       const values = await Promise.all(requests.concat([metaRequest]));
+      const exportedAt = new Date().toISOString();
+      metaStore.put({ key: "lastExportAt", value: exportedAt });
       await done;
       const bundle = { schemaVersion: 1 };
       BUNDLE_STORES.forEach((name, index) => {
         bundle[name] = { schemaVersion: 1 };
         bundle[name][name] = values[index];
       });
-      bundle.exportedAt = new Date().toISOString();
+      bundle.exportedAt = exportedAt;
       bundle.meta = values[values.length - 1];
       return bundle;
     }
@@ -435,6 +471,7 @@
       getByIndex,
       add,
       put,
+      update,
       remove,
       clear,
       reserveRemainder,

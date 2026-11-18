@@ -382,14 +382,16 @@
       const names = BUNDLE_STORES.concat(["meta"]);
       const tx = database.transaction(names, "readwrite");
       const done = transactionDone(tx);
+      const metaStore = tx.objectStore("meta");
+      const exportedAt = new Date().toISOString();
+      // Antrekan penulisan sebelum pembacaan agar semua pekerjaan tetap berada
+      // dalam transaksi aktif dan snapshot ekspor memuat timestamp terbaru.
+      metaStore.put({ key: "lastExportAt", value: exportedAt });
       const requests = BUNDLE_STORES.map(name =>
         requestResult(tx.objectStore(name).getAll())
       );
-      const metaStore = tx.objectStore("meta");
       const metaRequest = requestResult(metaStore.getAll());
       const values = await Promise.all(requests.concat([metaRequest]));
-      const exportedAt = new Date().toISOString();
-      metaStore.put({ key: "lastExportAt", value: exportedAt });
       await done;
       const bundle = { schemaVersion: 1 };
       BUNDLE_STORES.forEach((name, index) => {
@@ -397,8 +399,7 @@
         bundle[name][name] = values[index];
       });
       bundle.exportedAt = exportedAt;
-      bundle.meta = values[values.length - 1].filter(item => item.key !== "lastExportAt");
-      bundle.meta.push({ key: "lastExportAt", value: exportedAt });
+      bundle.meta = values[values.length - 1];
       return bundle;
     }
 

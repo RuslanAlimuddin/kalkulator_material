@@ -397,7 +397,8 @@
         bundle[name][name] = values[index];
       });
       bundle.exportedAt = exportedAt;
-      bundle.meta = values[values.length - 1];
+      bundle.meta = values[values.length - 1].filter(item => item.key !== "lastExportAt");
+      bundle.meta.push({ key: "lastExportAt", value: exportedAt });
       return bundle;
     }
 

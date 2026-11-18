@@ -135,6 +135,21 @@
       return engine.restorePlan(planId);
     }
 
+    async function cancelLegacyRecovery(planId, optionsForCancel) {
+      const plan = await storage.get("plans", planId);
+      if (!plan || plan.status !== "legacy_recovery" || !Array.isArray(plan.reservationIds)) {
+        throw new Error("Catatan reservasi lama tidak ditemukan atau sudah diproses.");
+      }
+      if (typeof storage.releaseReservations !== "function") {
+        throw new Error("Storage belum mendukung pelepasan reservasi lama.");
+      }
+      return storage.releaseReservations({
+        reservationIds: plan.reservationIds,
+        planId,
+        timestamp: optionsForCancel && optionsForCancel.timestamp
+      });
+    }
+
     async function cancel(reservedPlan, optionsForCancel) {
       return engine.cancelPlan({
         reservedPlan,
@@ -155,6 +170,7 @@
       readAvailableRemainders,
       getRecoveryPlans,
       restorePlan,
+      cancelLegacyRecovery,
       preview,
       confirmPreview,
       calculateAndReserve,

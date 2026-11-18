@@ -102,6 +102,18 @@ test("kerf diperhitungkan dan ukuran input tidak valid ditolak", () => {
   }), /lebih dari 0/);
 });
 
+test("potongan yang terlalu besar tidak menggugurkan potongan lain yang masih muat", () => {
+  const matches = matcher.findCandidates({
+    material, remainders: [{ ...base, id: "PARTIAL", widthCm: 50, heightCm: 30 }],
+    parts: [
+      { id: "TOO-BIG", width: 80, height: 80 },
+      { id: "FITS", width: 40, height: 20 }
+    ]
+  });
+  assert.equal(matches.length, 1);
+  assert.deepEqual(matches[0].placedPartIds, ["FITS"]);
+});
+
 test("stok yang lebih tua menjadi pemecah seri", () => {
   const matches = matcher.findCandidates({
     material, remainders: [

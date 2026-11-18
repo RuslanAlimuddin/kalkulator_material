@@ -1,6 +1,6 @@
 # Rancangan Integrasi UI Inventaris Sisa Material
 
-Dokumen ini menjadi kontrak integrasi UI. Modul geometri dan alur kalkulasi lama tidak diubah pada tahap ini.
+Dokumen ini menjadi kontrak integrasi UI. Modul geometri dan alur kalkulasi lama tidak diubah pada tahap ini. Jembatan parameter formulir ke workflow sudah tersedia pada `assets/js/inventory-app-bridge.js`.
 
 ## Kondisi aplikasi saat ini
 
@@ -16,7 +16,7 @@ Karena perbedaan sinkron/asinkron tersebut, integrasi tidak boleh mengganti atau
 
 ### 1. Pratinjau — tidak mengubah stok
 
-Bangun objek masukan dari nilai formulir yang sama dengan kalkulasi utama:
+Bangun objek masukan dari nilai formulir yang sama dengan kalkulasi utama. Gunakan `inventory-app-bridge.js` agar konversi orientasi, dimensi, pola, alignment, nat, dan aturan strip panjang mengikuti mesin geometri yang sama:
 
 - geometri dari `MaterialEngine.calculateGeometry()`;
 - spesifikasi material;
@@ -28,9 +28,25 @@ Bangun objek masukan dari nilai formulir yang sama dengan kalkulasi utama:
 Panggil:
 
 ```js
-const preview = await workflow.preview({
+const bridge = MaterialInventoryAppBridge.createInventoryAppBridge({
+  geometryEngine: MaterialEngine,
+  workflow
+});
+const preview = await bridge.preview({
   jobId,
-  plannerInput
+  wallWidthM,
+  wallHeightM,
+  materialLengthCm,
+  materialWidthCm,
+  orientation,
+  gapCm,
+  pattern,
+  direction,
+  alignment,
+  mode,
+  material,
+  minRemainderW,
+  minRemainderH
 });
 ```
 
@@ -48,7 +64,7 @@ UI menampilkan setidaknya:
 Setelah pengguna menekan tombol konfirmasi, panggil:
 
 ```js
-const reservedPlan = await workflow.confirmPreview(preview);
+const reservedPlan = await bridge.confirm(preview);
 ```
 
 Fungsi ini mengunci sumber persis seperti yang terlihat pada pratinjau. Fungsi ini tidak menghitung ulang atau diam-diam mengganti stok yang dipilih.
@@ -66,7 +82,7 @@ Jangan melakukan reservasi hanya ketika pengguna menekan tombol Hitung.
 Jika pengguna membatalkan sebelum pemotongan fisik dilakukan:
 
 ```js
-await workflow.cancel(reservedPlan);
+await bridge.cancel(reservedPlan);
 ```
 
 Semua reservasi rencana dilepas dalam satu transaksi. Jika satu reservasi tidak lagi aktif, seluruh pelepasan dibatalkan.
@@ -76,7 +92,7 @@ Semua reservasi rencana dilepas dalam satu transaksi. Jika satu reservasi tidak 
 Setelah pemotongan fisik benar-benar selesai:
 
 ```js
-const result = await workflow.complete(reservedPlan, {
+const result = await bridge.complete(reservedPlan, {
   sourceSheetIdPrefix: jobSheetPrefix
 });
 ```

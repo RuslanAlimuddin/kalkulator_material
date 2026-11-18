@@ -75,6 +75,7 @@ async function main() {
       STORE_NAMES.slice().sort()
     );
     assert.equal(db.version, 1);
+    assert.equal((await storage.get("meta", "schemaVersion")).value, 1);
     const tx = db.transaction(["remainders", "reservations", "movements"], "readonly");
     assert.ok(tx.objectStore("remainders").indexNames.contains("status"));
     assert.ok(tx.objectStore("remainders").indexNames.contains("materialId"));
@@ -91,6 +92,8 @@ async function main() {
     assert.deepEqual(await storage.get("materials", item.id), item);
     await storage.put("materials", { ...item, name: "Diperbarui" });
     assert.equal((await storage.get("materials", item.id)).name, "Diperbarui");
+    await storage.update("materials", item.id, { name: "Diubah melalui update" });
+    assert.equal((await storage.get("materials", item.id)).name, "Diubah melalui update");
     assert.equal(await storage.remove("materials", item.id), true);
     assert.equal(await storage.get("materials", item.id), null);
   });
@@ -115,6 +118,7 @@ async function main() {
     }
     assert.ok(Array.isArray(exported.meta));
     assert.ok(exported.exportedAt);
+    assert.ok(exported.meta.some(item => item.key === "lastExportAt"));
   });
 
   await test("index dapat mencari sisa berdasarkan material dan status", async () => {

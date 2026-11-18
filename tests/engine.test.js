@@ -27,6 +27,23 @@ check("Third Bond vertikal menghasilkan offset antarkolom", {...base, pattern:"t
   const col1 = r.cells.filter(c=>c.column===cols[1]).map(c=>c.sourceY);
   assert.notDeepEqual(col0, col1);
 });
+
+check("Running Bond horizontal mengulang fase setiap 2 baris", {
+  wallW:600, wallH:300, matW:60, matH:40, gap:0,
+  pattern:"running", direction:"horizontal", alignment:"MC"
+}, r => {
+  const rows = [...new Set(r.cells.map(c=>c.row))].sort((a,b)=>a-b);
+  const firstX = rows.map(row => Math.min(...r.cells.filter(c=>c.row===row).map(c=>c.sourceX)));
+  assert.ok(rows.length >= 4);
+  for (let i=0; i<firstX.length-2; i++) {
+    assert.ok(Math.abs(firstX[i]-firstX[i+2]) < 0.0001,
+      "Fase Running Bond harus sama lagi setelah 2 baris");
+  }
+  for (let i=0; i<firstX.length-1; i++) {
+    assert.ok(Math.abs(firstX[i]-firstX[i+1]) > 0.0001,
+      "Dua baris berurutan harus bergeser setengah panel");
+  }
+});
 check("Alignment tengah membatasi potongan tepi", {...base, pattern:"stack", alignment:"MC"}, r => {
   assert.ok(r.cells.every(c=>c.width>0 && c.height>0));
   assert.ok(r.cells.some(c=>c.cutLeft>0));

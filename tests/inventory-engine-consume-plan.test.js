@@ -83,8 +83,9 @@ async function main() {
   });
   assert.equal((await storage.get("remainders", childForC.id)).status, "consumed");
   assert.equal(consumedForC.createdRemainders.length, 1);
-  assert.equal(consumedForC.createdRemainders[0].originJobId, "JOB-C");
-  assert.equal(consumedForC.createdRemainders[0].status, "available");
+  const childFromC = await storage.get("remainders", consumedForC.createdRemainders[0].id);
+  assert.equal(childFromC.originJobId, "JOB-C");
+  assert.equal(childFromC.status, "available");
   console.log("LULUS: sisa dari pemakaian multi-sumber pekerjaan B dapat dipakai kembali oleh pekerjaan C.");
   console.log("LULUS: beberapa reservasi dikonsumsi bersama dan sisa turunan tiap sumber tercatat.");
 

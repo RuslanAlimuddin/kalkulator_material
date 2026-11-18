@@ -52,7 +52,15 @@
         throw new Error("Rencana berisi ID sisa inventaris yang kosong atau duplikat.");
       }
       if (remainderIds.length === 0) {
-        return { plan: input.plan, reservations: [], inventoryUsage: [] };
+        return {
+          plan: input.plan,
+          jobId: input.jobId,
+          material: input.material || null,
+          grainDirection: input.grainDirection || null,
+          motif: input.motif || null,
+          reservations: [],
+          inventoryUsage: []
+        };
       }
       if (typeof storage.reserveRemainders !== "function") {
         throw new Error("Storage belum mendukung reservasi inventaris massal.");

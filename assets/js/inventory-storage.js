@@ -992,7 +992,11 @@
           key: "lastImportAt", value: new Date().toISOString(), mode: importMode
         });
       }).then(() => ({
-        imported: BUNDLE_STORES.reduce((sum, name) => sum + bundle[name][name].length, 0),
+        imported: BUNDLE_STORES.reduce((sum, name) => {
+          const records = bundle[name] && Array.isArray(bundle[name][name])
+            ? bundle[name][name] : [];
+          return sum + records.length;
+        }, 0),
         mode: importMode,
         warnings: validation.warnings
       }));

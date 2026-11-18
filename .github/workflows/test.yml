@@ -1,0 +1,31 @@
+name: Uji Otomatis Kalkulator Material
+
+on:
+  push:
+    branches:
+      - pengembangan-mesin-hitung
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ambil kode repository
+        uses: actions/checkout@v4
+
+      - name: Siapkan Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Pasang dependensi pengujian
+        run: npm install
+
+      - name: Uji inventaris
+        run: npm run test:inventory
+
+      - name: Uji regresi fitur lama
+        run: npm run test:regression

@@ -3,6 +3,7 @@ require("fake-indexeddb/auto");
 
 const Storage = require("../assets/js/inventory-storage.js");
 const Engine = require("../assets/js/inventory-engine.js");
+const Validator = require("../assets/js/inventory-validator.js");
 const now = "2026-11-18T14:20:00.000Z";
 
 function remainder(id) {
@@ -80,6 +81,10 @@ async function main() {
   const saved = await storage.get("plans", reserved.planId);
   assert.equal(saved.status, "reserved");
   assert.deepEqual(saved.plan.inventoryUsage, reserved.plan.inventoryUsage);
+  const exported = await storage.exportJSON();
+  const validation = Validator.validateInventoryBundle(exported);
+  assert.equal(validation.valid, true, JSON.stringify(validation.errors));
+  assert.ok(exported.plans.plans.some(item => item.id === reserved.planId));
   assert.equal((await storage.get("remainders", "REC-REM-1")).status, "reserved");
   await storage.close();
 

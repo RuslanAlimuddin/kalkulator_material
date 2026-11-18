@@ -34,6 +34,7 @@ async function main() {
     await page.waitForFunction(() =>
       document.querySelectorAll("#remainderMaterial option").length > 0
     );
+    await page.locator("[data-tab=materials]").click();
     await page.locator("#materialName").fill("Triplek Browser");
     await page.locator("#materialCategory").fill("triplek");
     await page.locator("#materialThickness").fill("12");

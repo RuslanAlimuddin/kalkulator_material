@@ -939,7 +939,8 @@
         }
 
         BUNDLE_STORES.forEach(name => {
-          const records = bundle[name][name];
+          const records = bundle[name] && Array.isArray(bundle[name][name])
+            ? bundle[name][name] : [];
           records.forEach(record => {
             if (importMode === "merge") {
               // add() sengaja menolak ID bentrok agar tidak ada penimpaan diam-diam.

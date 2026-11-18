@@ -1,0 +1,13 @@
+{
+  "name": "kalkulator-material-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dependensi pengujian untuk Kalkulator Material",
+  "scripts": {
+    "test:inventory": "node tests/inventory-validator.test.js && node tests/inventory-storage.test.js",
+    "test:regression": "node tests/engine.test.js && node tests/cutting-engine.test.js && node tests/cutting-adapter.test.js"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "6.2.8"
+  }
+}

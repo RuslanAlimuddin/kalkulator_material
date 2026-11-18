@@ -78,6 +78,52 @@
       };
     }
 
+    async function consumePlan(input) {
+      if (!input || !input.reservedPlan || !input.reservedPlan.plan ||
+          !Array.isArray(input.reservedPlan.inventoryUsage)) {
+        throw new Error("Hasil reservePlan wajib disediakan untuk konsumsi rencana.");
+      }
+      const plan = input.reservedPlan.plan;
+      const usage = input.reservedPlan.inventoryUsage;
+      if (usage.length === 0) {
+        return { consumedReservations: [], createdRemainders: [] };
+      }
+      if (typeof storage.consumeReservations !== "function") {
+        throw new Error("Storage belum mendukung konsumsi multi-reservasi atomik.");
+      }
+      if (!Array.isArray(plan.usableRemainders)) {
+        throw new Error("Rencana tidak memiliki daftar usableRemainders.");
+      }
+
+      const reservations = usage.map((item, index) => {
+        if (!item || typeof item.remainderId !== "string" ||
+            !item.remainderId.trim() || typeof item.reservationId !== "string" ||
+            !item.reservationId.trim()) {
+          throw new Error("Sumber inventaris ke-" + (index + 1) +
+            " belum memiliki ID reservasi yang valid.");
+        }
+        const leftovers = plan.usableRemainders
+          .filter(remainder => remainder.sourceRemainderId === item.remainderId)
+          .map(remainder => ({
+            widthCm: Number(remainder.width),
+            heightCm: Number(remainder.height)
+          }));
+        const sourceSheetId = input.sourceSheetIdPrefix
+          ? input.sourceSheetIdPrefix + "-" + (index + 1)
+          : input.sourceSheetId;
+        return {
+          reservationId: item.reservationId,
+          sourceSheetId,
+          remainders: leftovers
+        };
+      });
+
+      return storage.consumeReservations({
+        reservations,
+        timestamp: input.timestamp
+      });
+    }
+
     async function consumeCuttingResult(input) {
       if (!input || !input.cuttingResult ||
           !Array.isArray(input.cuttingResult.usableRemainders)) {
@@ -105,7 +151,7 @@
       });
     }
 
-    return { reservePlan, consumeReservation, consumeCuttingResult };
+    return { reservePlan, consumePlan, consumeReservation, consumeCuttingResult };
   }
 
   return { createInventoryEngine };

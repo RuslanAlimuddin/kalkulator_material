@@ -415,7 +415,7 @@
 
           reservationRequest.onsuccess = () => {
             const reservation = reservationRequest.result;
-            if (!reservation || reservation.status !== "active") {
+            if (!reservation || reservation.status !== "active" || reservation.planId) {
               tx.abort();
               return;
             }
@@ -562,7 +562,7 @@
         const rr = ss.get(input.reservationId);
         rr.onsuccess = () => {
           const reservation = rr.result;
-          if (!reservation || reservation.status !== "active") { tx.abort(); return; }
+          if (!reservation || reservation.status !== "active" || reservation.planId) { tx.abort(); return; }
           const sr = rs.get(reservation.remainderId);
           sr.onsuccess = () => {
             const source = sr.result;
@@ -1004,9 +1004,15 @@
     }
 
     async function getRecoveryReport() {
+      const database = await db();
+      const tx = database.transaction(["plans", "reservations", "remainders"], "readonly");
+      const done = transactionDone(tx);
       const results = await Promise.all([
-        getAll("plans"), getAll("reservations"), getAll("remainders")
+        requestResult(tx.objectStore("plans").getAll()),
+        requestResult(tx.objectStore("reservations").getAll()),
+        requestResult(tx.objectStore("remainders").getAll())
       ]);
+      await done;
       const plans = results[0];
       const reservations = results[1];
       const remainders = results[2];

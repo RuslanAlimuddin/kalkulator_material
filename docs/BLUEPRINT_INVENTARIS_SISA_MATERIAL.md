@@ -191,13 +191,14 @@ IndexedDB adalah sumber data operasional offline. JSON adalah ekspor/impor/cadan
 - `assets/js/inventory-validator.js`: validasi skema, dimensi, referensi, status, kompatibilitas.
 - `assets/js/inventory-storage.js`: pembukaan DB, migrasi versi, CRUD, transaksi reservasi/konsumsi, impor-ekspor.
 - `assets/js/inventory-engine.js`: alur bisnis stok, pembentukan sisa baru, status dan riwayat.
-- `assets/js/inventory-matcher.js`: pencocokan kandidat, orientasi, kerf, ranking, dan orkestrasi cutting engine.
+- `assets/js/inventory-matcher.js`: pencocokan kandidat satu unit sisa, orientasi, kerf, dan ranking.
+- `assets/js/inventory-planner.js`: perencanaan multi-sumber; memakai unit inventaris satu per satu, lalu meneruskan potongan yang belum terpenuhi ke `cutting-adapter.js` untuk lembar baru. Modul ini hanya menghitung rencana dan tidak mengunci atau mengubah stok.
 
 Semua modul harus dapat diuji di Node.js dengan dependency injection untuk storage/IndexedDB mock. Browser menggunakan IndexedDB asli.
 
 ## 8. Integrasi dengan adapter dan UI
 
-Integrasi dilakukan secara bertahap dan opsional. Jalur kalkulasi lama tanpa inventaris harus menghasilkan keluaran yang sama seperti sebelumnya.
+Integrasi dilakukan secara bertahap dan opsional. Jalur kalkulasi lama tanpa inventaris harus menghasilkan keluaran yang sama seperti sebelumnya. Perencanaan multi-sumber ditempatkan pada `inventory-planner.js`; adapter lama tetap menjadi jalur kalkulasi lembar baru dan tidak diubah.
 
 Alur baru:
 1. UI memilih/membuat pekerjaan aktif dan spesifikasi material.
@@ -232,3 +233,14 @@ G. Baru bangun UI inventaris.
 H. Hapus/ubah `makeStok()` hanya setelah pengganti lulus semua pengujian dan perbandingan perilaku.
 
 **Belum ada kode aplikasi yang diubah oleh dokumen rancangan ini.** Implementasi dimulai setelah skema dan aturan ini ditinjau.
+
+
+## 11. Status implementasi saat ini
+
+- Tahap 1: validator inventaris selesai dan lulus pengujian.
+- Tahap 2: IndexedDB storage, reservasi, pelepasan, konsumsi atomik, dan impor-ekspor selesai dan lulus pengujian.
+- Tahap 3: inventory engine untuk membentuk sisa turunan selesai dan lulus pengujian.
+- Tahap 4: matcher kandidat satu unit sisa selesai dan lulus pengujian.
+- Tahap 5 awal: `inventory-planner.js` telah dibuat untuk memilih beberapa unit sisa secara berurutan, kemudian memakai lembar baru sebagai fallback. Pengujian lokal tahap ini masih menunggu dijalankan.
+
+Planner tidak melakukan reservasi. Setelah rencana ditinjau pengguna, lapisan integrasi berikutnya harus mengunci setiap unit sumber secara atomik. Jika salah satu reservasi gagal, rencana harus dihitung ulang atau reservasi yang sudah berhasil harus dilepas. Konsumsi baru dilakukan setelah pemotongan fisik dikonfirmasi.

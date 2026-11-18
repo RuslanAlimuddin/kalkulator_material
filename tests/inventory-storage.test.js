@@ -68,15 +68,15 @@ async function main() {
   await deleteDatabase();
   const storage = createStorage();
 
-  await test("database dibuat dengan enam object store", async () => {
+  await test("database versi 2 dibuat dengan tujuh object store", async () => {
     const db = await storage.open();
     assert.equal(db.name, DB_NAME);
     assert.deepEqual(
       Array.from(db.objectStoreNames).sort(),
       STORE_NAMES.slice().sort()
     );
-    assert.equal(db.version, 1);
-    assert.equal((await storage.get("meta", "schemaVersion")).value, 1);
+    assert.equal(db.version, 2);
+    assert.equal((await storage.get("meta", "schemaVersion")).value, 2);
     const tx = db.transaction(["remainders", "reservations", "movements"], "readonly");
     assert.ok(tx.objectStore("remainders").indexNames.contains("status"));
     assert.ok(tx.objectStore("remainders").indexNames.contains("materialId"));
@@ -84,7 +84,10 @@ async function main() {
     assert.ok(tx.objectStore("reservations").indexNames.contains("remainderId"));
     assert.ok(tx.objectStore("reservations").indexNames.contains("jobId"));
     assert.ok(tx.objectStore("reservations").indexNames.contains("status"));
+    assert.ok(tx.objectStore("reservations").indexNames.contains("planId"));
     assert.ok(tx.objectStore("movements").indexNames.contains("timestamp"));
+    assert.ok(tx.objectStore("plans").indexNames.contains("jobId"));
+    assert.ok(tx.objectStore("plans").indexNames.contains("status"));
   });
 
   await test("CRUD menambah, membaca, memperbarui, dan menghapus record", async () => {
@@ -108,14 +111,15 @@ async function main() {
     assert.equal(await storage.get("meta", "test-key"), null);
   });
 
-  await test("impor replace dan ekspor JSON mempertahankan lima paket data", async () => {
+  await test("impor versi 1 dan ekspor versi 2 mempertahankan paket data", async () => {
     const data = bundle("A");
     const result = await storage.importJSON(data, "replace");
     assert.equal(result.imported, 3);
     const exported = await storage.exportJSON();
-    for (const name of ["materials", "jobs", "remainders", "reservations", "movements"]) {
-      assert.equal(exported[name].schemaVersion, 1);
-      assert.deepEqual(exported[name][name], data[name][name]);
+    for (const name of ["materials", "jobs", "remainders", "reservations", "movements", "plans"]) {
+      assert.equal(exported[name].schemaVersion, 2);
+      const expected = data[name] ? data[name][name] : [];
+      assert.deepEqual(exported[name][name], expected);
     }
     assert.ok(Array.isArray(exported.meta));
     assert.ok(exported.exportedAt);

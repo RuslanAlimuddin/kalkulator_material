@@ -68,7 +68,7 @@
         return null;
       }
       if (![1, 2].includes(value.schemaVersion)) {
-        error(path + ".schemaVersion", "Versi skema harus 1.");
+        error(path + ".schemaVersion", "Versi skema yang didukung adalah 1 atau 2.");
       }
       if (!Array.isArray(value[path])) {
         error(path + "." + path, "Harus berupa array.");

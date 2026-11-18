@@ -324,31 +324,42 @@
     if (!view) return;
     const action = button.dataset.action;
     button.disabled = true;
+    let successMessage = "";
     try {
       if (action === "cancel-legacy") {
-        if (!window.confirm("Batalkan seluruh reservasi lama " + view.record.id + "?")) return;
+        if (!window.confirm("Batalkan seluruh reservasi lama " + view.record.id + "?")) {
+          button.disabled = false;
+          return;
+        }
         await workflow.cancelLegacyRecovery(view.record.id);
-        message("Reservasi lama berhasil dibatalkan. Stok terkait kembali tersedia.");
+        successMessage = "Reservasi lama berhasil dibatalkan. Stok terkait kembali tersedia.";
       } else if (action === "cancel") {
-        if (!window.confirm("Batalkan seluruh reservasi untuk pekerjaan " + view.record.jobId + "?")) return;
+        if (!window.confirm("Batalkan seluruh reservasi untuk pekerjaan " + view.record.jobId + "?")) {
+          button.disabled = false;
+          return;
+        }
         await bridge.cancel(view.restored);
-        message("Reservasi berhasil dibatalkan. Semua sumber inventaris telah dilepas.");
+        successMessage = "Reservasi berhasil dibatalkan. Semua sumber inventaris telah dilepas.";
       } else if (action === "complete") {
         const prefix = card.querySelector(".inventory-source-prefix").value.trim();
         if (!prefix) throw new Error("Awalan ID lembar hasil pemotongan wajib diisi.");
         if (!window.confirm(
           "Pastikan pemotongan fisik untuk pekerjaan " + view.record.jobId +
           " benar-benar selesai. Sistem akan mengonsumsi sumber yang dipesan dan mencatat sisa hasilnya. Lanjutkan?"
-        )) return;
+        )) {
+          button.disabled = false;
+          return;
+        }
         const result = await bridge.complete(view.restored, {
           sourceSheetIdPrefix: prefix
         });
-        message("Penyelesaian berhasil. " + result.consumedReservations.length +
+        successMessage = "Penyelesaian berhasil. " + result.consumedReservations.length +
           " sumber inventaris dikonsumsi dan " + result.createdRemainders.length +
-          " sisa baru dicatat.");
+          " sisa baru dicatat.";
       }
-      await refreshActivePlans();
       await refreshCatalog();
+      await refreshActivePlans();
+      if (successMessage) message(successMessage);
     } catch (error) {
       message(error.message || "Tindakan reservasi gagal.", true);
       button.disabled = false;

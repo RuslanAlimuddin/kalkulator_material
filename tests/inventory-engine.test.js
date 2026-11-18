@@ -62,6 +62,33 @@ async function main() {
   assert.equal(movements.filter(item => item.type === "consumed").length, 1);
   assert.equal(movements.filter(item => item.type === "remainder_created").length, 2);
 
+  // Satu remainder inventaris adalah satu sumber fisik. Sisa dari lembar
+  // virtual kedua tidak boleh ikut dibuat sebagai stok turunan sumber pertama.
+  await storage.add("remainders", {
+    id: "REM-SECOND", materialId: "MAT-A", widthCm: 100, heightCm: 60,
+    thicknessMm: 8, grainDirection: "none", motif: "plain",
+    rotationAllowed: true, condition: "good", status: "available",
+    originJobId: "JOB-A", sourceSheetId: "SHEET-SECOND",
+    createdAt: now, updatedAt: now, version: 1
+  });
+  const secondReservation = await storage.reserveRemainder({
+    remainderId: "REM-SECOND", jobId: "JOB-B", timestamp: now
+  });
+  const secondResult = await engine.consumeCuttingResult({
+    reservationId: secondReservation.id,
+    sourceSheetId: "JOB-B-SHEET-02",
+    cuttingResult: {
+      sheets: [{ id: 1 }, { id: 2 }],
+      usableRemainders: [
+        { sheetId: 1, width: 10, height: 10 },
+        { sheetId: 2, width: 90, height: 50 }
+      ]
+    }
+  });
+  assert.equal(secondResult.createdRemainders.length, 1);
+  assert.equal(secondResult.createdRemainders[0].widthCm, 10);
+  assert.equal(secondResult.createdRemainders[0].heightCm, 10);
+
   const invalid = engineModule.createInventoryEngine({ storage });
   await assert.rejects(invalid.consumeReservation({
     reservationId: reservation.id,

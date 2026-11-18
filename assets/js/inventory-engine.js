@@ -47,49 +47,33 @@
         throw new Error("ID pekerjaan wajib diisi untuk reservasi rencana.");
       }
       const remainderIds = input.plan.inventoryUsage.map(item => item && item.remainderId);
-      if (remainderIds.some(id => typeof id !== "string" || !id.trim()) ||
-          new Set(remainderIds).size !== remainderIds.length) {
+      if (remainderIds.some(id => typeof id !== "string" || !id.trim()) || new Set(remainderIds).size !== remainderIds.length) {
         throw new Error("Rencana berisi ID sisa inventaris yang kosong atau duplikat.");
       }
-      if (remainderIds.length === 0) {
-        return {
-          plan: input.plan,
-          jobId: input.jobId,
-          material: input.material || null,
-          grainDirection: input.grainDirection || null,
-          motif: input.motif || null,
-          reservations: [],
-          inventoryUsage: []
-        };
-      }
+      const planId = input.planId || ("PLAN-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2));
       if (typeof storage.reserveRemainders !== "function") {
-        throw new Error("Storage belum mendukung reservasi inventaris massal.");
+        throw new Error("Storage belum mendukung penyimpanan snapshot dan reservasi rencana.");
       }
-
-      // Satu rencana dapat memakai beberapa lembar sisa. Semuanya harus
-      // berhasil dikunci bersama atau tidak ada satu pun yang terkunci.
+      const snapshot = {
+        plan: input.plan, material: input.material || null,
+        grainDirection: input.grainDirection || null, motif: input.motif || null,
+        previewCreatedAt: input.previewCreatedAt || null
+      };
       const reservations = await storage.reserveRemainders({
-        remainderIds,
-        jobId: input.jobId,
-        timestamp: input.timestamp
+        remainderIds, jobId: input.jobId, timestamp: input.timestamp,
+        planId, planSnapshot: snapshot
       });
-      const reservationByRemainder = new Map(
-        reservations.map(item => [item.remainderId, item.id])
-      );
+      const reservationByRemainder = new Map(reservations.map(item => [item.remainderId, item.id]));
       return {
-        plan: input.plan,
-        jobId: input.jobId,
+        planId, plan: input.plan, jobId: input.jobId,
         material: input.material || null,
-        grainDirection: input.grainDirection || null,
-        motif: input.motif || null,
+        grainDirection: input.grainDirection || null, motif: input.motif || null,
         reservations,
         inventoryUsage: input.plan.inventoryUsage.map(item => ({
-          ...item,
-          reservationId: reservationByRemainder.get(item.remainderId)
+          ...item, reservationId: reservationByRemainder.get(item.remainderId)
         }))
       };
     }
-
     async function cancelPlan(input) {
       if (!input || !input.reservedPlan ||
           !Array.isArray(input.reservedPlan.reservations)) {

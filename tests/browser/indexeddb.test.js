@@ -5,7 +5,7 @@ const path = require("node:path");
 const os = require("node:os");
 const { chromium } = require("playwright");
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = path.resolve(__dirname, "../..");
 const DB_NAME = "KalkulatorMaterialDB";
 const PORT = 4179;
 

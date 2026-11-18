@@ -938,6 +938,10 @@
           storeNames.forEach(name => stores[name].clear());
         }
 
+        const bundledPlanIds = new Set(
+          bundle.plans && Array.isArray(bundle.plans.plans)
+            ? bundle.plans.plans.map(plan => plan.id) : []
+        );
         BUNDLE_STORES.forEach(name => {
           const records = bundle[name] && Array.isArray(bundle[name][name])
             ? bundle[name][name] : [];
@@ -951,7 +955,7 @@
               stores[name].put(importedRecord);
             }
             if (name === "reservations" && importedRecord.status === "active" && importedRecord.planId &&
-                importedRecord.planId.indexOf("LEGACY-") === 0) {
+                importedRecord.planId.indexOf("LEGACY-") === 0 && !bundledPlanIds.has(importedRecord.planId)) {
               stores.plans.put({
                 id: importedRecord.planId, jobId: importedRecord.jobId, plan: null,
                 material: null, grainDirection: null, motif: null,

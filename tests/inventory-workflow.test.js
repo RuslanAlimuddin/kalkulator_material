@@ -95,6 +95,24 @@ async function main() {
   assert.equal(reservedPlan.plan.attempt, 2);
   console.log("LULUS: konflik reservasi memicu pembacaan ulang dan perencanaan ulang, bukan memakai rencana lama.");
 
+  const reserveCallsBeforePreview = reserveCalls;
+  const preview = await workflow.preview({
+    jobId: "JOB-B-PREVIEW",
+    plannerInput: { geometry: { cells: [] }, material: { id: "MAT-WF" } },
+    timestamp: now
+  });
+  assert.equal(preview.plan.attempt, 3);
+  assert.equal(plannerCalls, 3);
+  assert.equal(reserveCalls, reserveCallsBeforePreview);
+  console.log("LULUS: pratinjau menghitung rencana tanpa mengunci stok.");
+
+  const plannerCallsBeforeConfirm = plannerCalls;
+  const confirmedPreview = await workflow.confirmPreview(preview, { timestamp: now });
+  assert.equal(confirmedPreview.plan, preview.plan);
+  assert.equal(reserveCalls, reserveCallsBeforePreview + 1);
+  assert.equal(plannerCalls, plannerCallsBeforeConfirm);
+  console.log("LULUS: konfirmasi memakai rencana yang ditampilkan tanpa menghitung ulang atau mengganti sumber diam-diam.");
+
   const canceled = await workflow.cancel(reservedPlan, { timestamp: now });
   assert.deepEqual(canceled.releasedReservations, ["RSV-WF"]);
   assert.equal(cancelCalls, 1);

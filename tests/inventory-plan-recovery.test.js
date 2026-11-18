@@ -106,6 +106,8 @@ async function main() {
   assert.equal(reportBeforeReload.activeReservations.length, 2);
   assert.deepEqual(reportBeforeReload.orphanedReservations, []);
   assert.deepEqual(reportBeforeReload.orphanedRemainders, []);
+  assert.deepEqual(reportBeforeReload.multiplyReservedRemainders, []);
+  assert.deepEqual(reportBeforeReload.reservationsWithoutSource, []);
   await assert.rejects(storage.releaseReservations({
     reservationIds: [reserved.reservations[0].id],
     planId: reserved.planId,

@@ -68,6 +68,24 @@ async function main() {
   assert.equal((await storage.getAll("remainders")).filter(item =>
     item.id.startsWith("REM-") && item.status === "available"
   ).length, 2);
+  const childForC = await storage.get("remainders", child1.id);
+  assert.equal(childForC.status, "available");
+  const reservationForC = await storage.reserveRemainder({
+    remainderId: childForC.id,
+    jobId: "JOB-C",
+    timestamp: now
+  });
+  const consumedForC = await engine.consumeReservation({
+    reservationId: reservationForC.id,
+    sourceSheetId: "JOB-C-SHEET-1",
+    timestamp: now,
+    remainders: [{ widthCm: 8, heightCm: 6 }]
+  });
+  assert.equal((await storage.get("remainders", childForC.id)).status, "consumed");
+  assert.equal(consumedForC.createdRemainders.length, 1);
+  assert.equal(consumedForC.createdRemainders[0].originJobId, "JOB-C");
+  assert.equal(consumedForC.createdRemainders[0].status, "available");
+  console.log("LULUS: sisa dari pemakaian multi-sumber pekerjaan B dapat dipakai kembali oleh pekerjaan C.");
   console.log("LULUS: beberapa reservasi dikonsumsi bersama dan sisa turunan tiap sumber tercatat.");
 
   await storage.add("remainders", remainder("CONSUME-ROLLBACK-1"));

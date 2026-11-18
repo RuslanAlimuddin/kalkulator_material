@@ -10,11 +10,11 @@
   "use strict";
 
   const DB_NAME = "KalkulatorMaterialDB";
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   const STORE_NAMES = [
-    "materials", "jobs", "remainders", "reservations", "movements", "meta"
+    "materials", "jobs", "remainders", "reservations", "movements", "plans", "meta"
   ];
-  const BUNDLE_STORES = ["materials", "jobs", "remainders", "reservations", "movements"];
+  const BUNDLE_STORES = ["materials", "jobs", "remainders", "reservations", "movements", "plans"];
   let fallbackCounter = 0;
 
   function makeId(prefix) {
@@ -83,6 +83,15 @@
           store.createIndex("jobId", "jobId", { unique: false });
           store.createIndex("timestamp", "timestamp", { unique: false });
         }
+        if (!db.objectStoreNames.contains("plans")) {
+          const plans = db.createObjectStore("plans", { keyPath: "id" });
+          plans.createIndex("jobId", "jobId", { unique: false });
+          plans.createIndex("status", "status", { unique: false });
+        }
+        const reservationsStore = request.transaction.objectStore("reservations");
+        if (!reservationsStore.indexNames.contains("planId")) {
+          reservationsStore.createIndex("planId", "planId", { unique: false });
+        }
         let metaStore;
         if (!db.objectStoreNames.contains("meta")) {
           metaStore = db.createObjectStore("meta", { keyPath: "key" });
@@ -90,10 +99,32 @@
           metaStore = request.transaction.objectStore("meta");
         }
         if (event.oldVersion < 1) {
-          metaStore.put({ key: "schemaVersion", value: 1, updatedAt: new Date().toISOString() });
+          metaStore.put({ key: "schemaVersion", value: 2, updatedAt: new Date().toISOString() });
+        } else if (event.oldVersion < 2) {
+          const reservations = request.transaction.objectStore("reservations");
+          const cursorRequest = reservations.openCursor();
+          cursorRequest.onsuccess = () => {
+            const cursor = cursorRequest.result;
+            if (!cursor) return;
+            const reservation = cursor.value;
+            if (reservation.status === "active" && !reservation.planId) {
+              const planId = "LEGACY-" + reservation.id;
+              reservation.planId = planId;
+              cursor.update(reservation);
+              request.transaction.objectStore("plans").put({
+                id: planId, jobId: reservation.jobId, plan: null,
+                material: null, grainDirection: null, motif: null,
+                reservationIds: [reservation.id], status: "legacy_recovery",
+                legacy: true,
+                recoveryNote: "Reservasi versi 1 tidak memiliki snapshot rencana pemotongan.",
+                createdAt: reservation.createdAt, completedAt: null,
+                cancelledAt: null, schemaVersion: 1
+              });
+            }
+            cursor.continue();
+          };
+          metaStore.put({ key: "schemaVersion", value: 2, updatedAt: new Date().toISOString() });
         }
-        // event.oldVersion tersedia untuk migrasi mendatang.
-        void event.oldVersion;
       };
       request.onblocked = () => {
         if (typeof opts.onBlocked === "function") opts.onBlocked();
@@ -328,103 +359,47 @@
     }
 
     async function reserveRemainders(input) {
-      if (!input || !input.jobId || !Array.isArray(input.remainderIds) ||
-          input.remainderIds.length === 0) {
+      if (!input || !input.jobId || !Array.isArray(input.remainderIds)) {
         throw new Error("jobId dan daftar remainderIds wajib diisi untuk reservasi massal.");
       }
       const remainderIds = input.remainderIds.slice();
-      if (remainderIds.some(id => typeof id !== "string" || !id.trim()) ||
-          new Set(remainderIds).size !== remainderIds.length) {
+      if (remainderIds.some(id => typeof id !== "string" || !id.trim()) || new Set(remainderIds).size !== remainderIds.length) {
         throw new Error("Daftar remainderIds harus berisi ID unik yang valid.");
       }
-
       const timestamp = input.timestamp || new Date().toISOString();
-      const reservationsOut = remainderIds.map(remainderId => ({
-        id: makeId("RSV"),
-        movementId: makeId("MOV"),
-        remainderId,
-        jobId: input.jobId
-      }));
+      const snapshot = input.planSnapshot || null;
+      const planId = input.planId || (snapshot ? makeId("PLAN") : null);
+      const out = remainderIds.map(remainderId => ({ id: makeId("RSV"), movementId: makeId("MOV"), remainderId, jobId: input.jobId, planId }));
       const database = await db();
-
-      await withTransaction(
-        database, ["remainders", "reservations", "movements"], "readwrite",
-        tx => {
-          const remainders = tx.objectStore("remainders");
-          const reservations = tx.objectStore("reservations");
-          const movements = tx.objectStore("movements");
-          const checked = [];
-          let cursor = 0;
-
-          // Semua pemeriksaan dan penulisan dilakukan dalam satu transaksi.
-          // Jika satu unit gagal, tx.abort() membatalkan seluruh reservasi.
-          const checkNext = () => {
-            if (cursor >= remainderIds.length) {
-              reservationsOut.forEach((item, index) => {
-                const remainder = checked[index];
-                remainders.put({
-                  ...remainder,
-                  status: "reserved",
-                  updatedAt: timestamp,
-                  version: Number(remainder.version || 0) + 1
-                });
-                reservations.add({
-                  id: item.id,
-                  remainderId: item.remainderId,
-                  jobId: item.jobId,
-                  status: "active",
-                  createdAt: timestamp,
-                  releasedAt: null,
-                  consumedAt: null
-                });
-                movements.add({
-                  id: item.movementId,
-                  remainderId: item.remainderId,
-                  type: "reserved",
-                  jobId: item.jobId,
-                  timestamp,
-                  fromStatus: "available",
-                  toStatus: "reserved",
-                  referenceId: item.id
-                });
-              });
-              return;
-            }
-
-            const remainderId = remainderIds[cursor];
-            const remainderRequest = remainders.get(remainderId);
-            remainderRequest.onsuccess = () => {
-              const remainder = remainderRequest.result;
-              if (!remainder || remainder.status !== "available" ||
-                  remainder.condition !== "good") {
-                tx.abort();
-                return;
-              }
-
-              const activeRequest = reservations.index("remainderId").getAll(remainderId);
-              activeRequest.onsuccess = () => {
-                if (activeRequest.result.some(item => item.status === "active")) {
-                  tx.abort();
-                  return;
-                }
-                checked.push(remainder);
-                cursor += 1;
-                checkNext();
-              };
+      await withTransaction(database, ["remainders", "reservations", "movements", "plans"], "readwrite", tx => {
+        const rs = tx.objectStore("remainders"), ss = tx.objectStore("reservations"), ms = tx.objectStore("movements"), ps = tx.objectStore("plans");
+        const checked = []; let cursor = 0;
+        const commit = () => {
+          out.forEach((item, index) => {
+            const source = checked[index];
+            rs.put({ ...source, status: "reserved", updatedAt: timestamp, version: Number(source.version || 0) + 1 });
+            ss.add({ id: item.id, remainderId: item.remainderId, jobId: item.jobId, planId: item.planId || null, status: "active", createdAt: timestamp, releasedAt: null, consumedAt: null });
+            ms.add({ id: item.movementId, remainderId: item.remainderId, type: "reserved", jobId: item.jobId, timestamp, fromStatus: "available", toStatus: "reserved", referenceId: item.id });
+          });
+          if (snapshot) ps.add({ ...snapshot, id: planId, jobId: input.jobId, reservationIds: out.map(item => item.id), status: "reserved", legacy: false, createdAt: snapshot.createdAt || timestamp, completedAt: null, cancelledAt: null, schemaVersion: 1 });
+        };
+        const checkNext = () => {
+          if (cursor >= remainderIds.length) { commit(); return; }
+          const id = remainderIds[cursor], request = rs.get(id);
+          request.onsuccess = () => {
+            const source = request.result;
+            if (!source || source.status !== "available" || source.condition !== "good") { tx.abort(); return; }
+            const active = ss.index("remainderId").getAll(id);
+            active.onsuccess = () => {
+              if (active.result.some(item => item.status === "active")) { tx.abort(); return; }
+              checked.push(source); cursor += 1; checkNext();
             };
           };
-
-          checkNext();
-        }
-      );
-
-      return reservationsOut.map(item => ({
-        id: item.id,
-        remainderId: item.remainderId,
-        jobId: item.jobId
-      }));
+        };
+        checkNext();
+      });
+      return out.map(item => ({ id: item.id, remainderId: item.remainderId, jobId: item.jobId, planId: item.planId || null }));
     }
-
     async function releaseReservation(reservationId, optionsForRelease) {
       const releaseOptions = optionsForRelease || {};
       const database = await db();
@@ -911,9 +886,9 @@
       const metaRequest = requestResult(metaStore.getAll());
       const values = await Promise.all(requests.concat([metaRequest]));
       await done;
-      const bundle = { schemaVersion: 1 };
+      const bundle = { schemaVersion: 2 };
       BUNDLE_STORES.forEach((name, index) => {
-        bundle[name] = { schemaVersion: 1 };
+        bundle[name] = { schemaVersion: 2 };
         bundle[name][name] = values[index];
       });
       bundle.exportedAt = exportedAt;
@@ -964,7 +939,7 @@
 
         (bundle.meta || []).forEach(record => stores.meta.put(record));
         stores.meta.put({
-          key: "schemaVersion", value: 1, updatedAt: new Date().toISOString()
+          key: "schemaVersion", value: 2, updatedAt: new Date().toISOString()
         });
         stores.meta.put({
           key: "lastImportAt", value: new Date().toISOString(), mode: importMode

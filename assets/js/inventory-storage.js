@@ -327,6 +327,104 @@
       ).then(() => ({ id: reservationId, remainderId: input.remainderId, jobId: input.jobId }));
     }
 
+    async function reserveRemainders(input) {
+      if (!input || !input.jobId || !Array.isArray(input.remainderIds) ||
+          input.remainderIds.length === 0) {
+        throw new Error("jobId dan daftar remainderIds wajib diisi untuk reservasi massal.");
+      }
+      const remainderIds = input.remainderIds.slice();
+      if (remainderIds.some(id => typeof id !== "string" || !id.trim()) ||
+          new Set(remainderIds).size !== remainderIds.length) {
+        throw new Error("Daftar remainderIds harus berisi ID unik yang valid.");
+      }
+
+      const timestamp = input.timestamp || new Date().toISOString();
+      const reservationsOut = remainderIds.map(remainderId => ({
+        id: makeId("RSV"),
+        movementId: makeId("MOV"),
+        remainderId,
+        jobId: input.jobId
+      }));
+      const database = await db();
+
+      await withTransaction(
+        database, ["remainders", "reservations", "movements"], "readwrite",
+        tx => {
+          const remainders = tx.objectStore("remainders");
+          const reservations = tx.objectStore("reservations");
+          const movements = tx.objectStore("movements");
+          const checked = [];
+          let cursor = 0;
+
+          // Semua pemeriksaan dan penulisan dilakukan dalam satu transaksi.
+          // Jika satu unit gagal, tx.abort() membatalkan seluruh reservasi.
+          const checkNext = () => {
+            if (cursor >= remainderIds.length) {
+              reservationsOut.forEach((item, index) => {
+                const remainder = checked[index];
+                remainders.put({
+                  ...remainder,
+                  status: "reserved",
+                  updatedAt: timestamp,
+                  version: Number(remainder.version || 0) + 1
+                });
+                reservations.add({
+                  id: item.id,
+                  remainderId: item.remainderId,
+                  jobId: item.jobId,
+                  status: "active",
+                  createdAt: timestamp,
+                  releasedAt: null,
+                  consumedAt: null
+                });
+                movements.add({
+                  id: item.movementId,
+                  remainderId: item.remainderId,
+                  type: "reserved",
+                  jobId: item.jobId,
+                  timestamp,
+                  fromStatus: "available",
+                  toStatus: "reserved",
+                  referenceId: item.id
+                });
+              });
+              return;
+            }
+
+            const remainderId = remainderIds[cursor];
+            const remainderRequest = remainders.get(remainderId);
+            remainderRequest.onsuccess = () => {
+              const remainder = remainderRequest.result;
+              if (!remainder || remainder.status !== "available" ||
+                  remainder.condition !== "good") {
+                tx.abort();
+                return;
+              }
+
+              const activeRequest = reservations.index("remainderId").getAll(remainderId);
+              activeRequest.onsuccess = () => {
+                if (activeRequest.result.some(item => item.status === "active")) {
+                  tx.abort();
+                  return;
+                }
+                checked.push(remainder);
+                cursor += 1;
+                checkNext();
+              };
+            };
+          };
+
+          checkNext();
+        }
+      );
+
+      return reservationsOut.map(item => ({
+        id: item.id,
+        remainderId: item.remainderId,
+        jobId: item.jobId
+      }));
+    }
+
     async function releaseReservation(reservationId, optionsForRelease) {
       const releaseOptions = optionsForRelease || {};
       const database = await db();
@@ -539,6 +637,7 @@
       remove,
       clear,
       reserveRemainder,
+      reserveRemainders,
       releaseReservation,
       consumeReservation,
       exportJSON,

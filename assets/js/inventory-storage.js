@@ -811,7 +811,15 @@
         const movements = tx.objectStore("movements");
         const materialRequest = materials.get(remainder.materialId);
         materialRequest.onsuccess = () => {
-          if (!materialRequest.result) { tx.abort(); return; }
+          const material = materialRequest.result;
+          if (!material || material.active === false ||
+              Number(material.thicknessMm) !== Number(remainder.thicknessMm) ||
+              material.motif !== remainder.motif ||
+              (material.rotationPolicy === "fixed" && remainder.rotationAllowed) ||
+              (material.grainRequired === true && remainder.rotationAllowed)) {
+            tx.abort();
+            return;
+          }
           const jobRequest = jobs.get(remainder.originJobId);
           jobRequest.onsuccess = () => {
             if (!jobRequest.result) { tx.abort(); return; }

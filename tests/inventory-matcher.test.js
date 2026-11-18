@@ -100,10 +100,16 @@ test("kandidat diurutkan berdasarkan jumlah potongan yang muat", () => {
 });
 
 test("kerf diperhitungkan dan ukuran input tidak valid ditolak", () => {
-  assert.equal(matcher.findCandidates({
+  const withKerf = matcher.findCandidates({
     material, remainders: [{ ...base, id: "KERF", widthCm: 99, heightCm: 50 }],
     parts: [{ width: 49, height: 50 }, { width: 49, height: 50 }], kerf: 2
-  }).length, 0);
+  });
+  const withoutKerf = matcher.findCandidates({
+    material, remainders: [{ ...base, id: "NO-KERF", widthCm: 99, heightCm: 50 }],
+    parts: [{ width: 49, height: 50 }, { width: 49, height: 50 }], kerf: 0
+  });
+  assert.equal(withKerf[0].placedCount, 1);
+  assert.equal(withoutKerf[0].placedCount, 2);
   assert.throws(() => matcher.findCandidates({
     material, remainders: [{ ...base, id: "BAD", widthCm: 100, heightCm: 60 }],
     parts: [{ width: 0, height: 10 }]

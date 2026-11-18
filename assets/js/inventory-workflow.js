@@ -30,6 +30,52 @@
       return records.filter(item => item && item.condition === "good");
     }
 
+    async function preview(input) {
+      if (!input || typeof input.jobId !== "string" || !input.jobId.trim()) {
+        throw new Error("ID pekerjaan wajib diisi untuk membuat pratinjau.");
+      }
+      if (!input.plannerInput || typeof input.plannerInput !== "object") {
+        throw new Error("plannerInput wajib disediakan.");
+      }
+      const remainders = await readAvailableRemainders();
+      const plan = planner.calculate({
+        ...input.plannerInput,
+        remainders
+      });
+      return {
+        plan,
+        jobId: input.jobId,
+        material: input.plannerInput.material || null,
+        grainDirection: input.plannerInput.grainDirection || null,
+        motif: input.plannerInput.motif || null,
+        inventorySnapshotCount: remainders.length,
+        previewCreatedAt: input.timestamp || new Date().toISOString()
+      };
+    }
+
+    async function confirmPreview(previewPlan, optionsForConfirm) {
+      if (!previewPlan || !previewPlan.plan ||
+          typeof previewPlan.jobId !== "string" || !previewPlan.jobId.trim()) {
+        throw new Error("Pratinjau rencana yang valid wajib disediakan.");
+      }
+      const options = optionsForConfirm || {};
+      // Konfirmasi mengunci sumber yang benar-benar ditampilkan pada pratinjau.
+      // Jika stok telah berubah, reservasi gagal; UI harus membuat pratinjau baru.
+      const reservedPlan = await engine.reservePlan({
+        plan: previewPlan.plan,
+        jobId: previewPlan.jobId,
+        material: previewPlan.material,
+        grainDirection: previewPlan.grainDirection,
+        motif: previewPlan.motif,
+        timestamp: options.timestamp
+      });
+      return {
+        ...reservedPlan,
+        inventorySnapshotCount: previewPlan.inventorySnapshotCount,
+        previewCreatedAt: previewPlan.previewCreatedAt
+      };
+    }
+
     async function calculateAndReserve(input) {
       if (!input || typeof input.jobId !== "string" || !input.jobId.trim()) {
         throw new Error("ID pekerjaan wajib diisi sebelum menghitung dan memesan stok.");
@@ -93,6 +139,8 @@
 
     return {
       readAvailableRemainders,
+      preview,
+      confirmPreview,
       calculateAndReserve,
       cancel,
       complete

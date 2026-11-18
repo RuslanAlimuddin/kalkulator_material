@@ -108,6 +108,20 @@ async function main() {
   assert.deepEqual(reportBeforeReload.orphanedRemainders, []);
   assert.deepEqual(reportBeforeReload.multiplyReservedRemainders, []);
   assert.deepEqual(reportBeforeReload.reservationsWithoutSource, []);
+  // Pemulihan wajib menolak data sumber yang tidak lagi cocok dengan reservasi.
+  const originalRemainder = await storage.get("remainders", "REC-REM-1");
+  const originalReservation = await storage.get("reservations", reserved.reservations[0].id);
+  await storage.update("remainders", "REC-REM-1", { status: "available" });
+  await assert.rejects(recoveredEngine.restorePlan(reserved.planId), /Sumber inventaris/);
+  await storage.put("remainders", originalRemainder);
+  await storage.update("reservations", originalReservation.id, { jobId: "JOB-OLD" });
+  await assert.rejects(recoveredEngine.restorePlan(reserved.planId), /Hubungan reservasi/);
+  await storage.put("reservations", originalReservation);
+  await storage.remove("remainders", "REC-REM-1");
+  await assert.rejects(recoveredEngine.restorePlan(reserved.planId), /Sumber inventaris/);
+  await storage.add("remainders", originalRemainder);
+  console.log("LULUS: pemulihan menolak sumber hilang, status sumber salah, dan hubungan pekerjaan yang tidak cocok.");
+
   await assert.rejects(storage.releaseReservations({
     reservationIds: [reserved.reservations[0].id],
     planId: reserved.planId,

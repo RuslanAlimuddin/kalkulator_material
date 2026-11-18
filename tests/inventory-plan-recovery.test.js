@@ -96,6 +96,11 @@ async function main() {
   assert.equal(validation.valid, true, JSON.stringify(validation.errors));
   assert.ok(exported.plans.plans.some(item => item.id === reserved.planId));
   assert.equal((await storage.get("remainders", "REC-REM-1")).status, "reserved");
+  const reportBeforeReload = await storage.getRecoveryReport();
+  assert.equal(reportBeforeReload.activePlans.length, 1);
+  assert.equal(reportBeforeReload.activeReservations.length, 1);
+  assert.deepEqual(reportBeforeReload.orphanedReservations, []);
+  assert.deepEqual(reportBeforeReload.orphanedRemainders, []);
   await storage.close();
 
   storage = Storage.createStorage();
@@ -108,6 +113,9 @@ async function main() {
   await recoveredEngine.cancelPlan({ reservedPlan: recovered, timestamp: now });
   assert.equal((await storage.get("plans", reserved.planId)).status, "cancelled");
   assert.equal((await storage.get("remainders", "REC-REM-1")).status, "available");
+  const reportAfterCancel = await storage.getRecoveryReport();
+  assert.equal(reportAfterCancel.activePlans.length, 0);
+  assert.equal(reportAfterCancel.activeReservations.length, 0);
   console.log("LULUS: snapshot dan reservasi dapat dipulihkan setelah storage ditutup dan dibuka kembali; pembatalan memperbarui stok dan snapshot.");
 
   const newOnly = await recoveredEngine.reservePlan({

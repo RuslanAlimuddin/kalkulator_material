@@ -1,13 +1,14 @@
 const assert = require("node:assert/strict");
+// Node.js tidak menyediakan IndexedDB global; fake-indexeddb menyiapkan
+// implementasi in-memory untuk menguji API IndexedDB tanpa browser.
+require("fake-indexeddb/auto");
+
 const {
   DB_NAME, STORE_NAMES, createStorage
 } = require("../assets/js/inventory-storage.js");
 
 if (!globalThis.indexedDB) {
-  throw new Error(
-    "Node.js ini belum menyediakan IndexedDB global. Gunakan Node.js 22.5 atau lebih baru, " +
-    "atau jalankan pengujian browser setelah menyiapkan IndexedDB."
-  );
+  throw new Error("fake-indexeddb gagal menyiapkan IndexedDB untuk pengujian.");
 }
 
 const now = "2026-11-18T12:00:00.000Z";

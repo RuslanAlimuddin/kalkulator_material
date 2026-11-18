@@ -92,7 +92,8 @@
     } else {
       const ref = ax === 1 ? xBase.length - 1 : ax === 0.5 ? Math.floor((xBase.length - 1) / 2) : 0;
       xBase.forEach((x, c) => {
-        const shift = phase(c, ref, 3, fraction, matH, matH + gap);
+        const cycleLength = pattern === "running" ? 2 : 3;
+        const shift = phase(c, ref, cycleLength, fraction, matH, matH + gap);
         const ys = makeAxisStarts(wallH, matH, gap, ay, shift);
         ys.forEach(y => {
           const left = Math.max(0, x), top = Math.max(0, y);

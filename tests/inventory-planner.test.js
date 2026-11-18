@@ -47,6 +47,21 @@ test("planner memakai sisa inventaris lebih dahulu lalu lembar baru untuk kekura
 });
 
 test("planner dapat memakai beberapa unit sisa secara berurutan", () => {
+  const twoPartGeometry = { ...geometry, cells: geometry.cells.slice(0, 2) };
+  const r = planner.calculate({
+    ...common,
+    geometry: twoPartGeometry,
+    remainders: [
+      { ...base, id: "REM-1", widthCm: 40, heightCm: 30 },
+      { ...base, id: "REM-2", widthCm: 40, heightCm: 30, createdAt: "2026-01-02T00:00:00.000Z" }
+    ]
+  });
+  assert.equal(r.inventorySheetCount, 2);
+  assert.equal(r.newSheetCount, 0);
+  assert.equal(r.cells.filter(c => c.source === "inventory").length, 2);
+});
+
+test("planner memakai dua unit inventaris lalu satu lembar baru untuk potongan tersisa", () => {
   const r = planner.calculate({
     ...common,
     remainders: [
@@ -55,8 +70,9 @@ test("planner dapat memakai beberapa unit sisa secara berurutan", () => {
     ]
   });
   assert.equal(r.inventorySheetCount, 2);
-  assert.equal(r.newSheetCount, 0);
-  assert.equal(r.cells.filter(c => c.source === "inventory").length, 3);
+  assert.equal(r.newSheetCount, 1);
+  assert.equal(r.cells.filter(c => c.source === "inventory").length, 2);
+  assert.equal(r.cells.filter(c => c.source === "new").length, 1);
 });
 
 test("planner tidak mengubah data inventaris saat hanya menghitung rencana", () => {

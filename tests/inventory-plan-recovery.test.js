@@ -66,6 +66,16 @@ async function main() {
   let storage = Storage.createStorage();
   await storage.open();
   const engine = Engine.createInventoryEngine({ storage });
+  await storage.add("materials", {
+    id: "MAT-RECOVERY", name: "Material Uji", category: "triplek",
+    thicknessMm: 8, surface: null, grainRequired: false, motif: "plain",
+    rotationPolicy: "free", active: true
+  });
+  for (const id of ["JOB-OLD", "JOB-RECOVERY"]) {
+    await storage.add("jobs", {
+      id, name: id, status: "open", createdAt: now, closedAt: null
+    });
+  }
   await storage.add("remainders", remainder("REC-REM-1"));
 
   const reserved = await engine.reservePlan({

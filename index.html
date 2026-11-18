@@ -336,11 +336,81 @@ canvas{display:block}
   <p class="canvas-note" id="canvasNote">Huruf = nomor lembar sumber. ↺ = potongan diputar 90°. Warna = kategori potongan; warna khusus menandai potongan lain pada lembar yang sama.</p>
 </div>
 
+<!-- ============================================================
+     PRATINJAU INVENTARIS — TIDAK MENGUBAH STOK
+     ============================================================ -->
+<section class="sec" id="inventoryPreviewSection">
+  <div class="sec-title">Pratinjau Pemakaian Inventaris Sisa Material</div>
+  <p style="font-size:12px;color:var(--text2);margin:0 0 12px">
+    Pilih pekerjaan dan material dari katalog inventaris. Sistem akan memeriksa sisa yang cocok terlebih dahulu,
+    lalu menghitung kebutuhan lembar baru. Pratinjau ini hanya membaca stok; belum ada material yang dipesan atau dikurangi.
+  </p>
+  <div class="g2">
+    <div class="f">
+      <label for="inventoryJob">Pekerjaan</label>
+      <select id="inventoryJob"><option value="">Memuat pekerjaan…</option></select>
+    </div>
+    <div class="f">
+      <label for="inventoryMaterial">Material dari katalog</label>
+      <select id="inventoryMaterial"><option value="">Memuat material…</option></select>
+    </div>
+    <div class="f">
+      <label for="inventoryGrainDirection">Arah serat</label>
+      <select id="inventoryGrainDirection">
+        <option value="none">Tidak ditentukan / tanpa arah serat</option>
+        <option value="horizontal">Horizontal</option>
+        <option value="vertical">Vertikal</option>
+      </select>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+    <button type="button" id="inventoryPreviewButton" class="btn-hitung" disabled>Pratinjau Pemakaian Sisa</button>
+    <button type="button" id="inventoryRefreshCatalog">Muat Ulang Katalog</button>
+    <a href="inventaris.html" target="_blank" rel="noopener">Kelola material, pekerjaan, dan stok</a>
+    <span id="inventoryCatalogHint" style="font-size:11px;color:var(--text3)"></span>
+  </div>
+  <div id="inventoryPreviewNotice" class="inventory-preview-notice" role="status" aria-live="polite" hidden></div>
+  <div id="inventoryPreviewResult" hidden style="margin-top:14px">
+    <div class="sec-title" style="font-size:14px">Hasil Pratinjau</div>
+    <p id="inventoryPreviewSummary" style="font-size:13px;font-weight:600"></p>
+    <div class="g2">
+      <div>
+        <div style="font-size:12px;font-weight:600;margin:8px 0">Sumber material</div>
+        <ol id="inventoryPreviewSources" style="font-size:12px;padding-left:20px"></ol>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:600;margin:8px 0">Potongan dan sumbernya</div>
+        <ol id="inventoryPreviewParts" style="font-size:12px;padding-left:20px;max-height:260px;overflow:auto"></ol>
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:600;margin:8px 0">Sisa hasil pemotongan</div>
+    <ol id="inventoryPreviewLeftovers" style="font-size:12px;padding-left:20px"></ol>
+    <p style="font-size:11px;color:var(--text3)">
+      Catatan: hasil ini belum mengunci stok. Persetujuan dan reservasi seluruh sumber akan disediakan pada tahap berikutnya.
+    </p>
+  </div>
+</section>
+<style>
+.inventory-preview-notice{margin-top:10px;padding:9px 11px;border-radius:7px;background:var(--info-bg);color:var(--info);font-size:12px}
+.inventory-preview-notice.error{background:var(--warn-bg);color:var(--warn)}
+#inventoryPreviewSection button:disabled{opacity:.55;cursor:not-allowed}
+#inventoryPreviewSection ol li{margin:0 0 6px}
+#inventoryPreviewSection ol li div{font-size:11px;color:var(--text3)}
+</style>
+
 </div><!-- /container -->
 
 <script src="assets/js/engine.js"></script>
 <script src="assets/js/cutting-engine.js"></script>
 <script src="assets/js/cutting-adapter.js"></script>
+<script src="assets/js/inventory-validator.js"></script>
+<script src="assets/js/inventory-storage.js"></script>
+<script src="assets/js/inventory-engine.js"></script>
+<script src="assets/js/inventory-matcher.js"></script>
+<script src="assets/js/inventory-planner.js"></script>
+<script src="assets/js/inventory-workflow.js"></script>
+<script src="assets/js/inventory-app-bridge.js"></script>
+<script src="assets/js/inventory-preview-ui.js"></script>
 <script>
 // ============================================================
 // DATA

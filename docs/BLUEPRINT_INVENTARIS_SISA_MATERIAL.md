@@ -248,7 +248,7 @@ Pembaruan status: 18 November 2026.
 - **Tahap 3 — Engine:** `inventory-engine.js` mendukung pembentukan sisa turunan, `reservePlan()` untuk mengunci sumber dari hasil planner, `cancelPlan()` untuk melepas seluruh reservasi rencana, dan `consumePlan()` untuk menyelesaikan pemakaian multi-sumber.
 - **Tahap 4 — Matcher:** `inventory-matcher.js` menyaring dan memberi peringkat kandidat berdasarkan material, ketebalan, motif, arah serat, rotasi, ukuran, dan kerf.
 - **Tahap 5 — Planner:** `inventory-planner.js` menggunakan beberapa sisa inventaris secara berurutan, lalu memakai lembar baru sebagai fallback. Planner tetap tidak mengubah stok.
-- **Pengendali alur:** `inventory-workflow.js` membaca stok tersedia, menghitung rencana, melakukan reservasi, mengulang perencanaan jika reservasi konflik, serta meneruskan pembatalan/penyelesaian ke engine.
+- **Pengendali alur:** `inventory-workflow.js` menyediakan `preview()` tanpa perubahan stok, `confirmPreview()` untuk mengunci persis sumber yang ditampilkan, `calculateAndReserve()` untuk alur otomatis yang memang mengizinkan perencanaan ulang, serta pembatalan/penyelesaian pekerjaan.
 
 ### 11.2 Pengujian otomatis
 
@@ -260,13 +260,14 @@ GitHub Actions telah ditambahkan pada branch pengembangan:
 - `npm run test:regression` tetap menjalankan tiga suite lama.
 - `.github/workflows/browser-indexeddb.yml` menjalankan Chromium headless untuk menguji IndexedDB asli, termasuk persistensi setelah browser ditutup dan dibuka kembali.
 
-Pengujian otomatis pada commit `9fcc522cb7ea0109559df53bb21cee549c20782a` berhasil: suite inventaris, regresi, reservasi massal, dan persistensi browser semuanya berstatus sukses.
+Pengujian otomatis pada commit `3fd6c5108d567d5a455e704f244654f8313bcb2d` berhasil: suite inventaris, regresi, reservasi massal, pratinjau tanpa reservasi, konfirmasi rencana, siklus pekerjaan, dan persistensi browser semuanya berstatus sukses.
 
 ### 11.3 Batas yang belum selesai
 
 - Integrasi ke UI belum dilakukan.
 - Integrasi ke alur kalkulasi utama aplikasi belum dilakukan. `cutting-adapter.js` tetap dipertahankan tanpa perubahan.
 - Pengujian browser saat ini membuktikan persistensi IndexedDB; belum menguji tampilan, alur konfirmasi pengguna, atau interaksi visual aplikasi.
+- Kontrak integrasi UI sudah ditulis di `docs/INTEGRASI_UI_INVENTARIS.md`; implementasi UI belum dilakukan.
 - `makeStok()` belum dihapus atau diganti.
 
 ### 11.4 File lama yang tetap dilindungi
@@ -280,8 +281,8 @@ Sampai tahap integrasi dan regresi akhir selesai, jangan mengubah:
 
 ## 12. Tahap berikutnya
 
-1. Rancang lapisan integrasi opsional antara kalkulasi geometri utama dan `inventory-workflow.js`, tanpa mengubah mesin geometri.
-2. Tentukan kontrak data yang akan diterima UI: ringkasan sumber inventaris/lembar baru, daftar stok yang akan dipesan, sisa yang akan terbentuk, serta hasil pembatalan.
-3. Integrasikan UI secara bertahap dengan jalur lama tetap tersedia dan tidak ada perubahan stok hanya karena tombol hitung ditekan.
-4. Lakukan pengujian visual/browser untuk posisi informasi, konfirmasi reservasi, pembatalan, penyelesaian pekerjaan, dan riwayat asal sisa.
+1. Implementasikan pengendali UI opsional sesuai `docs/INTEGRASI_UI_INVENTARIS.md`.
+2. Tambahkan panel pratinjau sumber material dan tombol konfirmasi/pembatalan tanpa mengubah tombol Hitung lama.
+3. Uji visual/browser untuk posisi informasi, konfirmasi reservasi, pembatalan, penyelesaian pekerjaan, dan riwayat asal sisa.
+4. Setelah integrasi UI lulus regresi, bandingkan jalur lama dan baru.
 5. Evaluasi penggantian `makeStok()` hanya setelah perbandingan perilaku lama dan baru selesai.

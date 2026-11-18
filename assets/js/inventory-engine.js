@@ -199,23 +199,50 @@
       if (typeof planId !== "string" || !planId.trim()) {
         throw new Error("ID snapshot rencana wajib diisi.");
       }
-      const saved = await storage.get("plans", planId);
+      if (typeof storage.getPlanRecoveryState !== "function") {
+        throw new Error("Storage belum mendukung pemeriksaan pemulihan yang konsisten.");
+      }
+      const state = await storage.getPlanRecoveryState(planId);
+      const saved = state.plan;
       if (!saved || saved.status !== "reserved" || !saved.plan) {
         throw new Error("Snapshot rencana aktif tidak ditemukan atau merupakan reservasi lama tanpa snapshot.");
       }
-      const reservations = await storage.getByIndex("reservations", "planId", planId);
-      const active = reservations.filter(item => item.status === "active");
-      const reservationByRemainder = new Map(active.map(item => [item.remainderId, item.id]));
-      const inventoryUsage = (saved.plan.inventoryUsage || []).map(item => ({
-        ...item, reservationId: reservationByRemainder.get(item.remainderId)
-      }));
-      const expectedIds = Array.isArray(saved.reservationIds) ? saved.reservationIds.slice().sort() : [];
+      if (!Array.isArray(saved.plan.inventoryUsage) || !Array.isArray(saved.reservationIds)) {
+        throw new Error("Snapshot tidak memiliki daftar sumber dan reservasi yang valid.");
+      }
+      const usageIds = saved.plan.inventoryUsage.map(item => item && item.remainderId);
+      if (usageIds.some(id => typeof id !== "string" || !id.trim()) ||
+          new Set(usageIds).size !== usageIds.length) {
+        throw new Error("Snapshot memiliki ID sumber kosong atau duplikat.");
+      }
+      const active = state.reservations.filter(item => item.status === "active");
+      const expectedIds = saved.reservationIds.slice().sort();
       const activeIds = active.map(item => item.id).sort();
-      if (inventoryUsage.some(item => !item.reservationId) ||
-          active.length !== inventoryUsage.length ||
+      if (expectedIds.some(id => typeof id !== "string" || !id.trim()) ||
+          new Set(expectedIds).size !== expectedIds.length ||
+          active.length !== saved.plan.inventoryUsage.length ||
           JSON.stringify(expectedIds) !== JSON.stringify(activeIds)) {
         throw new Error("Snapshot tidak cocok dengan seluruh reservasi aktif; pemulihan/penyelesaian diblokir demi keamanan stok.");
       }
+      const reservationByRemainder = new Map();
+      for (const reservation of active) {
+        if (reservation.planId !== planId || reservation.jobId !== saved.jobId ||
+            typeof reservation.remainderId !== "string" ||
+            reservationByRemainder.has(reservation.remainderId)) {
+          throw new Error("Hubungan reservasi, pekerjaan, atau sumber tidak cocok dengan snapshot.");
+        }
+        reservationByRemainder.set(reservation.remainderId, reservation);
+      }
+      const remainderById = new Map(state.remainders.map(item => [item.id, item]));
+      const inventoryUsage = saved.plan.inventoryUsage.map(item => {
+        const reservation = reservationByRemainder.get(item.remainderId);
+        const source = remainderById.get(item.remainderId);
+        if (!reservation || !source || source.status !== "reserved" || source.condition !== "good" ||
+            (saved.material && saved.material.id && source.materialId !== saved.material.id)) {
+          throw new Error("Sumber inventaris hilang atau status/identitasnya tidak sesuai; pemulihan diblokir demi keamanan stok.");
+        }
+        return { ...item, reservationId: reservation.id };
+      });
       return {
         planId: saved.id, plan: saved.plan, jobId: saved.jobId,
         material: saved.material || null,

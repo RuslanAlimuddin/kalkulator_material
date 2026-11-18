@@ -492,9 +492,11 @@
                 const request = plans.get(planId);
                 request.onsuccess = () => {
                   const plan = request.result;
-                  if (plan && ["reserved", "legacy_recovery"].includes(plan.status)) {
-                    plans.put({ ...plan, status: "cancelled", cancelledAt: timestamp });
+                  if (!plan || !["reserved", "legacy_recovery"].includes(plan.status)) {
+                    tx.abort();
+                    return;
                   }
+                  plans.put({ ...plan, status: "cancelled", cancelledAt: timestamp });
                 };
               });
               return;
@@ -503,7 +505,8 @@
             const reservationRequest = reservations.get(reservationIds[cursor]);
             reservationRequest.onsuccess = () => {
               const reservation = reservationRequest.result;
-              if (!reservation || reservation.status !== "active") {
+              if (!reservation || reservation.status !== "active" ||
+                  (input.planId && reservation.planId !== input.planId)) {
                 tx.abort();
                 return;
               }
@@ -743,7 +746,8 @@
             const reservationRequest = reservations.get(batch.reservationId);
             reservationRequest.onsuccess = () => {
               const reservation = reservationRequest.result;
-              if (!reservation || reservation.status !== "active") {
+              if (!reservation || reservation.status !== "active" ||
+                  (input.planId && reservation.planId !== input.planId)) {
                 tx.abort();
                 return;
               }

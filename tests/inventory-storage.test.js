@@ -137,16 +137,18 @@ async function main() {
     assert.equal(movements[0].type, "reserved");
   });
 
-  await test("satu sisa tidak dapat dipesan dua pekerjaan secara bersamaan", async () => {
+  await test("dua pekerjaan yang bersaing hanya dapat memperoleh satu reservasi", async () => {
+    await storage.importJSON(bundle("RACE"), "merge");
     const attempts = await Promise.allSettled([
-      storage.reserveRemainder({ remainderId: "REM-A", jobId: "JOB-A" }),
-      storage.reserveRemainder({ remainderId: "REM-A", jobId: "JOB-B" })
+      storage.reserveRemainder({ remainderId: "REM-RACE", jobId: "JOB-RACE" }),
+      storage.reserveRemainder({ remainderId: "REM-RACE", jobId: "JOB-A" })
     ]);
     const fulfilled = attempts.filter(item => item.status === "fulfilled");
     const rejected = attempts.filter(item => item.status === "rejected");
-    assert.equal(fulfilled.length, 0);
-    assert.equal(rejected.length, 2);
-    const active = (await storage.getByIndex("reservations", "remainderId", "REM-A"))
+    assert.equal(fulfilled.length, 1);
+    assert.equal(rejected.length, 1);
+    assert.equal((await storage.get("remainders", "REM-RACE")).status, "reserved");
+    const active = (await storage.getByIndex("reservations", "remainderId", "REM-RACE"))
       .filter(item => item.status === "active");
     assert.equal(active.length, 1);
   });

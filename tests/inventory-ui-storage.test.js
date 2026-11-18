@@ -46,6 +46,15 @@ async function main() {
   assert.equal((await storage.getAll("movements")).length,1);
   console.log("LULUS: referensi pekerjaan tidak valid membatalkan seluruh pencatatan.");
 
+  await assert.rejects(storage.createRemainder({
+    materialId:"MAT-UI-1",originJobId:"JOB-UI-1",sourceSheetId:"SHEET-MISMATCH",
+    widthCm:20,heightCm:10,thicknessMm:8,grainDirection:"none",
+    motif:"plain",rotationAllowed:true
+  }));
+  assert.equal((await storage.getAll("remainders")).length,1);
+  assert.equal((await storage.getAll("movements")).length,1);
+  console.log("LULUS: ketebalan sisa yang berbeda dari katalog material ditolak secara atomik.");
+
   await storage.updateRemainderState({id:"REM-UI-1",changes:{condition:"damaged"},timestamp:now});
   let remainder = await storage.get("remainders","REM-UI-1");
   assert.equal(remainder.condition,"damaged");

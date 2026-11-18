@@ -44,11 +44,22 @@
           !Array.isArray(input.cuttingResult.usableRemainders)) {
         throw new Error("Hasil pemotongan tidak memiliki daftar usableRemainders.");
       }
+      // Satu reservasi mewakili satu lembar fisik. Cutting engine dapat
+      // membuat beberapa lembar virtual saat semua potongan tidak muat;
+      // hanya sisa pada lembar pertama (sumber yang benar-benar direservasi)
+      // yang boleh diturunkan dari stok inventaris ini.
+      const firstSourceSheetId = input.cuttingResult.sheets &&
+        input.cuttingResult.sheets.length
+        ? input.cuttingResult.sheets[0].id
+        : null;
+      const usable = input.cuttingResult.usableRemainders.filter(item =>
+        firstSourceSheetId == null || item.sheetId === firstSourceSheetId
+      );
       return consumeReservation({
         reservationId: input.reservationId,
         sourceSheetId: input.sourceSheetId,
         timestamp: input.timestamp,
-        remainders: input.cuttingResult.usableRemainders.map(item => ({
+        remainders: usable.map(item => ({
           widthCm: item.width,
           heightCm: item.height
         }))

@@ -255,16 +255,16 @@ GitHub Actions telah ditambahkan pada branch pengembangan:
 
 - `.github/workflows/test.yml`: menjalankan seluruh suite inventaris dan regresi.
 - `.github/workflows/inventory-batch.yml`: menjalankan tes khusus reservasi massal dan pembatalan atomik.
-- `npm run test:inventory` kini juga menjalankan tes reservasi massal, penghubung planner-reservasi, dan konsumsi rencana multi-sumber.
+- `npm run test:inventory` kini juga menjalankan tes reservasi massal, penghubung planner-reservasi, konsumsi rencana multi-sumber, pelepasan massal, dan pembatalan rencana.
 - `npm run test:regression` tetap menjalankan tiga suite lama.
 
-Pengujian otomatis pada commit `cff952b1398dd61df82a69c3e71bc3806ffcb5dd` berhasil. Kedua workflow berstatus sukses. Pengujian menggunakan `fake-indexeddb` untuk simulasi IndexedDB di Node.js.
+Pengujian otomatis pada commit `15a5f5de620c1b1e89efb6bf9cfdfb632f678bca` berhasil. Suite inventaris dan regresi serta workflow reservasi massal berstatus sukses. Pengujian menggunakan `fake-indexeddb` untuk simulasi IndexedDB di Node.js.
 
 ### 11.3 Batas yang belum selesai
 
 - Integrasi ke UI belum dilakukan.
 - Browser belum diuji untuk memastikan data IndexedDB asli bertahan setelah refresh dan browser ditutup/dibuka kembali.
-- Alur pembatalan multi-sumber masih memerlukan operasi pelepasan reservasi massal yang atomik.
+- Pelepasan multi-sumber sudah tersedia melalui `releaseReservations()` dan `cancelPlan()`; pengujian atomiknya sudah masuk suite.
 - Integrasi opsional ke alur kalkulasi aplikasi belum dilakukan. `cutting-adapter.js` masih dipertahankan tanpa perubahan.
 - `makeStok()` belum dihapus atau diganti.
 
@@ -279,9 +279,9 @@ Sampai tahap integrasi dan regresi akhir selesai, jangan mengubah:
 
 ## 12. Tahap berikutnya
 
-1. Tambahkan pelepasan multi-reservasi secara atomik untuk pembatalan rencana.
-2. Buat lapisan pengendali integrasi yang menghubungkan pembacaan stok, planner, reservasi, pembatalan, dan penyelesaian pemotongan tanpa mengubah mesin geometri.
-3. Uji siklus penuh pekerjaan A → B → C dengan beberapa sumber inventaris.
+1. Buat lapisan pengendali integrasi yang menghubungkan pembacaan stok, planner, reservasi, pembatalan, dan penyelesaian pemotongan tanpa mengubah mesin geometri.
+2. Uji siklus penuh pekerjaan A → B → C dengan beberapa sumber inventaris.
+3. Pastikan sisa dari lembar baru juga dapat dicatat sebagai stok secara atomik.
 4. Setelah semua tes otomatis lulus, lakukan integrasi UI secara bertahap dan pertahankan jalur lama.
 5. Lakukan pemeriksaan browser untuk persistensi IndexedDB dan alur konfirmasi pengguna.
 6. Evaluasi penggantian `makeStok()` hanya setelah perbandingan perilaku lama dan baru selesai.

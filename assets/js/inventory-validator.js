@@ -141,7 +141,7 @@
       if (item.legacy === true && item.status !== "legacy_recovery" && item.plan == null) {
         warnings.push({ path: p, message: "Reservasi lama tidak memiliki snapshot rencana." });
       }
-      if (item.reservationIds) item.reservationIds.forEach((reservationId, i) => {
+      if (Array.isArray(item.reservationIds)) item.reservationIds.forEach((reservationId, i) => {
         const reservation = reservationById.get(reservationId);
         if (!reservation) {
           error(p + ".reservationIds[" + i + "]", "Reservasi yang dirujuk tidak ditemukan.");

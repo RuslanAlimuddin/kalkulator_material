@@ -6,7 +6,6 @@ const os = require("node:os");
 const { chromium } = require("playwright");
 const ROOT = path.resolve(__dirname, "../..");
 const PORT = 4180;
-const DB_NAME = "KalkulatorMaterialDB";
 
 function contentType(file) {
   if (file.endsWith(".html")) return "text/html; charset=utf-8";
@@ -32,13 +31,9 @@ async function main() {
     const errors = [];
     page.on("pageerror",error => errors.push(error.message));
     await page.goto("http://127.0.0.1:"+PORT+"/inventaris.html");
-    await page.evaluate(async dbName => {
-      await new Promise((resolve,reject) => {
-        const request=indexedDB.deleteDatabase(dbName);
-        request.onsuccess=resolve; request.onerror=()=>reject(request.error);
-      });
-      location.reload();
-    },DB_NAME);
+    await page.waitForFunction(() =>
+      document.querySelectorAll("#remainderMaterial option").length > 0
+    );
     await page.locator("#materialName").fill("Triplek Browser");
     await page.locator("#materialCategory").fill("triplek");
     await page.locator("#materialThickness").fill("12");
@@ -51,8 +46,8 @@ async function main() {
     await page.getByText("Pekerjaan berhasil dicatat.").waitFor();
 
     await page.locator("[data-tab=stock]").click();
-    await page.locator("#remainderMaterial").selectOption({label:/Triplek Browser/});
-    await page.locator("#remainderJob").selectOption({label:/Pekerjaan Browser/});
+    await page.locator("#remainderMaterial").selectOption({index:1});
+    await page.locator("#remainderJob").selectOption({index:1});
     await page.locator("#sourceSheet").fill("JOB-BROWSER-SHEET-01");
     await page.locator("#remainderWidth").fill("80");
     await page.locator("#remainderHeight").fill("45");
@@ -74,12 +69,6 @@ async function main() {
 
     assert.deepEqual(errors,[]);
     console.log("LULUS: UI inventaris dapat membuat material, pekerjaan, dan sisa; memperbarui kondisi; serta mempertahankan data dan riwayat setelah reload.");
-    await page.evaluate(async dbName => {
-      await new Promise((resolve,reject) => {
-        const request=indexedDB.deleteDatabase(dbName);
-        request.onsuccess=resolve; request.onerror=()=>reject(request.error);
-      });
-    },DB_NAME);
   } finally {
     if (context) await context.close();
     await new Promise(resolve => server.close(resolve));

@@ -232,15 +232,56 @@ F. Uji siklus A-B-C dan seluruh regresi.
 G. Baru bangun UI inventaris.  
 H. Hapus/ubah `makeStok()` hanya setelah pengganti lulus semua pengujian dan perbandingan perilaku.
 
-**Belum ada kode aplikasi yang diubah oleh dokumen rancangan ini.** Implementasi dimulai setelah skema dan aturan ini ditinjau.
+Dokumen ini menjadi acuan implementasi bertahap. Perubahan kode dilakukan hanya pada branch `pengembangan-mesin-hitung`; jalur kalkulasi lama tetap dipertahankan.
 
 
 ## 11. Status implementasi saat ini
 
-- Tahap 1: validator inventaris selesai dan lulus pengujian.
-- Tahap 2: IndexedDB storage, reservasi, pelepasan, konsumsi atomik, dan impor-ekspor selesai dan lulus pengujian.
-- Tahap 3: inventory engine untuk membentuk sisa turunan selesai dan lulus pengujian.
-- Tahap 4: matcher kandidat satu unit sisa selesai dan lulus pengujian.
-- Tahap 5 awal: `inventory-planner.js` telah dibuat untuk memilih beberapa unit sisa secara berurutan, kemudian memakai lembar baru sebagai fallback. Pengujian lokal tahap ini masih menunggu dijalankan.
+Pembaruan status: 18 November 2026.
 
-Planner tidak melakukan reservasi. Setelah rencana ditinjau pengguna, lapisan integrasi berikutnya harus mengunci setiap unit sumber secara atomik. Jika salah satu reservasi gagal, rencana harus dihitung ulang atau reservasi yang sudah berhasil harus dilepas. Konsumsi baru dilakukan setelah pemotongan fisik dikonfirmasi.
+### 11.1 Modul dan pengujian yang sudah tersedia
+
+- **Tahap 1 — Validator:** `inventory-validator.js` selesai. Pemeriksaan skema, ID, referensi, dimensi, status, reservasi, dan riwayat sudah diuji.
+- **Tahap 2 — Penyimpanan:** `inventory-storage.js` selesai menggunakan IndexedDB. Operasi CRUD, impor-ekspor, reservasi, pelepasan, konsumsi, dan riwayat sudah tersedia.
+- **Reservasi multi-sumber:** `reserveRemainders()` mengunci beberapa unit inventaris dalam satu transaksi. Jika salah satu unit gagal, semua perubahan dibatalkan.
+- **Konsumsi multi-sumber:** `consumeReservations()` mengonsumsi beberapa reservasi sekaligus, mencatat riwayat, dan membuat semua sisa turunan dalam satu transaksi.
+- **Tahap 3 — Engine:** `inventory-engine.js` mendukung pembentukan sisa turunan, `reservePlan()` untuk mengunci sumber dari hasil planner, dan `consumePlan()` untuk menyelesaikan pemakaian multi-sumber.
+- **Tahap 4 — Matcher:** `inventory-matcher.js` menyaring dan memberi peringkat kandidat berdasarkan material, ketebalan, motif, arah serat, rotasi, ukuran, dan kerf.
+- **Tahap 5 — Planner:** `inventory-planner.js` menggunakan beberapa sisa inventaris secara berurutan, lalu memakai lembar baru sebagai fallback. Planner tetap tidak mengubah stok.
+
+### 11.2 Pengujian otomatis
+
+GitHub Actions telah ditambahkan pada branch pengembangan:
+
+- `.github/workflows/test.yml`: menjalankan seluruh suite inventaris dan regresi.
+- `.github/workflows/inventory-batch.yml`: menjalankan tes khusus reservasi massal dan pembatalan atomik.
+- `npm run test:inventory` kini juga menjalankan tes reservasi massal, penghubung planner-reservasi, dan konsumsi rencana multi-sumber.
+- `npm run test:regression` tetap menjalankan tiga suite lama.
+
+Pengujian otomatis pada commit `cff952b1398dd61df82a69c3e71bc3806ffcb5dd` berhasil. Kedua workflow berstatus sukses. Pengujian menggunakan `fake-indexeddb` untuk simulasi IndexedDB di Node.js.
+
+### 11.3 Batas yang belum selesai
+
+- Integrasi ke UI belum dilakukan.
+- Browser belum diuji untuk memastikan data IndexedDB asli bertahan setelah refresh dan browser ditutup/dibuka kembali.
+- Alur pembatalan multi-sumber masih memerlukan operasi pelepasan reservasi massal yang atomik.
+- Integrasi opsional ke alur kalkulasi aplikasi belum dilakukan. `cutting-adapter.js` masih dipertahankan tanpa perubahan.
+- `makeStok()` belum dihapus atau diganti.
+
+### 11.4 File lama yang tetap dilindungi
+
+Sampai tahap integrasi dan regresi akhir selesai, jangan mengubah:
+- `assets/js/engine.js`
+- `assets/js/cutting-engine.js`
+- `assets/js/cutting-adapter.js`
+- `index.html`
+- `makeStok()` dan perilaku kalkulasi lama.
+
+## 12. Tahap berikutnya
+
+1. Tambahkan pelepasan multi-reservasi secara atomik untuk pembatalan rencana.
+2. Buat lapisan pengendali integrasi yang menghubungkan pembacaan stok, planner, reservasi, pembatalan, dan penyelesaian pemotongan tanpa mengubah mesin geometri.
+3. Uji siklus penuh pekerjaan A → B → C dengan beberapa sumber inventaris.
+4. Setelah semua tes otomatis lulus, lakukan integrasi UI secara bertahap dan pertahankan jalur lama.
+5. Lakukan pemeriksaan browser untuk persistensi IndexedDB dan alur konfirmasi pengguna.
+6. Evaluasi penggantian `makeStok()` hanya setelah perbandingan perilaku lama dan baru selesai.

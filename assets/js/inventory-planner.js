@@ -103,6 +103,8 @@
           if (!part) throw new Error("Penempatan inventaris merujuk potongan yang tidak dikenal.");
           inventoryCells.set(part.index, {
             source: "inventory",
+            sourceType: "inventory",
+            sheetSource: "inventory",
             sheetId,
             sourceRemainderId: chosen.remainderId,
             rotated: placement.rotated,
@@ -183,7 +185,13 @@
         const remainingIndex = remaining.findIndex(item => item.index === index);
         if (remainingIndex < 0) throw new Error("Potongan belum memiliki sumber material.");
         const fallbackCell = newResult.cells[remainingIndex];
-        return { ...fallbackCell, sheetId: fallbackCell.sheetId + newSheetOffset, source: "new" };
+        return {
+          ...fallbackCell,
+          sheetId: fallbackCell.sheetId + newSheetOffset,
+          source: fallbackCell.source || "new",
+          sourceType: "new",
+          sheetSource: "new"
+        };
       });
 
       const newSheets = newResult.sheets.map(sheet => ({
@@ -209,6 +217,7 @@
         newSheetCount: newResult.sheetCount,
         reuseCount: cells.filter(cell => cell.source === "inventory" || cell.source === "reuse").length,
         inventoryUsage,
+        reusableRemainders: usableRemainders.concat(tooSmallRemainders),
         usableRemainders,
         tooSmallRemainders,
         usableRemainderArea: usableRemainders.reduce((sum, item) => sum + item.width * item.height, 0),

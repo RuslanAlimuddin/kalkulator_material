@@ -78,6 +78,30 @@
       };
     }
 
+    async function cancelPlan(input) {
+      if (!input || !input.reservedPlan ||
+          !Array.isArray(input.reservedPlan.reservations)) {
+        throw new Error("Hasil reservePlan wajib disediakan untuk pembatalan.");
+      }
+      const reservations = input.reservedPlan.reservations;
+      if (reservations.length === 0) {
+        return { releasedReservations: [] };
+      }
+      if (typeof storage.releaseReservations !== "function") {
+        throw new Error("Storage belum mendukung pelepasan multi-reservasi atomik.");
+      }
+      const reservationIds = reservations.map(item => item && item.id);
+      if (reservationIds.some(id => typeof id !== "string" || !id.trim()) ||
+          new Set(reservationIds).size !== reservationIds.length) {
+        throw new Error("Rencana berisi ID reservasi kosong atau duplikat.");
+      }
+      const releasedReservations = await storage.releaseReservations({
+        reservationIds,
+        timestamp: input.timestamp
+      });
+      return { releasedReservations };
+    }
+
     async function consumePlan(input) {
       if (!input || !input.reservedPlan || !input.reservedPlan.plan ||
           !Array.isArray(input.reservedPlan.inventoryUsage)) {
@@ -151,7 +175,7 @@
       });
     }
 
-    return { reservePlan, consumePlan, consumeReservation, consumeCuttingResult };
+    return { reservePlan, cancelPlan, consumePlan, consumeReservation, consumeCuttingResult };
   }
 
   return { createInventoryEngine };

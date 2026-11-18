@@ -105,6 +105,31 @@ async function main() {
   console.log("LULUS: sisa dari pemakaian multi-sumber pekerjaan B dapat dipakai kembali oleh pekerjaan C.");
   console.log("LULUS: beberapa reservasi dikonsumsi bersama dan sisa turunan tiap sumber tercatat.");
 
+  const newOnlyPlan = await engine.reservePlan({
+    plan: {
+      inventoryUsage: [],
+      usableRemainders: [{ width: 25, height: 12, source: "new", sheetId: 4 }],
+      sheets: [{ id: 4, source: "new" }]
+    },
+    jobId: "JOB-NEW-ONLY",
+    material: { id: "MAT-CONSUME", thicknessMm: 8, motif: "plain", rotationPolicy: "fixed" },
+    grainDirection: "none",
+    timestamp: now
+  });
+  assert.equal(newOnlyPlan.reservations.length, 0);
+  const newOnlyResult = await engine.consumePlan({
+    reservedPlan: newOnlyPlan,
+    sourceSheetIdPrefix: "JOB-NEW-ONLY-SHEET",
+    timestamp: now
+  });
+  assert.equal(newOnlyResult.consumedReservations.length, 0);
+  assert.equal(newOnlyResult.createdRemainders.length, 1);
+  const newOnlyRemainder = await storage.get("remainders", newOnlyResult.createdRemainders[0].id);
+  assert.equal(newOnlyRemainder.status, "available");
+  assert.equal(newOnlyRemainder.originJobId, "JOB-NEW-ONLY");
+  assert.equal(newOnlyRemainder.rotationAllowed, false);
+  console.log("LULUS: pekerjaan yang hanya memakai lembar baru tetap menyimpan sisa tanpa reservasi inventaris.");
+
   await storage.add("remainders", remainder("CONSUME-ROLLBACK-1"));
   await storage.add("remainders", remainder("CONSUME-ROLLBACK-2"));
   const rollbackPlan = await engine.reservePlan({

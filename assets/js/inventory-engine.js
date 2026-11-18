@@ -209,8 +209,12 @@
       const inventoryUsage = (saved.plan.inventoryUsage || []).map(item => ({
         ...item, reservationId: reservationByRemainder.get(item.remainderId)
       }));
-      if (inventoryUsage.some(item => !item.reservationId)) {
-        throw new Error("Snapshot tidak cocok dengan reservasi aktif; penyelesaian diblokir demi keamanan stok.");
+      const expectedIds = Array.isArray(saved.reservationIds) ? saved.reservationIds.slice().sort() : [];
+      const activeIds = active.map(item => item.id).sort();
+      if (inventoryUsage.some(item => !item.reservationId) ||
+          active.length !== inventoryUsage.length ||
+          JSON.stringify(expectedIds) !== JSON.stringify(activeIds)) {
+        throw new Error("Snapshot tidak cocok dengan seluruh reservasi aktif; pemulihan/penyelesaian diblokir demi keamanan stok.");
       }
       return {
         planId: saved.id, plan: saved.plan, jobId: saved.jobId,

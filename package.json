@@ -4,7 +4,7 @@
   "private": true,
   "description": "Dependensi pengujian untuk Kalkulator Material",
   "scripts": {
-    "test:inventory": "node tests/inventory-validator.test.js && node tests/inventory-storage.test.js && node tests/inventory-engine.test.js && node tests/inventory-matcher.test.js && node tests/inventory-planner.test.js && node tests/inventory-storage-batch.test.js && node tests/inventory-engine-plan.test.js && node tests/inventory-engine-consume-plan.test.js && node tests/inventory-storage-release-batch.test.js && node tests/inventory-engine-cancel-plan.test.js && node tests/inventory-workflow.test.js && node tests/inventory-workflow-cycle.test.js && node tests/inventory-app-bridge.test.js",
+    "test:inventory": "node tests/inventory-validator.test.js && node tests/inventory-storage.test.js && node tests/inventory-ui-storage.test.js && node tests/inventory-engine.test.js && node tests/inventory-matcher.test.js && node tests/inventory-planner.test.js && node tests/inventory-storage-batch.test.js && node tests/inventory-engine-plan.test.js && node tests/inventory-engine-consume-plan.test.js && node tests/inventory-storage-release-batch.test.js && node tests/inventory-engine-cancel-plan.test.js && node tests/inventory-workflow.test.js && node tests/inventory-workflow-cycle.test.js && node tests/inventory-app-bridge.test.js",
     "test:regression": "node tests/engine.test.js && node tests/cutting-engine.test.js && node tests/cutting-adapter.test.js"
   },
   "devDependencies": {

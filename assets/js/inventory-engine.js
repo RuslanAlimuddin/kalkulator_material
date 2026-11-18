@@ -79,11 +79,14 @@
           !Array.isArray(input.reservedPlan.reservations)) {
         throw new Error("Hasil reservePlan wajib disediakan untuk pembatalan.");
       }
-      const reservations = input.reservedPlan.reservations;
+      const reservedPlan = input.reservedPlan.planId
+        ? await restorePlan(input.reservedPlan.planId)
+        : input.reservedPlan;
+      const reservations = reservedPlan.reservations;
       if (reservations.length === 0) {
-        if (input.reservedPlan.planId && typeof storage.updatePlanStatus === "function") {
+        if (reservedPlan.planId && typeof storage.updatePlanStatus === "function") {
           await storage.updatePlanStatus({
-            planId: input.reservedPlan.planId, status: "cancelled",
+            planId: reservedPlan.planId, status: "cancelled",
             timestamp: input.timestamp
           });
         }
@@ -99,7 +102,7 @@
       }
       const releasedReservations = await storage.releaseReservations({
         reservationIds,
-        planId: input.reservedPlan.planId,
+        planId: reservedPlan.planId,
         timestamp: input.timestamp
       });
       return { releasedReservations };
@@ -110,8 +113,11 @@
           !Array.isArray(input.reservedPlan.inventoryUsage)) {
         throw new Error("Hasil reservePlan wajib disediakan untuk konsumsi rencana.");
       }
-      const plan = input.reservedPlan.plan;
-      const usage = input.reservedPlan.inventoryUsage;
+      const reservedPlan = input.reservedPlan.planId
+        ? await restorePlan(input.reservedPlan.planId)
+        : input.reservedPlan;
+      const plan = reservedPlan.plan;
+      const usage = reservedPlan.inventoryUsage;
       if (typeof storage.consumeReservations !== "function") {
         throw new Error("Storage belum mendukung konsumsi multi-reservasi atomik.");
       }
@@ -142,8 +148,8 @@
         };
       });
 
-      const material = input.reservedPlan.material;
-      const jobId = input.reservedPlan.jobId;
+      const material = reservedPlan.material;
+      const jobId = reservedPlan.jobId;
       const newSheetRemainders = plan.usableRemainders
         .filter(item => item.source === "new")
         .map(item => {
@@ -164,8 +170,8 @@
             widthCm: Number(item.width),
             heightCm: Number(item.height),
             thicknessMm: Number(material.thicknessMm),
-            grainDirection: input.grainDirection || input.reservedPlan.grainDirection || "none",
-            motif: input.motif || input.reservedPlan.motif || material.motif || "plain",
+            grainDirection: input.grainDirection || reservedPlan.grainDirection || "none",
+            motif: input.motif || reservedPlan.motif || material.motif || "plain",
             rotationAllowed: rotationPolicy !== "fixed"
           };
         });
@@ -173,7 +179,7 @@
         reservations,
         newSheetRemainders,
         jobId,
-        planId: input.reservedPlan.planId,
+        planId: reservedPlan.planId,
         timestamp: input.timestamp
       });
     }

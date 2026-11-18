@@ -108,6 +108,19 @@ async function main() {
   assert.deepEqual(reportBeforeReload.orphanedRemainders, []);
   assert.deepEqual(reportBeforeReload.multiplyReservedRemainders, []);
   assert.deepEqual(reportBeforeReload.reservationsWithoutSource, []);
+  await assert.rejects(storage.releaseReservations({
+    reservationIds: [reserved.reservations[0].id],
+    planId: reserved.planId,
+    timestamp: now
+  }));
+  assert.equal((await storage.get("remainders", "REC-REM-1")).status, "reserved");
+  assert.equal((await storage.get("remainders", "REC-REM-2")).status, "reserved");
+  assert.equal((await storage.get("plans", reserved.planId)).status, "reserved");
+  await storage.close();
+
+  storage = Storage.createStorage();
+  await storage.open();
+  const recoveredEngine = Engine.createInventoryEngine({ storage });
   // Pemulihan wajib menolak data sumber yang tidak lagi cocok dengan reservasi.
   const originalRemainder = await storage.get("remainders", "REC-REM-1");
   const originalReservation = await storage.get("reservations", reserved.reservations[0].id);
@@ -122,19 +135,6 @@ async function main() {
   await storage.add("remainders", originalRemainder);
   console.log("LULUS: pemulihan menolak sumber hilang, status sumber salah, dan hubungan pekerjaan yang tidak cocok.");
 
-  await assert.rejects(storage.releaseReservations({
-    reservationIds: [reserved.reservations[0].id],
-    planId: reserved.planId,
-    timestamp: now
-  }));
-  assert.equal((await storage.get("remainders", "REC-REM-1")).status, "reserved");
-  assert.equal((await storage.get("remainders", "REC-REM-2")).status, "reserved");
-  assert.equal((await storage.get("plans", reserved.planId)).status, "reserved");
-  await storage.close();
-
-  storage = Storage.createStorage();
-  await storage.open();
-  const recoveredEngine = Engine.createInventoryEngine({ storage });
   const recovered = await recoveredEngine.restorePlan(reserved.planId);
   assert.equal(recovered.planId, reserved.planId);
   assert.equal(recovered.reservations.length, 2);

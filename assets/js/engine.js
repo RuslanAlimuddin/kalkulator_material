@@ -46,8 +46,8 @@
     return out;
   }
 
-  function phase(index, reference, fraction, size, pitch) {
-    const step = ((index - reference) % 3 + 3) % 3;
+  function phase(index, reference, cycleLength, fraction, size, pitch) {
+    const step = ((index - reference) % cycleLength + cycleLength) % cycleLength;
     return (step * size * fraction) % pitch;
   }
 
@@ -74,7 +74,8 @@
     if (pattern === "stack" || direction === "horizontal") {
       const ref = ay === 1 ? yBase.length - 1 : ay === 0.5 ? Math.floor((yBase.length - 1) / 2) : 0;
       yBase.forEach((y, r) => {
-        const shift = pattern === "stack" ? 0 : phase(r, ref, fraction, matW, matW + gap);
+        const cycleLength = pattern === "running" ? 2 : 3;
+        const shift = pattern === "stack" ? 0 : phase(r, ref, cycleLength, fraction, matW, matW + gap);
         const xs = pattern === "stack" ? xBase : makeAxisStarts(wallW, matW, gap, ax, shift);
         xs.forEach(x => {
           const left = Math.max(0, x), top = Math.max(0, y);
@@ -91,7 +92,7 @@
     } else {
       const ref = ax === 1 ? xBase.length - 1 : ax === 0.5 ? Math.floor((xBase.length - 1) / 2) : 0;
       xBase.forEach((x, c) => {
-        const shift = phase(c, ref, fraction, matH, matH + gap);
+        const shift = phase(c, ref, 3, fraction, matH, matH + gap);
         const ys = makeAxisStarts(wallH, matH, gap, ay, shift);
         ys.forEach(y => {
           const left = Math.max(0, x), top = Math.max(0, y);

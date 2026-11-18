@@ -1,14 +1,37 @@
 # Pengujian otomatis
 
-Branch `pengembangan-mesin-hitung` menjalankan pengujian otomatis melalui GitHub Actions.
+Branch `pengembangan-mesin-hitung` menjalankan pengujian melalui GitHub Actions.
 
-Workflow:
+## Workflow
+
 - `test.yml`: menjalankan `npm run test:inventory` dan `npm run test:regression`.
-- `inventory-batch.yml`: menjalankan tes khusus reservasi massal inventaris.
+- `inventory-batch.yml`: menjalankan tes khusus reservasi massal dan pembatalan atomik.
+- `browser-indexeddb.yml`: menjalankan Chromium headless untuk memeriksa IndexedDB asli.
 
-Tes reservasi massal memeriksa:
-1. Semua unit stok berhasil direservasi dalam satu transaksi.
-2. Jika satu unit tidak tersedia atau kondisinya rusak, seluruh reservasi dibatalkan.
-3. ID inventaris kosong atau duplikat ditolak.
+## Cakupan utama
 
-Tes memakai `fake-indexeddb` untuk mensimulasikan IndexedDB di lingkungan Node.js. Pengujian ini bukan pengganti pemeriksaan persistensi IndexedDB pada browser sebenarnya.
+1. Validator, storage, engine, matcher, dan planner.
+2. Reservasi beberapa unit dalam satu transaksi.
+3. Pembatalan beberapa reservasi secara atomik.
+4. Konsumsi beberapa sumber inventaris beserta sisa turunan.
+5. Pencatatan sisa yang berasal dari lembar baru fallback dalam transaksi yang sama.
+6. Pekerjaan yang hanya memakai lembar baru tetap dapat mencatat sisa tanpa reservasi inventaris.
+7. Siklus pekerjaan A → B → C, termasuk sisa lembar baru dari B yang dipakai kembali oleh C.
+8. Regresi geometri, cutting engine, dan cutting adapter.
+9. Persistensi IndexedDB asli setelah browser ditutup dan dibuka kembali.
+
+Tes Node.js memakai `fake-indexeddb` untuk menguji transaksi tanpa browser. Tes browser menggunakan Chromium sungguhan agar penyimpanan IndexedDB asli juga diverifikasi.
+
+## Hasil verifikasi terakhir
+
+Commit: `9fcc522cb7ea0109559df53bb21cee549c20782a`
+
+- Suite inventaris: sukses.
+- Suite regresi: sukses.
+- Reservasi massal: sukses.
+- IndexedDB browser: sukses; data tetap ada setelah browser ditutup dan dibuka kembali.
+
+Tautan:
+- [Pengujian inventaris dan regresi](https://github.com/RuslanAlimuddin/kalkulator_material/actions/runs/44315165970)
+- [Pengujian reservasi massal](https://github.com/RuslanAlimuddin/kalkulator_material/actions/runs/44315158680)
+- [Pengujian IndexedDB browser](https://github.com/RuslanAlimuddin/kalkulator_material/actions/runs/44315158872)

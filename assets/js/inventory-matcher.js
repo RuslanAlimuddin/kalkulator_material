@@ -48,6 +48,14 @@
         throw new Error("Material, daftar sisa, dan daftar potongan wajib disediakan.");
       }
       if (!input.material.id) throw new Error("ID material wajib diisi.");
+      if (input.material.active === false) throw new Error("Material tidak aktif tidak dapat dicocokkan.");
+      if (!["free", "quarter_turn", "fixed"].includes(input.material.rotationPolicy)) {
+        throw new Error("Kebijakan rotasi material tidak dikenal.");
+      }
+      if (input.material.grainRequired === true &&
+          (typeof input.grainDirection !== "string" || !input.grainDirection.trim())) {
+        throw new Error("Arah serat wajib ditentukan untuk material yang memiliki arah serat.");
+      }
       const parts = input.parts.map((part, index) => ({
         id: String(part && part.id != null ? part.id : "PART-" + (index + 1)),
         width: positive(part && part.width, "Lebar potongan"),

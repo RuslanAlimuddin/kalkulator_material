@@ -475,6 +475,91 @@
       );
     }
 
+    async function releaseReservations(input) {
+      if (!input || !Array.isArray(input.reservationIds) ||
+          input.reservationIds.length === 0) {
+        throw new Error("Daftar reservationIds wajib diisi untuk pelepasan massal.");
+      }
+      const reservationIds = input.reservationIds.slice();
+      if (reservationIds.some(id => typeof id !== "string" || !id.trim()) ||
+          new Set(reservationIds).size !== reservationIds.length) {
+        throw new Error("Daftar reservationIds harus berisi ID unik yang valid.");
+      }
+      const timestamp = input.timestamp || new Date().toISOString();
+      const database = await db();
+
+      await withTransaction(
+        database, ["remainders", "reservations", "movements"], "readwrite",
+        tx => {
+          const reservations = tx.objectStore("reservations");
+          const remainders = tx.objectStore("remainders");
+          const movements = tx.objectStore("movements");
+          const checked = [];
+          let cursor = 0;
+
+          // Seluruh reservasi dan sumber diperiksa sebelum ada perubahan.
+          // Jika satu saja tidak aktif/terkunci, seluruh transaksi dibatalkan.
+          const checkNext = () => {
+            if (cursor >= reservationIds.length) {
+              const remainderIds = checked.map(item => item.remainder.id);
+              if (new Set(remainderIds).size !== remainderIds.length) {
+                tx.abort();
+                return;
+              }
+              checked.forEach(({ reservation, remainder }) => {
+                reservations.put({
+                  ...reservation,
+                  status: "released",
+                  releasedAt: timestamp
+                });
+                remainders.put({
+                  ...remainder,
+                  status: "available",
+                  updatedAt: timestamp,
+                  version: Number(remainder.version || 0) + 1
+                });
+                movements.add({
+                  id: makeId("MOV"),
+                  remainderId: remainder.id,
+                  type: "reservation_released",
+                  jobId: reservation.jobId,
+                  timestamp,
+                  fromStatus: "reserved",
+                  toStatus: "available",
+                  referenceId: reservation.id
+                });
+              });
+              return;
+            }
+
+            const reservationRequest = reservations.get(reservationIds[cursor]);
+            reservationRequest.onsuccess = () => {
+              const reservation = reservationRequest.result;
+              if (!reservation || reservation.status !== "active") {
+                tx.abort();
+                return;
+              }
+              const remainderRequest = remainders.get(reservation.remainderId);
+              remainderRequest.onsuccess = () => {
+                const remainder = remainderRequest.result;
+                if (!remainder || remainder.status !== "reserved") {
+                  tx.abort();
+                  return;
+                }
+                checked.push({ reservation, remainder });
+                cursor += 1;
+                checkNext();
+              };
+            };
+          };
+
+          checkNext();
+        }
+      );
+
+      return reservationIds.slice();
+    }
+
     async function consumeReservation(input) {
       if (!input || !input.reservationId || !Array.isArray(input.remainders)) {
         throw new Error("reservationId dan daftar sisa turunan wajib diisi.");
@@ -791,6 +876,7 @@
       reserveRemainder,
       reserveRemainders,
       releaseReservation,
+      releaseReservations,
       consumeReservation,
       consumeReservations,
       exportJSON,

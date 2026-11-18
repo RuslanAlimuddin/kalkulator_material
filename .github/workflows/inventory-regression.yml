@@ -1,0 +1,28 @@
+name: Uji Inventaris dan Regresi Kalkulator
+
+on:
+  push:
+    branches:
+      - pengembangan-mesin-hitung
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory-and-regression:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Ambil kode repository
+        uses: actions/checkout@v4
+      - name: Siapkan Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Pasang dependensi
+        run: npm install
+      - name: Jalankan seluruh tes inventaris
+        run: npm run test:inventory
+      - name: Jalankan tes geometri dan cutting
+        run: npm run test:regression

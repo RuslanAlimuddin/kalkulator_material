@@ -7,7 +7,8 @@ const { createInventoryPlanner } = require("../assets/js/inventory-planner.js");
 const matcher = createInventoryMatcher({ cuttingEngine: { calculateCutting } });
 const planner = createInventoryPlanner({
   matcher,
-  cuttingAdapter: { calculateMaterialSources }
+  cuttingAdapter: { calculateMaterialSources },
+  cuttingEngine: { calculateCutting }
 });
 const material = {
   id: "MAT-A", thicknessMm: 8, motif: "plain",

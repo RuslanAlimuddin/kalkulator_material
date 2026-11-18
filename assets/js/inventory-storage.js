@@ -1003,6 +1003,23 @@
       return plans.filter(plan => ["reserved", "legacy_recovery"].includes(plan.status));
     }
 
+    // Membaca snapshot, reservasi terkait, dan sumber dalam satu transaksi readonly.
+    async function getPlanRecoveryState(planId) {
+      if (typeof planId !== "string" || !planId.trim()) {
+        throw new Error("ID snapshot rencana wajib diisi.");
+      }
+      const database = await db();
+      const tx = database.transaction(["plans", "reservations", "remainders"], "readonly");
+      const done = transactionDone(tx);
+      const results = await Promise.all([
+        requestResult(tx.objectStore("plans").get(planId)),
+        requestResult(tx.objectStore("reservations").index("planId").getAll(planId)),
+        requestResult(tx.objectStore("remainders").getAll())
+      ]);
+      await done;
+      return { plan: results[0] || null, reservations: results[1], remainders: results[2] };
+    }
+
     async function getRecoveryReport() {
       const database = await db();
       const tx = database.transaction(["plans", "reservations", "remainders"], "readonly");
@@ -1105,6 +1122,7 @@
       consumeReservation,
       consumeReservations,
       getRecoveryPlans,
+      getPlanRecoveryState,
       getRecoveryReport,
       updatePlanStatus,
       createRemainder,

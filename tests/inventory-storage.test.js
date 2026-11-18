@@ -1,0 +1,275 @@
+const assert = require("node:assert/strict");
+// Node.js tidak menyediakan IndexedDB global; fake-indexeddb menyiapkan
+// implementasi in-memory untuk menguji API IndexedDB tanpa browser.
+require("fake-indexeddb/auto");
+
+const {
+  DB_NAME, STORE_NAMES, createStorage
+} = require("../assets/js/inventory-storage.js");
+
+if (!globalThis.indexedDB) {
+  throw new Error("fake-indexeddb gagal menyiapkan IndexedDB untuk pengujian.");
+}
+
+const now = "2026-11-18T12:00:00.000Z";
+
+function test(name, fn) {
+  return Promise.resolve().then(fn).then(() => {
+    console.log("LULUS:", name);
+  });
+}
+
+function bundle(suffix) {
+  const materialId = "MAT-" + suffix;
+  const jobId = "JOB-" + suffix;
+  const remainderId = "REM-" + suffix;
+  return {
+    schemaVersion: 1,
+    materials: {
+      schemaVersion: 1,
+      materials: [{
+        id: materialId, name: "Keramik uji", category: "keramik",
+        thicknessMm: 8, surface: "glossy", grainRequired: false,
+        motif: "plain", rotationPolicy: "free", active: true
+      }]
+    },
+    jobs: {
+      schemaVersion: 1,
+      jobs: [{
+        id: jobId, name: "Pekerjaan " + suffix, status: "open",
+        createdAt: now, closedAt: null
+      }]
+    },
+    remainders: {
+      schemaVersion: 1,
+      remainders: [{
+        id: remainderId, materialId, widthCm: 45, heightCm: 32,
+        thicknessMm: 8, grainDirection: "none", motif: "plain",
+        rotationAllowed: true, condition: "good", status: "available",
+        originJobId: jobId, sourceSheetId: "SHEET-" + suffix,
+        createdAt: now, updatedAt: now, version: 1
+      }]
+    },
+    reservations: { schemaVersion: 1, reservations: [] },
+    movements: { schemaVersion: 1, movements: [] }
+  };
+}
+
+function deleteDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(DB_NAME);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+    request.onblocked = () => reject(new Error("Penghapusan database uji terhalang."));
+  });
+}
+
+async function main() {
+  await deleteDatabase();
+  const storage = createStorage();
+
+  await test("database dibuat dengan enam object store", async () => {
+    const db = await storage.open();
+    assert.equal(db.name, DB_NAME);
+    assert.deepEqual(
+      Array.from(db.objectStoreNames).sort(),
+      STORE_NAMES.slice().sort()
+    );
+    assert.equal(db.version, 1);
+    assert.equal((await storage.get("meta", "schemaVersion")).value, 1);
+    const tx = db.transaction(["remainders", "reservations", "movements"], "readonly");
+    assert.ok(tx.objectStore("remainders").indexNames.contains("status"));
+    assert.ok(tx.objectStore("remainders").indexNames.contains("materialId"));
+    assert.ok(tx.objectStore("remainders").indexNames.contains("originJobId"));
+    assert.ok(tx.objectStore("reservations").indexNames.contains("remainderId"));
+    assert.ok(tx.objectStore("reservations").indexNames.contains("jobId"));
+    assert.ok(tx.objectStore("reservations").indexNames.contains("status"));
+    assert.ok(tx.objectStore("movements").indexNames.contains("timestamp"));
+  });
+
+  await test("CRUD menambah, membaca, memperbarui, dan menghapus record", async () => {
+    const item = { id: "CRUD-1", name: "Record uji" };
+    await storage.add("materials", item);
+    assert.deepEqual(await storage.get("materials", item.id), item);
+    await storage.put("materials", { ...item, name: "Diperbarui" });
+    assert.equal((await storage.get("materials", item.id)).name, "Diperbarui");
+    await storage.update("materials", item.id, { name: "Diubah melalui update" });
+    assert.equal((await storage.get("materials", item.id)).name, "Diubah melalui update");
+    assert.equal(await storage.remove("materials", item.id), true);
+    assert.equal(await storage.get("materials", item.id), null);
+  });
+
+  await test("CRUD mendukung meta dengan key sebagai primary key", async () => {
+    await storage.put("meta", { key: "test-key", value: "aktif" });
+    assert.deepEqual(await storage.get("meta", "test-key"), {
+      key: "test-key", value: "aktif"
+    });
+    await storage.remove("meta", "test-key");
+    assert.equal(await storage.get("meta", "test-key"), null);
+  });
+
+  await test("impor replace dan ekspor JSON mempertahankan lima paket data", async () => {
+    const data = bundle("A");
+    const result = await storage.importJSON(data, "replace");
+    assert.equal(result.imported, 3);
+    const exported = await storage.exportJSON();
+    for (const name of ["materials", "jobs", "remainders", "reservations", "movements"]) {
+      assert.equal(exported[name].schemaVersion, 1);
+      assert.deepEqual(exported[name][name], data[name][name]);
+    }
+    assert.ok(Array.isArray(exported.meta));
+    assert.ok(exported.exportedAt);
+    assert.ok(exported.meta.some(item => item.key === "lastExportAt"));
+  });
+
+  await test("index dapat mencari sisa berdasarkan material dan status", async () => {
+    const data = await storage.getByIndex("remainders", "materialId", "MAT-A");
+    assert.equal(data.length, 1);
+    assert.equal(data[0].status, "available");
+  });
+
+  await test("reservasi atomik mengubah status, membuat reservasi dan movement", async () => {
+    const result = await storage.reserveRemainder({
+      remainderId: "REM-A", jobId: "JOB-A", timestamp: now
+    });
+    assert.equal(result.remainderId, "REM-A");
+    assert.equal((await storage.get("remainders", "REM-A")).status, "reserved");
+    const reservations = await storage.getByIndex("reservations", "remainderId", "REM-A");
+    assert.equal(reservations.length, 1);
+    assert.equal(reservations[0].status, "active");
+    const movements = await storage.getByIndex("movements", "remainderId", "REM-A");
+    assert.equal(movements.length, 1);
+    assert.equal(movements[0].type, "reserved");
+  });
+
+  await test("reservasi massal mengunci semua unit dalam satu transaksi", async () => {
+    await storage.importJSON(bundle("BATCH-1"), "merge");
+    await storage.importJSON(bundle("BATCH-2"), "merge");
+    const results = await storage.reserveRemainders({
+      remainderIds: ["REM-BATCH-1", "REM-BATCH-2"],
+      jobId: "JOB-A",
+      timestamp: now
+    });
+    assert.equal(results.length, 2);
+    assert.deepEqual(
+      results.map(item => item.remainderId),
+      ["REM-BATCH-1", "REM-BATCH-2"]
+    );
+    for (const id of ["REM-BATCH-1", "REM-BATCH-2"]) {
+      assert.equal((await storage.get("remainders", id)).status, "reserved");
+      const reservations = await storage.getByIndex("reservations", "remainderId", id);
+      assert.equal(reservations.filter(item => item.status === "active").length, 1);
+      const movements = await storage.getByIndex("movements", "remainderId", id);
+      assert.equal(movements.filter(item => item.type === "reserved").length, 1);
+    }
+  });
+
+  await test("reservasi massal gagal seluruhnya jika satu unit tidak layak", async () => {
+    await storage.importJSON(bundle("BATCH-ROLLBACK-1"), "merge");
+    await storage.importJSON(bundle("BATCH-ROLLBACK-2"), "merge");
+    await storage.update("remainders", "REM-BATCH-ROLLBACK-2", {
+      condition: "damaged"
+    });
+
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-BATCH-ROLLBACK-1", "REM-BATCH-ROLLBACK-2"],
+      jobId: "JOB-A",
+      timestamp: now
+    }));
+
+    assert.equal(
+      (await storage.get("remainders", "REM-BATCH-ROLLBACK-1")).status,
+      "available"
+    );
+    assert.equal(
+      (await storage.get("remainders", "REM-BATCH-ROLLBACK-2")).status,
+      "available"
+    );
+    assert.equal(
+      (await storage.getByIndex("reservations", "remainderId", "REM-BATCH-ROLLBACK-1"))
+        .filter(item => item.status === "active").length,
+      0
+    );
+    assert.equal(
+      (await storage.getByIndex("movements", "remainderId", "REM-BATCH-ROLLBACK-1"))
+        .filter(item => item.type === "reserved").length,
+      0
+    );
+  });
+
+  await test("reservasi massal menolak ID kosong atau duplikat sebelum transaksi", async () => {
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-A", "REM-A"], jobId: "JOB-A"
+    }), /unik/);
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: [""], jobId: "JOB-A"
+    }), /valid/);
+  });
+
+  await test("dua pekerjaan yang bersaing hanya dapat memperoleh satu reservasi", async () => {
+    await storage.importJSON(bundle("RACE"), "merge");
+    const attempts = await Promise.allSettled([
+      storage.reserveRemainder({ remainderId: "REM-RACE", jobId: "JOB-RACE" }),
+      storage.reserveRemainder({ remainderId: "REM-RACE", jobId: "JOB-A" })
+    ]);
+    const fulfilled = attempts.filter(item => item.status === "fulfilled");
+    const rejected = attempts.filter(item => item.status === "rejected");
+    assert.equal(fulfilled.length, 1);
+    assert.equal(rejected.length, 1);
+    assert.equal((await storage.get("remainders", "REM-RACE")).status, "reserved");
+    const active = (await storage.getByIndex("reservations", "remainderId", "REM-RACE"))
+      .filter(item => item.status === "active");
+    assert.equal(active.length, 1);
+  });
+
+  await test("reservasi dapat dilepas dan stok kembali tersedia", async () => {
+    const active = (await storage.getAll("reservations"))
+      .find(item => item.remainderId === "REM-A" && item.status === "active");
+    await storage.releaseReservation(active.id, { timestamp: now });
+    assert.equal((await storage.get("remainders", "REM-A")).status, "available");
+    assert.equal((await storage.get("reservations", active.id)).status, "released");
+    const movements = await storage.getByIndex("movements", "remainderId", "REM-A");
+    assert.ok(movements.some(item => item.type === "reservation_released"));
+  });
+
+  await test("sisa rusak atau tidak tersedia ditolak saat reservasi", async () => {
+    const data = bundle("B");
+    data.remainders.remainders[0].condition = "damaged";
+    await storage.importJSON(data, "merge");
+    await assert.rejects(
+      storage.reserveRemainder({ remainderId: "REM-B", jobId: "JOB-B" })
+    );
+    assert.equal((await storage.get("remainders", "REM-B")).status, "available");
+  });
+
+  await test("impor merge dengan ID bentrok dibatalkan tanpa menyisipkan sebagian data", async () => {
+    const conflict = bundle("C");
+    conflict.materials.materials[0].id = "MAT-A";
+    await assert.rejects(storage.importJSON(conflict, "merge"));
+    assert.equal(await storage.get("jobs", "JOB-C"), null);
+    assert.equal(await storage.get("remainders", "REM-C"), null);
+  });
+
+  await test("impor paket tidak valid ditolak sebelum transaksi", async () => {
+    const invalid = bundle("D");
+    invalid.remainders.remainders[0].widthCm = 0;
+    await assert.rejects(storage.importJSON(invalid, "replace"), /tidak valid/);
+    assert.notEqual(await storage.get("remainders", "REM-A"), null);
+  });
+
+  await test("ID fallback menghasilkan identitas yang berbeda", async () => {
+    const { makeId } = require("../assets/js/inventory-storage.js");
+    const first = makeId("TEST");
+    const second = makeId("TEST");
+    assert.notEqual(first, second);
+  });
+
+  await storage.close();
+  console.log("Semua pengujian storage inventaris selesai.");
+  await deleteDatabase();
+}
+
+main().catch(error => {
+  console.error("GAGAL:", error);
+  process.exitCode = 1;
+});

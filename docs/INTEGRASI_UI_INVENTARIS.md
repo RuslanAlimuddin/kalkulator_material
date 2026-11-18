@@ -4,11 +4,11 @@ Dokumen ini menjadi kontrak integrasi UI. Modul geometri dan alur kalkulasi lama
 
 ## Kondisi aplikasi saat ini
 
-- `index.html` memuat `engine.js`, `cutting-engine.js`, dan `cutting-adapter.js`.
-- Fungsi `calc()` masih sinkron: menghitung geometri, memanggil adapter, lalu menampilkan hasil.
-- Fungsi `makeStok()` masih menjadi bagian dari jalur reuse lama.
-- Modul `inventory-*.js` belum dimuat oleh halaman utama.
-- `inventory-workflow.js` sekarang menyediakan pratinjau terpisah dari reservasi.
+- `index.html` memuat mesin geometri/pemotongan lama dan modul inventaris yang diperlukan untuk pratinjau.
+- Fungsi `calc()` tetap sinkron: menghitung geometri, memanggil adapter, lalu menampilkan hasil.
+- Fungsi `makeStok()` tetap menjadi bagian dari jalur reuse lama dan tidak diubah.
+- `inventory-preview-ui.js` menghubungkan kontrol panel pratinjau dengan `inventory-app-bridge.js`.
+- `inventory-workflow.js` menyediakan pratinjau yang terpisah dari reservasi.
 
 Karena perbedaan sinkron/asinkron tersebut, integrasi tidak boleh mengganti atau mengubah `calc()` secara langsung. UI inventaris akan menjadi jalur opsional yang terpisah terlebih dahulu.
 
@@ -105,6 +105,27 @@ Operasi ini dalam satu transaksi:
 
 Sisa dari lembar baru juga dapat disimpan walaupun pekerjaan tidak memakai inventaris lama.
 
+## Integrasi panel pratinjau pada kalkulator utama — tahap B
+
+Panel opsional sudah ditambahkan pada `index.html`, dikendalikan oleh `assets/js/inventory-preview-ui.js`. Panel ini membaca daftar material aktif dan pekerjaan terbuka dari IndexedDB, lalu memakai parameter bidang, ukuran lembar, orientasi, pola, arah, alignment, nat, dan batas minimum sisa dari formulir kalkulator utama.
+
+Pengguna memilih pekerjaan, material katalog, dan arah serat. Tombol **Pratinjau Pemakaian Sisa** menjalankan alur berikut:
+1. `inventory-app-bridge.js` membangun geometri melalui `MaterialEngine.calculateGeometry()`.
+2. `inventory-workflow.js` membaca sisa yang tersedia dan kondisinya baik.
+3. `inventory-planner.js` mengalokasikan sisa inventaris yang cocok terlebih dahulu.
+4. Kekurangan potongan dihitung memakai lembar baru melalui `cutting-adapter.js`.
+5. Panel menampilkan sumber lembar, asal setiap potongan, dan sisa hasil pemotongan.
+
+Pratinjau tidak memanggil `confirmPreview()` atau `reservePlan()`. Dengan demikian, stok tidak dikunci atau dikurangi ketika pratinjau dibuat. Tombol **Hitung Kebutuhan Material** tetap menjalankan `calc()` lama dan tidak diubah.
+
+Pengujian browser `tests/browser/inventory-preview.test.js` memeriksa skenario satu sisa inventaris yang dipakai bersama satu lembar baru, memastikan status stok tetap `available`, dan memastikan tombol Hitung lama tetap bekerja. Pengujian ini dijalankan pada Chromium melalui `.github/workflows/browser-indexeddb.yml`.
+
+Batas tahap B:
+- belum ada tombol persetujuan/reservasi pada panel;
+- belum ada daftar reservasi aktif, pembatalan, atau penyelesaian pekerjaan dari panel;
+- belum ada perubahan stok otomatis;
+- kesesuaian tampilan visual akhir masih perlu pemeriksaan browser setelah tes otomatis lulus.
+
 ## Implementasi UI pengelolaan — tahap awal
 
 Halaman pengelolaan pertama tersedia pada `inventaris.html`, dengan pengendali `assets/js/inventory-ui.js`. Halaman ini dapat dibuka langsung melalui Live Server atau server lokal repository. Halaman kalkulator utama belum diubah pada tahap ini.
@@ -126,8 +147,8 @@ Pengujian tambahan:
 - Kedua pengujian dimasukkan ke workflow inventaris dan workflow Chromium.
 
 Batas tahap ini:
-- halaman pengelolaan sudah berdiri sendiri dan belum diberi tautan navigasi dari `index.html`;
-- panel pratinjau planner, reservasi, pembatalan, dan penyelesaian pekerjaan belum dihubungkan ke halaman kalkulator;
+- halaman pengelolaan tersedia terpisah dan sekarang ditautkan dari panel kalkulator utama;
+- reservasi, pembatalan, dan penyelesaian pekerjaan dari panel kalkulator belum diimplementasikan;
 - tombol Hitung dan `makeStok()` tetap tidak berubah.
 
 ## Penyimpanan snapshot dan pemulihan reservasi (IndexedDB v2)

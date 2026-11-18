@@ -128,6 +128,13 @@
       return storage.getRecoveryPlans();
     }
 
+    async function getRecoveryReport() {
+      if (typeof storage.getRecoveryReport !== "function") {
+        throw new Error("Storage belum menyediakan audit pemulihan stok.");
+      }
+      return storage.getRecoveryReport();
+    }
+
     async function restorePlan(planId) {
       if (typeof engine.restorePlan !== "function") {
         throw new Error("Inventory engine belum menyediakan pemulihan snapshot.");
@@ -169,6 +176,7 @@
     return {
       readAvailableRemainders,
       getRecoveryPlans,
+      getRecoveryReport,
       restorePlan,
       cancelLegacyRecovery,
       preview,

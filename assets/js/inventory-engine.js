@@ -116,6 +116,17 @@
       const reservedPlan = input.reservedPlan.planId
         ? await restorePlan(input.reservedPlan.planId)
         : input.reservedPlan;
+      if (input.reservedPlan.planId) {
+        const supplied = (input.reservedPlan.inventoryUsage || []).map(item =>
+          [item.remainderId, item.reservationId]
+        );
+        const persisted = (reservedPlan.inventoryUsage || []).map(item =>
+          [item.remainderId, item.reservationId]
+        );
+        if (JSON.stringify(supplied) !== JSON.stringify(persisted)) {
+          throw new Error("Data reservasi pada pemanggil berbeda dari snapshot tersimpan; penyelesaian diblokir.");
+        }
+      }
       const plan = reservedPlan.plan;
       const usage = reservedPlan.inventoryUsage;
       if (typeof storage.consumeReservations !== "function") {

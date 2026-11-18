@@ -67,7 +67,7 @@
         error(path, "Paket harus berupa objek.");
         return null;
       }
-      if (value.schemaVersion !== 1) {
+      if (![1, 2].includes(value.schemaVersion)) {
         error(path + ".schemaVersion", "Versi skema harus 1.");
       }
       if (!Array.isArray(value[path])) {
@@ -86,6 +86,7 @@
     const remainders = requireSchemaArray(bundle.remainders, "remainders");
     const reservations = requireSchemaArray(bundle.reservations, "reservations");
     const movements = requireSchemaArray(bundle.movements, "movements");
+    const plans = bundle.plans == null ? [] : requireSchemaArray(bundle.plans, "plans");
 
     const materialById = new Map();
     const jobById = new Map();
@@ -114,6 +115,33 @@
     indexUnique(jobs, "jobs", jobById);
     indexUnique(remainders, "remainders", remainderById);
     indexUnique(reservations, "reservations", reservationById);
+    const planById = new Map();
+    indexUnique(plans, "plans", planById);
+
+    if (plans) plans.forEach((item, index) => {
+      if (!isObject(item)) return;
+      const p = "plans.plans[" + index + "]";
+      requireString(item.jobId, p + ".jobId");
+      if (!["reserved", "cancelled", "completed", "legacy_recovery"].includes(item.status)) {
+        error(p + ".status", "Status snapshot rencana tidak dikenal.");
+      }
+      if (!Array.isArray(item.reservationIds)) {
+        error(p + ".reservationIds", "Daftar ID reservasi harus berupa array.");
+      } else {
+        const seen = new Set();
+        item.reservationIds.forEach((id, i) => {
+          if (!isNonEmptyString(id)) error(p + ".reservationIds[" + i + "]", "ID reservasi wajib diisi.");
+          else if (seen.has(id)) error(p + ".reservationIds[" + i + "]", "ID reservasi duplikat.");
+          else seen.add(id);
+        });
+      }
+      if (item.status === "reserved" && !item.legacy && !isObject(item.plan)) {
+        error(p + ".plan", "Snapshot aktif wajib menyimpan objek rencana.");
+      }
+      if (item.legacy === true && item.status !== "legacy_recovery" && item.plan == null) {
+        warnings.push({ path: p, message: "Reservasi lama tidak memiliki snapshot rencana." });
+      }
+    });
 
     if (materials) materials.forEach((item, index) => {
       if (!isObject(item)) return;
@@ -195,6 +223,9 @@
       }
       if (!jobById.has(item.jobId)) {
         error(p + ".jobId", "Pekerjaan reservasi yang dirujuk tidak ditemukan.");
+      }
+      if (item.planId != null && !planById.has(item.planId)) {
+        error(p + ".planId", "Snapshot rencana yang dirujuk tidak ditemukan.");
       }
       if (item.status === "active") {
         if (activeReservationByRemainder.has(item.remainderId)) {

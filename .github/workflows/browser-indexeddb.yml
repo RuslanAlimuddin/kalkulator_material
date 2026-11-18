@@ -27,3 +27,5 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Uji persistensi IndexedDB asli
         run: node tests/browser/indexeddb.test.js
+      - name: Uji antarmuka inventaris pada Chromium
+        run: node tests/browser/inventory-ui.test.js

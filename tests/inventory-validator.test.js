@@ -58,7 +58,7 @@ test("paket null ditolak dengan laporan kesalahan", () => {
 
 test("versi skema yang tidak didukung ditolak", () => {
   const data = validBundle();
-  data.materials.schemaVersion = 2;
+  data.materials.schemaVersion = 3;
   assert.equal(validate(data).valid, false);
 });
 

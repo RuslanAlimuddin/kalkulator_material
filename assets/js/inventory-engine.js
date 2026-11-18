@@ -39,6 +39,45 @@
       });
     }
 
+    async function reservePlan(input) {
+      if (!input || !input.plan || !Array.isArray(input.plan.inventoryUsage)) {
+        throw new Error("Rencana pemotongan dengan inventoryUsage wajib disediakan.");
+      }
+      if (typeof input.jobId !== "string" || !input.jobId.trim()) {
+        throw new Error("ID pekerjaan wajib diisi untuk reservasi rencana.");
+      }
+      const remainderIds = input.plan.inventoryUsage.map(item => item && item.remainderId);
+      if (remainderIds.some(id => typeof id !== "string" || !id.trim()) ||
+          new Set(remainderIds).size !== remainderIds.length) {
+        throw new Error("Rencana berisi ID sisa inventaris yang kosong atau duplikat.");
+      }
+      if (remainderIds.length === 0) {
+        return { plan: input.plan, reservations: [], inventoryUsage: [] };
+      }
+      if (typeof storage.reserveRemainders !== "function") {
+        throw new Error("Storage belum mendukung reservasi inventaris massal.");
+      }
+
+      // Satu rencana dapat memakai beberapa lembar sisa. Semuanya harus
+      // berhasil dikunci bersama atau tidak ada satu pun yang terkunci.
+      const reservations = await storage.reserveRemainders({
+        remainderIds,
+        jobId: input.jobId,
+        timestamp: input.timestamp
+      });
+      const reservationByRemainder = new Map(
+        reservations.map(item => [item.remainderId, item.id])
+      );
+      return {
+        plan: input.plan,
+        reservations,
+        inventoryUsage: input.plan.inventoryUsage.map(item => ({
+          ...item,
+          reservationId: reservationByRemainder.get(item.remainderId)
+        }))
+      };
+    }
+
     async function consumeCuttingResult(input) {
       if (!input || !input.cuttingResult ||
           !Array.isArray(input.cuttingResult.usableRemainders)) {
@@ -66,7 +105,7 @@
       });
     }
 
-    return { consumeReservation, consumeCuttingResult };
+    return { reservePlan, consumeReservation, consumeCuttingResult };
   }
 
   return { createInventoryEngine };

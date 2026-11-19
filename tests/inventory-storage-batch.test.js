@@ -25,7 +25,7 @@ function deleteDatabase() {
 
 async function main() {
   await deleteDatabase();
-  const storage = createStorage();
+  const storage = createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
 
   await storage.add("remainders", remainder("BATCH-OK-1"));

@@ -170,6 +170,9 @@
         return;
       }
       const done = transactionDone(tx);
+      // Tetap amankan rejection transaksi bila callback melempar error sinkron
+      // sebelum handler penyelesaian transaksi dipasang di bawah.
+      done.catch(() => {});
       try {
         result = work(tx);
       } catch (error) {

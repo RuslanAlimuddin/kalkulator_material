@@ -222,6 +222,10 @@ async function main() {
     reservations: [], newSheetRemainders: [], planId: guardedPlan.planId,
     timestamp: now
   }));
+  await assert.rejects(storage.consumeReservations({
+    reservations: [{ reservationId: guardedPlan.reservations[0].id, remainders: [] }],
+    newSheetRemainders: [], timestamp: now
+  }));
   assert.equal((await storage.get("plans", guardedPlan.planId)).status, "reserved");
   assert.equal((await storage.get("reservations", guardedPlan.reservations[0].id)).status, "active");
   assert.equal((await storage.get("remainders", "REC-REM-STATUS-GUARD")).status, "reserved");

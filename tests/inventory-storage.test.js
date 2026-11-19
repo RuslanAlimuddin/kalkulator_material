@@ -261,6 +261,23 @@ async function main() {
     assert.notEqual(await storage.get("remainders", "REM-A"), null);
   });
 
+  await test("impor replace menolak ID movement ganda tanpa menghapus data lokal", async () => {
+    const invalid = bundle("DUP-MOVEMENT");
+    invalid.movements.movements.push(
+      {
+        id: "MOV-DUPLICATE", remainderId: "REM-DUP-MOVEMENT",
+        type: "created", timestamp: now, fromStatus: null, toStatus: "available"
+      },
+      {
+        id: "MOV-DUPLICATE", remainderId: "REM-DUP-MOVEMENT",
+        type: "created", timestamp: now, fromStatus: null, toStatus: "available"
+      }
+    );
+    await assert.rejects(storage.importJSON(invalid, "replace"), /tidak valid/);
+    assert.notEqual(await storage.get("remainders", "REM-A"), null);
+    assert.equal(await storage.get("materials", "MAT-DUP-MOVEMENT"), null);
+  });
+
   await test("ID fallback menghasilkan identitas yang berbeda", async () => {
     const { makeId } = require("../assets/js/inventory-storage.js");
     const first = makeId("TEST");

@@ -218,6 +218,13 @@ async function main() {
     assert.equal(await storage.get("reservations", "RSV-LEGACY-COLLISION"), null);
   });
 
+  await test("index yang tidak ditemukan ditolak tanpa rejection transaksi tak tertangani", async () => {
+    await assert.rejects(
+      storage.getByIndex("remainders", "index-tidak-ada", "nilai"),
+      /Index tidak ditemukan/
+    );
+  });
+
   await test("index dapat mencari sisa berdasarkan material dan status", async () => {
     const data = await storage.getByIndex("remainders", "materialId", "MAT-A");
     assert.equal(data.length, 1);

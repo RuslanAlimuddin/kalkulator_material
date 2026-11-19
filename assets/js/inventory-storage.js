@@ -1133,18 +1133,35 @@
       const timestamp = input.timestamp || new Date().toISOString();
       const database = await db();
       let updated = null;
-      await withTransaction(database, ["plans"], "readwrite", tx => {
+      await withTransaction(database, ["plans", "reservations"], "readwrite", tx => {
         const plans = tx.objectStore("plans");
+        const reservations = tx.objectStore("reservations");
         const request = plans.get(input.planId);
         request.onsuccess = () => {
           const current = request.result;
           if (!current || current.status !== "reserved") { tx.abort(); return; }
-          updated = {
-            ...current, status: input.status,
-            cancelledAt: input.status === "cancelled" ? timestamp : current.cancelledAt || null,
-            completedAt: input.status === "completed" ? timestamp : current.completedAt || null
+
+          // Perubahan status langsung hanya aman untuk rencana tanpa stok.
+          // Rencana yang memakai inventaris harus diselesaikan melalui
+          // releaseReservations() atau consumeReservations() agar stok,
+          // reservasi, movement, dan status rencana berubah atomik.
+          const reservationRequest = reservations.index("planId").getAll(input.planId);
+          reservationRequest.onsuccess = () => {
+            const linkedReservations = reservationRequest.result || [];
+            const usage = current.plan && current.plan.inventoryUsage;
+            if (linkedReservations.some(item => item.status === "active") ||
+                (Array.isArray(current.reservationIds) && current.reservationIds.length > 0) ||
+                (Array.isArray(usage) && usage.length > 0)) {
+              tx.abort();
+              return;
+            }
+            updated = {
+              ...current, status: input.status,
+              cancelledAt: input.status === "cancelled" ? timestamp : current.cancelledAt || null,
+              completedAt: input.status === "completed" ? timestamp : current.completedAt || null
+            };
+            plans.put(updated);
           };
-          plans.put(updated);
         };
       });
       return updated;

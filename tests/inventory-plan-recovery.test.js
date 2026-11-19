@@ -200,6 +200,32 @@ async function main() {
   assert.deepEqual(reportAfterComplete.inconsistentPlans, []);
   assert.deepEqual(reportAfterComplete.inconsistentReservations, []);
   console.log("LULUS: rencana tanpa stok inventaris selesai dan laporan tetap konsisten setelah reload.");
+  // Status rencana berinventaris tidak boleh diubah tanpa melepas/mengonsumsi
+  // reservasi dan memperbarui sumber stok dalam transaksi yang sama.
+  await storage.add("remainders", remainder("REC-REM-STATUS-GUARD"));
+  const guardedPlan = await afterReloadEngine.reservePlan({
+    plan: {
+      inventoryUsage: [{ remainderId: "REC-REM-STATUS-GUARD", placedCount: 1 }],
+      usableRemainders: [], sheets: []
+    },
+    jobId: "JOB-STATUS-GUARD",
+    material: { id: "MAT-RECOVERY", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },
+    timestamp: now
+  });
+  await assert.rejects(storage.updatePlanStatus({
+    planId: guardedPlan.planId, status: "cancelled", timestamp: now
+  }));
+  await assert.rejects(storage.updatePlanStatus({
+    planId: guardedPlan.planId, status: "completed", timestamp: now
+  }));
+  assert.equal((await storage.get("plans", guardedPlan.planId)).status, "reserved");
+  assert.equal((await storage.get("reservations", guardedPlan.reservations[0].id)).status, "active");
+  assert.equal((await storage.get("remainders", "REC-REM-STATUS-GUARD")).status, "reserved");
+  await afterReloadEngine.cancelPlan({ reservedPlan: guardedPlan, timestamp: now });
+  assert.equal((await storage.get("plans", guardedPlan.planId)).status, "cancelled");
+  assert.equal((await storage.get("reservations", guardedPlan.reservations[0].id)).status, "released");
+  assert.equal((await storage.get("remainders", "REC-REM-STATUS-GUARD")).status, "available");
+  console.log("LULUS: updatePlanStatus menolak perubahan langsung pada rencana yang masih memakai inventaris.");
 
   await storage.add("remainders", remainder("REC-REM-COMPLETE"));
   const inventoryPlan = await afterReloadEngine.reservePlan({

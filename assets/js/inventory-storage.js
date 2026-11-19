@@ -207,6 +207,7 @@
       const database = await db();
       const tx = database.transaction([storeName], "readonly");
       const done = transactionDone(tx);
+      done.catch(() => {});
       const value = await requestResult(tx.objectStore(storeName).get(id));
       await done;
       return value === undefined ? null : value;
@@ -217,6 +218,7 @@
       const database = await db();
       const tx = database.transaction([storeName], "readonly");
       const done = transactionDone(tx);
+      done.catch(() => {});
       const values = await requestResult(tx.objectStore(storeName).getAll());
       await done;
       return values;
@@ -227,6 +229,7 @@
       const database = await db();
       const tx = database.transaction([storeName], "readonly");
       const done = transactionDone(tx);
+      done.catch(() => {});
       const store = tx.objectStore(storeName);
       if (!store.indexNames.contains(indexName)) {
         try { tx.abort(); } catch (_) {}
@@ -916,6 +919,7 @@
       const names = BUNDLE_STORES.concat(["meta"]);
       const tx = database.transaction(names, "readwrite");
       const done = transactionDone(tx);
+      done.catch(() => {});
       const metaStore = tx.objectStore("meta");
       const exportedAt = new Date().toISOString();
       // Antrekan penulisan sebelum pembacaan agar semua pekerjaan tetap berada
@@ -1031,6 +1035,7 @@
       const database = await db();
       const tx = database.transaction(["plans", "reservations", "remainders"], "readonly");
       const done = transactionDone(tx);
+      done.catch(() => {});
       const results = await Promise.all([
         requestResult(tx.objectStore("plans").get(planId)),
         requestResult(tx.objectStore("reservations").index("planId").getAll(planId)),
@@ -1044,6 +1049,7 @@
       const database = await db();
       const tx = database.transaction(["plans", "reservations", "remainders"], "readonly");
       const done = transactionDone(tx);
+      done.catch(() => {});
       const results = await Promise.all([
         requestResult(tx.objectStore("plans").getAll()),
         requestResult(tx.objectStore("reservations").getAll()),

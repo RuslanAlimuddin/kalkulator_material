@@ -58,6 +58,24 @@ async function main() {
   assert.deepEqual(noInventory.releasedReservations, []);
   console.log("LULUS: pembatalan rencana tanpa sumber inventaris tidak membuat perubahan.");
 
+  // Uji round-trip cadangan untuk rencana yang dibatalkan.
+  const backup = await storage.exportJSON();
+  const validator = require("../assets/js/inventory-validator.js");
+  const beforeImport = validator.validateInventoryBundle(backup);
+  assert.equal(beforeImport.valid, true, JSON.stringify(beforeImport.errors));
+  await storage.importJSON(backup, "replace");
+  const restoredPlan = await storage.get("plans", reservedPlan.planId);
+  assert.equal(restoredPlan.status, "cancelled");
+  for (const reservation of reservedPlan.reservations) {
+    assert.equal((await storage.get("reservations", reservation.id)).status, "released");
+    assert.ok((await storage.getAll("movements")).some(item =>
+      item.referenceId === reservation.id && item.type === "reservation_released"
+    ));
+  }
+  const afterImport = validator.validateInventoryBundle(await storage.exportJSON());
+  assert.equal(afterImport.valid, true, JSON.stringify(afterImport.errors));
+  console.log("LULUS: cadangan round-trip mempertahankan rencana cancelled, reservasi released, dan movement terminal.");
+
   await storage.close();
   await deleteDatabase();
   console.log("Semua pengujian pembatalan rencana selesai.");

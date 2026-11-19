@@ -126,6 +126,24 @@ async function main() {
   assert.equal(childC.status, "available");
   console.log("LULUS: sisa lembar baru dari B dapat dipakai pekerjaan C dan menghasilkan sisa turunan baru.");
 
+  // Uji round-trip cadangan setelah seluruh reservasi rencana dikonsumsi.
+  const completedBackup = await storage.exportJSON();
+  const validator = require("../assets/js/inventory-validator.js");
+  const beforeImport = validator.validateInventoryBundle(completedBackup);
+  assert.equal(beforeImport.valid, true, JSON.stringify(beforeImport.errors));
+  await storage.importJSON(completedBackup, "replace");
+  const restoredCompleted = await storage.get("plans", reservedPlan.planId);
+  assert.equal(restoredCompleted.status, "completed");
+  for (const reservation of reservedPlan.reservations) {
+    assert.equal((await storage.get("reservations", reservation.id)).status, "consumed");
+    assert.ok((await storage.getAll("movements")).some(item =>
+      item.referenceId === reservation.id && item.type === "consumed"
+    ));
+  }
+  const afterImport = validator.validateInventoryBundle(await storage.exportJSON());
+  assert.equal(afterImport.valid, true, JSON.stringify(afterImport.errors));
+  console.log("LULUS: cadangan round-trip mempertahankan rencana completed, reservasi consumed, dan movement terminal.");
+
   await storage.close();
   await deleteDatabase();
   console.log("Semua pengujian siklus planner → reservasi → konsumsi → pekerjaan berikutnya selesai.");

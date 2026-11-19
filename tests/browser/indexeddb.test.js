@@ -56,7 +56,7 @@ async function main() {
         request.onsuccess = resolve;
         request.onerror = () => reject(request.error);
       });
-      const storage = MaterialInventoryStorage.createStorage();
+      const storage = MaterialInventoryStorage.createStorage({ allowUnsafeInventoryWrites: true });
       await storage.open();
       await storage.add("remainders", {
         id: "BROWSER-PERSISTENCE-1",

@@ -213,6 +213,42 @@ test("ID movement duplikat ditolak agar riwayat tidak tertimpa saat impor replac
   assert.ok(validate(data).errors.some(e => /ID duplikat: MOV-DUPLICATE/.test(e.message)));
 });
 
+test("jenis movement harus memiliki transisi status yang sesuai", () => {
+  const data = validBundle();
+  data.movements.movements.push({
+    id: "MOV-WRONG-TRANSITION", remainderId: "REM-001",
+    type: "reserved", timestamp: now,
+    fromStatus: null, toStatus: "available"
+  });
+  assert.ok(validate(data).errors.some(e =>
+    /Perubahan status tidak sesuai/.test(e.message)
+  ));
+});
+
+test("movement reservasi harus merujuk reservasi dengan sumber yang sama", () => {
+  const data = validPlanBundle();
+  data.movements.movements.push({
+    id: "MOV-RESERVED", remainderId: "REM-001",
+    type: "reserved", jobId: "JOB-A", timestamp: now,
+    fromStatus: "available", toStatus: "reserved",
+    referenceId: "RSV-TIDAK-ADA"
+  });
+  assert.ok(validate(data).errors.some(e =>
+    /Riwayat reservasi harus merujuk ID reservasi yang ada/.test(e.message)
+  ));
+});
+
+test("movement reservasi yang terhubung benar diterima", () => {
+  const data = validPlanBundle();
+  data.movements.movements.push({
+    id: "MOV-RESERVED", remainderId: "REM-001",
+    type: "reserved", jobId: "JOB-A", timestamp: now,
+    fromStatus: "available", toStatus: "reserved",
+    referenceId: "RSV-PLAN-001"
+  });
+  assert.equal(validate(data).valid, true);
+});
+
 test("movement dengan remainder yang tidak ada ditolak", () => {
   const data = validBundle();
   data.movements.movements.push({

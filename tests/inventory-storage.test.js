@@ -293,6 +293,15 @@ async function main() {
     assert.notEqual(await storage.get("remainders", "REM-A"), null);
   });
 
+
+  await test("meta impor yang rusak ditolak tanpa menghapus data lokal", async () => {
+    const invalid = bundle("META-INVALID");
+    invalid.meta = { key: "schemaVersion", value: 2 };
+    await assert.rejects(storage.importJSON(invalid, "replace"), /tidak valid/);
+    assert.notEqual(await storage.get("remainders", "REM-A"), null);
+    assert.equal(await storage.get("materials", "MAT-META-INVALID"), null);
+  });
+
   await test("impor replace menolak ID movement ganda tanpa menghapus data lokal", async () => {
     const invalid = bundle("DUP-MOVEMENT");
     invalid.movements.movements.push(

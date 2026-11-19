@@ -300,11 +300,18 @@
     renderActivePlans(views);
 
     const report = await workflow.getRecoveryReport();
+    const inconsistentPlanIds = new Set(report.inconsistentPlans.map(item => item.id));
+    const additionalReservationIssues = new Set(
+      report.inconsistentReservations
+        .map(item => item.planId || item.id)
+        .filter(id => !inconsistentPlanIds.has(id))
+    ).size;
     const problems = report.orphanedReservations.length +
       report.orphanedRemainders.length +
       report.multiplyReservedRemainders.length +
       report.reservationsWithoutSource.length +
-      report.inconsistentPlans.length;
+      report.inconsistentPlans.length +
+      additionalReservationIssues;
     const notice = $("inventoryRecoveryNotice");
     if (problems) {
       notice.textContent = "Peringatan audit inventaris: ditemukan " + problems +

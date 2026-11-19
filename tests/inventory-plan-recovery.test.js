@@ -63,7 +63,7 @@ function createVersionOneDatabase() {
 
 async function main() {
   await deleteDatabase();
-  let storage = Storage.createStorage();
+  let storage = Storage.createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
   const engine = Engine.createInventoryEngine({ storage });
   await storage.add("materials", {
@@ -118,7 +118,7 @@ async function main() {
   assert.equal((await storage.get("plans", reserved.planId)).status, "reserved");
   await storage.close();
 
-  storage = Storage.createStorage();
+  storage = Storage.createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
   const recoveredEngine = Engine.createInventoryEngine({ storage });
   // Pemulihan wajib menolak data sumber yang tidak lagi cocok dengan reservasi.
@@ -190,7 +190,7 @@ async function main() {
     timestamp: now
   });
   await storage.close();
-  storage = Storage.createStorage();
+  storage = Storage.createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
   const afterReloadEngine = Engine.createInventoryEngine({ storage });
   const newOnlyRestored = await afterReloadEngine.restorePlan(newOnly.planId);
@@ -246,7 +246,7 @@ async function main() {
     timestamp: now
   });
   await storage.close();
-  storage = Storage.createStorage();
+  storage = Storage.createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
   const completionEngine = Engine.createInventoryEngine({ storage });
   const restoredForCompletion = await completionEngine.restorePlan(inventoryPlan.planId);
@@ -275,7 +275,7 @@ async function main() {
   await storage.close();
   await deleteDatabase();
   await createVersionOneDatabase();
-  storage = Storage.createStorage();
+  storage = Storage.createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
   const recoveryPlans = await storage.getRecoveryPlans();
   assert.equal(recoveryPlans.length, 1);

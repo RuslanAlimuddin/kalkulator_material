@@ -26,7 +26,7 @@ function deleteDatabase() {
 
 async function main() {
   await deleteDatabase();
-  const storage = storageModule.createStorage();
+  const storage = storageModule.createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
   const engine = engineModule.createInventoryEngine({ storage });
 

@@ -32,6 +32,17 @@ async function main() {
   await deleteDatabase();
   const storage = storageModule.createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
+  await storage.add("materials", {
+    id: "MAT-CYCLE", name: "Material siklus", category: "board",
+    thicknessMm: 8, grainRequired: false, motif: "plain",
+    rotationPolicy: "free", active: true
+  });
+  for (const id of ["JOB-A", "JOB-B", "JOB-C"]) {
+    await storage.add("jobs", {
+      id, name: "Pekerjaan " + id, status: "open",
+      createdAt: now, closedAt: null
+    });
+  }
   await storage.add("remainders", remainder("CYCLE-REM-1"));
   await storage.add("remainders", remainder("CYCLE-REM-2"));
 

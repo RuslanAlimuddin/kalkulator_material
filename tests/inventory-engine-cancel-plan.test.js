@@ -29,6 +29,17 @@ async function main() {
   await storage.open();
   const engine = engineModule.createInventoryEngine({ storage });
 
+  await storage.add("materials", {
+    id: "MAT-CANCEL", name: "Material pembatalan", category: "board",
+    thicknessMm: 8, grainRequired: false, motif: "plain",
+    rotationPolicy: "free", active: true
+  });
+  for (const id of ["JOB-OLD", "JOB-NEW"]) {
+    await storage.add("jobs", {
+      id, name: "Pekerjaan " + id, status: "open",
+      createdAt: now, closedAt: null
+    });
+  }
   await storage.add("remainders", item("CANCEL-1"));
   await storage.add("remainders", item("CANCEL-2"));
   const reservedPlan = await engine.reservePlan({

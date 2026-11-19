@@ -199,7 +199,7 @@ test("ID movement wajib diisi", () => {
     remainderId: "REM-001", type: "created",
     timestamp: now, fromStatus: null, toStatus: "available"
   });
-  assert.ok(validate(data).errors.some(e => /movements\\.movements\\[0\\]\\.id/.test(e.path)));
+  assert.ok(validate(data).errors.some(e => e.path === "movements.movements[0].id"));
 });
 
 test("ID movement duplikat ditolak agar riwayat tidak tertimpa saat impor replace", () => {

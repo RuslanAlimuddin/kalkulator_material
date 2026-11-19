@@ -197,6 +197,23 @@ async function main() {
   await completionEngine.consumePlan({ reservedPlan: restoredForCompletion, timestamp: now });
   assert.equal((await storage.get("plans", inventoryPlan.planId)).status, "completed");
   assert.equal((await storage.get("remainders", "REC-REM-COMPLETE")).status, "consumed");
+
+  // Reservasi terminal yang masih menunjuk ke planId harus terdeteksi
+  // walaupun rencana induknya hilang (kasus ini tidak masuk orphanedReservations
+  // karena reservasinya bukan lagi active).
+  const consumedReservation = await storage.get("reservations", inventoryPlan.reservations[0].id);
+  await storage.update("reservations", consumedReservation.id, { planId: "PLAN-MISSING-PARENT" });
+  const missingParentReport = await storage.getRecoveryReport();
+  assert.ok(missingParentReport.inconsistentReservations.some(item =>
+    item.id === consumedReservation.id && item.status === "consumed"
+  ));
+  assert.deepEqual(missingParentReport.orphanedReservations, []);
+  await storage.put("reservations", consumedReservation);
+  const restoredParentReport = await storage.getRecoveryReport();
+  assert.deepEqual(restoredParentReport.inconsistentPlans, []);
+  assert.deepEqual(restoredParentReport.inconsistentReservations, []);
+  console.log("LULUS: audit mendeteksi reservasi terminal yang kehilangan rencana induk.");
+
   console.log("LULUS: rencana multi-sumber dipulihkan dan diselesaikan dari snapshot setelah reload.");
 
   await storage.close();

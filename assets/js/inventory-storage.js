@@ -1068,20 +1068,50 @@
         cancelled: "released",
         completed: "consumed"
       };
+      const remainderById = new Map(remainders.map(item => [item.id, item]));
+      const reservationsByPlan = new Map();
+      reservations.forEach(item => {
+        if (!item.planId) return;
+        const linked = reservationsByPlan.get(item.planId) || [];
+        linked.push(item);
+        reservationsByPlan.set(item.planId, linked);
+      });
+      const planHasMatchingSources = (plan, linked) => {
+        // Snapshot legacy tidak menyimpan inventoryUsage; tautannya tetap
+        // diperiksa melalui reservationIds dan status/jobId di bawah.
+        if (!plan.plan) return plan.status === "legacy_recovery" || plan.legacy === true;
+        if (!Array.isArray(plan.plan.inventoryUsage)) return false;
+        const expectedSources = plan.plan.inventoryUsage.map(item => item && item.remainderId);
+        const actualSources = linked.map(item => item.remainderId);
+        if (expectedSources.some(id => typeof id !== "string" || !id.trim()) ||
+            new Set(expectedSources).size !== expectedSources.length ||
+            new Set(actualSources).size !== actualSources.length) return false;
+        return JSON.stringify(expectedSources.slice().sort()) ===
+          JSON.stringify(actualSources.slice().sort());
+      };
+      const reservationHasConsistentSource = item => {
+        if (item.status !== "active") return true;
+        const source = remainderById.get(item.remainderId);
+        return !!source && source.status === "reserved";
+      };
       const inconsistentReservations = reservations.filter(item => {
         if (!item.planId) return false; // Reservasi legacy tanpa tautan ditangani terpisah.
         const plan = planById.get(item.planId);
         if (!plan) return true; // Semua reservasi bertaut harus memiliki rencana induk.
         const expectedStatus = expectedReservationStatus[plan.status];
-        return !expectedStatus || item.status !== expectedStatus;
+        if (!expectedStatus || item.status !== expectedStatus || item.jobId !== plan.jobId) return true;
+        const linked = reservationsByPlan.get(plan.id) || [];
+        return !planHasMatchingSources(plan, linked) || !reservationHasConsistentSource(item);
       });
       const inconsistentPlans = plans.filter(plan => {
         const expectedStatus = expectedReservationStatus[plan.status];
         const expected = Array.isArray(plan.reservationIds) ? plan.reservationIds.slice().sort() : [];
-        const linked = reservations.filter(item => item.planId === plan.id);
+        const linked = reservationsByPlan.get(plan.id) || [];
         const actual = linked.map(item => item.id).sort();
-        if (!expectedStatus || JSON.stringify(expected) !== JSON.stringify(actual)) return true;
-        return linked.some(item => item.status !== expectedStatus);
+        if (!expectedStatus || JSON.stringify(expected) !== JSON.stringify(actual) ||
+            !planHasMatchingSources(plan, linked)) return true;
+        return linked.some(item => item.status !== expectedStatus ||
+          item.jobId !== plan.jobId || !reservationHasConsistentSource(item));
       });
       return {
         activePlans,

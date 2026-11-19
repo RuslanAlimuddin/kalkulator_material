@@ -151,6 +151,28 @@ async function main() {
   await storage.put("plans", originalPlan);
   console.log("LULUS: laporan mendeteksi reservasi aktif yang tidak sesuai dengan rencana cancelled.");
 
+  // Audit harus memeriksa hubungan pekerjaan, sumber, dan status sumber aktif.
+  const auditReservation = await storage.get("reservations", reserved.reservations[0].id);
+  await storage.update("reservations", auditReservation.id, { jobId: "JOB-WRONG" });
+  const wrongJobReport = await storage.getRecoveryReport();
+  assert.ok(wrongJobReport.inconsistentReservations.some(item => item.id === auditReservation.id));
+  assert.ok(wrongJobReport.inconsistentPlans.some(item => item.id === reserved.planId));
+  await storage.put("reservations", auditReservation);
+
+  await storage.update("reservations", auditReservation.id, { remainderId: "REC-REM-MISSING" });
+  const wrongSourceReport = await storage.getRecoveryReport();
+  assert.ok(wrongSourceReport.inconsistentReservations.some(item => item.id === auditReservation.id));
+  assert.ok(wrongSourceReport.inconsistentPlans.some(item => item.id === reserved.planId));
+  await storage.put("reservations", auditReservation);
+
+  const auditRemainder = await storage.get("remainders", auditReservation.remainderId);
+  await storage.update("remainders", auditRemainder.id, { status: "available" });
+  const wrongSourceStatusReport = await storage.getRecoveryReport();
+  assert.ok(wrongSourceStatusReport.inconsistentReservations.some(item => item.id === auditReservation.id));
+  assert.ok(wrongSourceStatusReport.inconsistentPlans.some(item => item.id === reserved.planId));
+  await storage.put("remainders", auditRemainder);
+  console.log("LULUS: audit mendeteksi jobId, remainderId, dan status sumber yang tidak cocok.");
+
   await recoveredEngine.cancelPlan({ reservedPlan: recovered, timestamp: now });
   assert.equal((await storage.get("plans", reserved.planId)).status, "cancelled");
   assert.equal((await storage.get("remainders", "REC-REM-1")).status, "available");

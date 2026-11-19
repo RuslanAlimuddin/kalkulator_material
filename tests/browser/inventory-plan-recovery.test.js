@@ -48,7 +48,7 @@ async function main() {
 
     const planId = await page.evaluate(async () => {
       const now = "2026-11-18T14:30:00.000Z";
-      const storage = MaterialInventoryStorage.createStorage();
+      const storage = MaterialInventoryStorage.createStorage({ allowUnsafeInventoryWrites: true });
       await storage.open();
       await storage.add("remainders", {
         id: "BROWSER-RECOVERY-REM", materialId: "MAT-BROWSER",

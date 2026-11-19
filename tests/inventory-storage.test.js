@@ -158,6 +158,32 @@ async function main() {
     assert.ok(exported.meta.some(item => item.key === "lastExportAt"));
   });
 
+
+  await test("impor cadangan lama dengan reservasi aktif membentuk snapshot pemulihan", async () => {
+    const legacy = bundle("LEGACY-ACTIVE");
+    legacy.remainders.remainders[0].status = "reserved";
+    legacy.reservations.reservations.push({
+      id: "RSV-LEGACY-ACTIVE",
+      remainderId: "REM-LEGACY-ACTIVE",
+      jobId: "JOB-LEGACY-ACTIVE",
+      status: "active",
+      createdAt: now,
+      releasedAt: null,
+      consumedAt: null
+    });
+    await storage.importJSON(legacy, "merge");
+    const reservation = await storage.get("reservations", "RSV-LEGACY-ACTIVE");
+    assert.equal(reservation.planId, "LEGACY-RSV-LEGACY-ACTIVE");
+    const plan = await storage.get("plans", reservation.planId);
+    assert.equal(plan.status, "legacy_recovery");
+    assert.equal(plan.legacy, true);
+    assert.deepEqual(plan.reservationIds, ["RSV-LEGACY-ACTIVE"]);
+    const exported = await storage.exportJSON();
+    const exportedReservation = exported.reservations.reservations
+      .find(item => item.id === "RSV-LEGACY-ACTIVE");
+    assert.equal(exportedReservation.planId, reservation.planId);
+  });
+
   await test("index dapat mencari sisa berdasarkan material dan status", async () => {
     const data = await storage.getByIndex("remainders", "materialId", "MAT-A");
     assert.equal(data.length, 1);

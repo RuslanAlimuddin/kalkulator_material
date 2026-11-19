@@ -643,15 +643,8 @@
       });
       if (batches.length === 0 && newSheetDrafts.length === 0) {
         if (!input.planId) return { consumedReservations: [], createdRemainders: [] };
-        const database = await db();
-        await withTransaction(database, ["plans"], "readwrite", tx => {
-          const plans = tx.objectStore("plans");
-          const request = plans.get(input.planId);
-          request.onsuccess = () => {
-            const plan = request.result;
-            if (!plan || plan.status !== "reserved") { tx.abort(); return; }
-            plans.put({ ...plan, status: "completed", completedAt: timestamp });
-          };
+        await updatePlanStatus({
+          planId: input.planId, status: "completed", timestamp
         });
         return { consumedReservations: [], createdRemainders: [] };
       }

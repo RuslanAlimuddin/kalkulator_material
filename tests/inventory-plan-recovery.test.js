@@ -218,6 +218,10 @@ async function main() {
   await assert.rejects(storage.updatePlanStatus({
     planId: guardedPlan.planId, status: "completed", timestamp: now
   }));
+  await assert.rejects(storage.consumeReservations({
+    reservations: [], newSheetRemainders: [], planId: guardedPlan.planId,
+    timestamp: now
+  }));
   assert.equal((await storage.get("plans", guardedPlan.planId)).status, "reserved");
   assert.equal((await storage.get("reservations", guardedPlan.reservations[0].id)).status, "active");
   assert.equal((await storage.get("remainders", "REC-REM-STATUS-GUARD")).status, "reserved");

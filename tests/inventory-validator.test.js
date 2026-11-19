@@ -193,6 +193,26 @@ test("tanggal yang tidak valid ditolak", () => {
   assert.equal(validate(data).valid, false);
 });
 
+test("ID movement wajib diisi", () => {
+  const data = validBundle();
+  data.movements.movements.push({
+    remainderId: "REM-001", type: "created",
+    timestamp: now, fromStatus: null, toStatus: "available"
+  });
+  assert.ok(validate(data).errors.some(e => /movements\\.movements\\[0\\]\\.id/.test(e.path)));
+});
+
+test("ID movement duplikat ditolak agar riwayat tidak tertimpa saat impor replace", () => {
+  const data = validBundle();
+  for (const remainderId of ["REM-001", "REM-001"]) {
+    data.movements.movements.push({
+      id: "MOV-DUPLICATE", remainderId, type: "created",
+      timestamp: now, fromStatus: null, toStatus: "available"
+    });
+  }
+  assert.ok(validate(data).errors.some(e => /ID duplikat: MOV-DUPLICATE/.test(e.message)));
+});
+
 test("movement dengan remainder yang tidak ada ditolak", () => {
   const data = validBundle();
   data.movements.movements.push({

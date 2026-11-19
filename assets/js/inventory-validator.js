@@ -138,6 +138,42 @@
       if (item.status === "reserved" && !item.legacy && !isObject(item.plan)) {
         error(p + ".plan", "Snapshot aktif wajib menyimpan objek rencana.");
       }
+      if (!item.legacy && isObject(item.plan)) {
+        if (!Array.isArray(item.plan.inventoryUsage)) {
+          error(p + ".plan.inventoryUsage", "Snapshot rencana wajib memiliki daftar sumber inventaris.");
+        } else {
+          const usageIds = [];
+          const seenUsageIds = new Set();
+          item.plan.inventoryUsage.forEach((usage, usageIndex) => {
+            const usagePath = p + ".plan.inventoryUsage[" + usageIndex + "].remainderId";
+            const sourceId = usage && usage.remainderId;
+            if (!isNonEmptyString(sourceId)) {
+              error(usagePath, "ID sumber inventaris wajib berupa teks yang tidak kosong.");
+            } else if (seenUsageIds.has(sourceId)) {
+              error(usagePath, "Satu sumber inventaris tidak boleh tercantum lebih dari sekali.");
+            } else {
+              seenUsageIds.add(sourceId);
+              usageIds.push(sourceId);
+            }
+          });
+          if (Array.isArray(item.reservationIds)) {
+            const linked = item.reservationIds
+              .map(id => reservationById.get(id))
+              .filter(Boolean);
+            linked.forEach((reservation, linkedIndex) => {
+              if (reservation.jobId !== item.jobId) {
+                error(p + ".reservationIds", "Pekerjaan reservasi tidak cocok dengan pekerjaan snapshot.");
+              }
+            });
+            if (linked.length === item.reservationIds.length) {
+              const linkedSourceIds = linked.map(reservation => reservation.remainderId).sort();
+              if (JSON.stringify(usageIds.slice().sort()) !== JSON.stringify(linkedSourceIds)) {
+                error(p + ".plan.inventoryUsage", "Daftar sumber inventaris tidak cocok dengan sumber reservasi.");
+              }
+            }
+          }
+        }
+      }
       if (item.legacy === true && item.status !== "legacy_recovery" && item.plan == null) {
         warnings.push({ path: p, message: "Reservasi lama tidak memiliki snapshot rencana." });
       }

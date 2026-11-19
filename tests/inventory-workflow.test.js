@@ -16,7 +16,7 @@ function deleteDatabase() {
 
 async function main() {
   await deleteDatabase();
-  const storage = storageModule.createStorage();
+  const storage = storageModule.createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
   await storage.add("remainders", {
     id: "WF-AVAILABLE", materialId: "MAT-WF", widthCm: 40, heightCm: 30,

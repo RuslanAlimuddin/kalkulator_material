@@ -40,6 +40,29 @@ function validBundle() {
   };
 }
 
+function validPlanBundle() {
+  const data = validBundle();
+  data.remainders.remainders[0].status = "reserved";
+  data.jobs.jobs.push({
+    id: "JOB-B", name: "Pekerjaan B", status: "open",
+    createdAt: now, closedAt: null
+  });
+  data.reservations.reservations.push({
+    id: "RSV-PLAN-001", remainderId: "REM-001", jobId: "JOB-A",
+    planId: "PLAN-001", status: "active",
+    createdAt: now, releasedAt: null, consumedAt: null
+  });
+  data.plans = {
+    schemaVersion: 1,
+    plans: [{
+      id: "PLAN-001", jobId: "JOB-A",
+      plan: { inventoryUsage: [{ remainderId: "REM-001" }] },
+      reservationIds: ["RSV-PLAN-001"], status: "reserved", legacy: false
+    }]
+  };
+  return data;
+}
+
 function validate(bundle) {
   return validateInventoryBundle(bundle);
 }
@@ -127,6 +150,24 @@ test("reservasi aktif mengubah konsistensi status sisa menjadi reserved", () => 
   });
   assert.equal(validate(data).valid, true);
 });
+test("snapshot rencana dan reservasi dengan sumber serta pekerjaan cocok diterima", () => {
+  assert.equal(validate(validPlanBundle()).valid, true);
+});
+
+test("reservasi dengan jobId berbeda dari snapshot rencana ditolak", () => {
+  const data = validPlanBundle();
+  data.reservations.reservations[0].jobId = "JOB-B";
+  const result = validate(data);
+  assert.ok(result.errors.some(e => /Pekerjaan reservasi tidak cocok/.test(e.message)));
+});
+
+test("sumber inventaris snapshot yang berbeda dari reservasi ditolak", () => {
+  const data = validPlanBundle();
+  data.plans.plans[0].plan.inventoryUsage[0].remainderId = "REM-LAIN";
+  const result = validate(data);
+  assert.ok(result.errors.some(e => /Daftar sumber inventaris tidak cocok/.test(e.message)));
+});
+
 
 test("dua reservasi aktif untuk satu sisa ditolak", () => {
   const data = validBundle();

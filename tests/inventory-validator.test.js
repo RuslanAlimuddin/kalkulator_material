@@ -249,6 +249,58 @@ test("movement reservasi yang terhubung benar diterima", () => {
   assert.equal(validate(data).valid, true);
 });
 
+test("reservasi lama tanpa riwayat lengkap diberi peringatan, bukan langsung ditolak", () => {
+  const data = validBundle();
+  data.reservations.reservations.push({
+    id: "RSV-LEGACY", remainderId: "REM-001", jobId: "JOB-A",
+    status: "released", createdAt: now, releasedAt: now, consumedAt: null
+  });
+  const result = validate(data);
+  assert.equal(result.valid, true);
+  assert.ok(result.warnings.some(w => /movement reserved/.test(w.message)));
+  assert.ok(result.warnings.some(w => /movement terminal/.test(w.message)));
+});
+
+test("lebih dari satu movement reserved untuk reservasi yang sama ditolak", () => {
+  const data = validPlanBundle();
+  for (const id of ["MOV-RESERVED-1", "MOV-RESERVED-2"]) {
+    data.movements.movements.push({
+      id, remainderId: "REM-001", type: "reserved",
+      jobId: "JOB-A", timestamp: now,
+      fromStatus: "available", toStatus: "reserved",
+      referenceId: "RSV-PLAN-001"
+    });
+  }
+  assert.ok(validate(data).errors.some(e =>
+    /lebih dari satu movement reserved/.test(e.message)
+  ));
+});
+
+test("movement terminal tidak boleh mendahului movement reservasi", () => {
+  const data = validBundle();
+  data.reservations.reservations.push({
+    id: "RSV-RELEASED", remainderId: "REM-001", jobId: "JOB-A",
+    status: "released", createdAt: now,
+    releasedAt: "2026-11-18T05:00:00.000Z", consumedAt: null
+  });
+  data.movements.movements.push({
+    id: "MOV-RELEASED", remainderId: "REM-001",
+    type: "reservation_released", jobId: "JOB-A",
+    timestamp: "2026-11-18T05:00:00.000Z",
+    fromStatus: "reserved", toStatus: "available",
+    referenceId: "RSV-RELEASED"
+  }, {
+    id: "MOV-RESERVED-LATE", remainderId: "REM-001",
+    type: "reserved", jobId: "JOB-A",
+    timestamp: "2026-11-18T06:00:00.000Z",
+    fromStatus: "available", toStatus: "reserved",
+    referenceId: "RSV-RELEASED"
+  });
+  assert.ok(validate(data).errors.some(e =>
+    /tidak boleh mendahului movement reserved/.test(e.message)
+  ));
+});
+
 test("movement dengan remainder yang tidak ada ditolak", () => {
   const data = validBundle();
   data.movements.movements.push({

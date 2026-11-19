@@ -321,6 +321,16 @@
       }
     });
 
+    const expectedMovementTransitions = {
+      created: [null, "available"],
+      reserved: ["available", "reserved"],
+      reservation_released: ["reserved", "available"],
+      consumed: ["reserved", "consumed"],
+      remainder_created: [null, "available"],
+      condition_changed: ["available", "available"],
+      discarded: ["available", "discarded"]
+    };
+
     if (movements) movements.forEach((item, index) => {
       if (!isObject(item)) return;
       const p = "movements.movements[" + index + "]";
@@ -341,6 +351,31 @@
       }
       if (item.referenceId != null && !isNonEmptyString(item.referenceId)) {
         error(p + ".referenceId", "Referensi jika diisi harus berupa teks.");
+      }
+      const expectedTransition = expectedMovementTransitions[item.type];
+      if (expectedTransition &&
+          (item.fromStatus !== expectedTransition[0] || item.toStatus !== expectedTransition[1])) {
+        error(p, "Perubahan status tidak sesuai dengan jenis riwayat pergerakan.");
+      }
+      if (["reserved", "reservation_released", "consumed"].includes(item.type)) {
+        const linkedReservation = isNonEmptyString(item.referenceId)
+          ? reservationById.get(item.referenceId) : null;
+        if (!linkedReservation) {
+          error(p + ".referenceId", "Riwayat reservasi harus merujuk ID reservasi yang ada.");
+        } else {
+          if (linkedReservation.remainderId !== item.remainderId) {
+            error(p + ".remainderId", "Sisa material pada riwayat tidak cocok dengan reservasi.");
+          }
+          if (linkedReservation.jobId !== item.jobId) {
+            error(p + ".jobId", "Pekerjaan pada riwayat tidak cocok dengan reservasi.");
+          }
+          if (item.type === "reservation_released" && linkedReservation.status !== "released") {
+            error(p + ".referenceId", "Riwayat pelepasan harus merujuk reservasi berstatus released.");
+          }
+          if (item.type === "consumed" && linkedReservation.status !== "consumed") {
+            error(p + ".referenceId", "Riwayat konsumsi harus merujuk reservasi berstatus consumed.");
+          }
+        }
       }
     });
 

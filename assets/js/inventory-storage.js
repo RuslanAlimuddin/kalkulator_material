@@ -514,7 +514,7 @@
             reservationRequest.onsuccess = () => {
               const reservation = reservationRequest.result;
               if (!reservation || reservation.status !== "active" ||
-                  (input.planId && reservation.planId !== input.planId)) {
+                  ((reservation.planId || input.planId) && reservation.planId !== input.planId)) {
                 tx.abort();
                 return;
               }

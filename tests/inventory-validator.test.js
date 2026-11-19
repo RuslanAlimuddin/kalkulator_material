@@ -79,6 +79,32 @@ test("paket null ditolak dengan laporan kesalahan", () => {
   assert.ok(result.errors.length > 0);
 });
 
+
+test("meta opsional tetap kompatibel dengan cadangan lama", () => {
+  const data = validBundle();
+  assert.equal(validate(data).valid, true);
+  data.meta = null;
+  assert.equal(validate(data).valid, true);
+});
+
+test("meta dengan bentuk selain array ditolak", () => {
+  const data = validBundle();
+  data.meta = { key: "schemaVersion", value: 2 };
+  assert.ok(validate(data).errors.some(e => e.path === "meta"));
+});
+
+test("record meta wajib berupa objek dengan key unik", () => {
+  const data = validBundle();
+  data.meta = [
+    { key: "schemaVersion", value: 2 },
+    { key: "schemaVersion", value: 1 },
+    null
+  ];
+  const result = validate(data);
+  assert.ok(result.errors.some(e => /Key meta tidak boleh duplikat/.test(e.message)));
+  assert.ok(result.errors.some(e => /Record meta harus berupa objek/.test(e.message)));
+});
+
 test("versi skema yang tidak didukung ditolak", () => {
   const data = validBundle();
   data.materials.schemaVersion = 3;

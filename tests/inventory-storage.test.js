@@ -102,6 +102,38 @@ async function main() {
     assert.equal(await storage.get("materials", item.id), null);
   });
 
+  await test("CRUD umum tidak boleh melewati transaksi bisnis inventaris", async () => {
+    const guarded = createStorage();
+    await assert.rejects(
+      guarded.add("remainders", { id: "BYPASS-ADD" }),
+      /Penulisan langsung ke remainders dibatasi/
+    );
+    await assert.rejects(
+      guarded.put("reservations", { id: "BYPASS-PUT" }),
+      /Penulisan langsung ke reservations dibatasi/
+    );
+    await assert.rejects(
+      guarded.update("remainders", "REM-A", { status: "consumed" }),
+      /Penulisan langsung ke remainders dibatasi/
+    );
+    await assert.rejects(
+      guarded.remove("movements", "MOV-A"),
+      /Penulisan langsung ke movements dibatasi/
+    );
+    await assert.rejects(
+      guarded.clear("plans"),
+      /Penulisan langsung ke plans dibatasi/
+    );
+    // Katalog dan pekerjaan tetap dapat dikelola melalui CRUD umum.
+    await guarded.add("materials", {
+      id: "GUARDED-MAT", name: "Material", category: "uji",
+      thicknessMm: 8, grainRequired: false, motif: "plain",
+      rotationPolicy: "free", active: true
+    });
+    assert.ok(await guarded.get("materials", "GUARDED-MAT"));
+    await guarded.close();
+  });
+
   await test("CRUD mendukung meta dengan key sebagai primary key", async () => {
     await storage.put("meta", { key: "test-key", value: "aktif" });
     assert.deepEqual(await storage.get("meta", "test-key"), {

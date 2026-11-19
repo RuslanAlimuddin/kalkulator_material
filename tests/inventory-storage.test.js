@@ -184,6 +184,40 @@ async function main() {
     assert.equal(exportedReservation.planId, reservation.planId);
   });
 
+  await test("impor merge legacy tidak menimpa snapshot lokal saat ID pemulihan bentrok", async () => {
+    const localPlan = {
+      id: "LEGACY-RSV-LEGACY-COLLISION",
+      jobId: "JOB-LOCAL",
+      status: "completed",
+      legacy: false,
+      reservationIds: [],
+      createdAt: now,
+      completedAt: now,
+      cancelledAt: null,
+      schemaVersion: 1
+    };
+    await storage.add("plans", localPlan);
+
+    const legacy = bundle("LEGACY-COLLISION");
+    legacy.remainders.remainders[0].status = "reserved";
+    legacy.reservations.reservations.push({
+      id: "RSV-LEGACY-COLLISION",
+      remainderId: "REM-LEGACY-COLLISION",
+      jobId: "JOB-LEGACY-COLLISION",
+      status: "active",
+      createdAt: now,
+      releasedAt: null,
+      consumedAt: null
+    });
+
+    await assert.rejects(storage.importJSON(legacy, "merge"));
+    assert.deepEqual(await storage.get("plans", localPlan.id), localPlan);
+    assert.equal(await storage.get("materials", "MAT-LEGACY-COLLISION"), null);
+    assert.equal(await storage.get("jobs", "JOB-LEGACY-COLLISION"), null);
+    assert.equal(await storage.get("remainders", "REM-LEGACY-COLLISION"), null);
+    assert.equal(await storage.get("reservations", "RSV-LEGACY-COLLISION"), null);
+  });
+
   await test("index dapat mencari sisa berdasarkan material dan status", async () => {
     const data = await storage.getByIndex("remainders", "materialId", "MAT-A");
     assert.equal(data.length, 1);

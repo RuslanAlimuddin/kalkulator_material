@@ -984,7 +984,7 @@
             }
             if (name === "reservations" && importedRecord.status === "active" && importedRecord.planId &&
                 importedRecord.planId.indexOf("LEGACY-") === 0 && !bundledPlanIds.has(importedRecord.planId)) {
-              stores.plans.put({
+              const legacyPlan = {
                 id: importedRecord.planId, jobId: importedRecord.jobId, plan: null,
                 material: null, grainDirection: null, motif: null,
                 reservationIds: [importedRecord.id], status: "legacy_recovery",
@@ -992,7 +992,10 @@
                 recoveryNote: "Reservasi impor lama tidak memiliki snapshot rencana pemotongan.",
                 createdAt: importedRecord.createdAt, completedAt: null,
                 cancelledAt: null, schemaVersion: 1
-              });
+              };
+              // Mode merge tidak boleh menimpa snapshot lokal bila ID sintetis bentrok.
+              if (importMode === "merge") stores.plans.add(legacyPlan);
+              else stores.plans.put(legacyPlan);
             }
           });
         });

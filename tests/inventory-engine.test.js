@@ -28,7 +28,7 @@ const bundle = {
 };
 
 async function main() {
-  const storage = storageModule.createStorage({ validator });
+  const storage = storageModule.createStorage({ validator, allowUnsafeInventoryWrites: true });
   await storage.importJSON(bundle, "replace");
   const reservation = await storage.reserveRemainder({
     remainderId: "REM-A", jobId: "JOB-B", timestamp: now

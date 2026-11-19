@@ -92,6 +92,7 @@
     const jobById = new Map();
     const remainderById = new Map();
     const reservationById = new Map();
+    const movementById = new Map();
     const activeReservationByRemainder = new Map();
 
     function indexUnique(records, path, map) {
@@ -115,6 +116,7 @@
     indexUnique(jobs, "jobs", jobById);
     indexUnique(remainders, "remainders", remainderById);
     indexUnique(reservations, "reservations", reservationById);
+    indexUnique(movements, "movements", movementById);
     const planById = new Map();
     indexUnique(plans, "plans", planById);
 

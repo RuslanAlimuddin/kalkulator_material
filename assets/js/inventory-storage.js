@@ -1071,7 +1071,7 @@
       const inconsistentReservations = reservations.filter(item => {
         if (!item.planId) return false; // Reservasi legacy tanpa tautan ditangani terpisah.
         const plan = planById.get(item.planId);
-        if (!plan) return false; // Ditangani oleh orphanedReservations.
+        if (!plan) return true; // Semua reservasi bertaut harus memiliki rencana induk.
         const expectedStatus = expectedReservationStatus[plan.status];
         return !expectedStatus || item.status !== expectedStatus;
       });

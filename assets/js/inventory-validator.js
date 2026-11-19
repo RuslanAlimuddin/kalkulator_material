@@ -81,6 +81,30 @@
       return { valid: false, errors, warnings };
     }
 
+    // Meta bersifat opsional agar cadangan versi lama tetap dapat diimpor.
+    // Jika tersedia, setiap record harus memiliki key unik untuk object store.
+    if (bundle.meta != null) {
+      if (!Array.isArray(bundle.meta)) {
+        error("meta", "Jika disertakan, meta harus berupa array.");
+      } else {
+        const metaKeys = new Set();
+        bundle.meta.forEach((record, index) => {
+          const path = "meta[" + index + "]";
+          if (!isObject(record)) {
+            error(path, "Record meta harus berupa objek.");
+            return;
+          }
+          if (!isNonEmptyString(record.key)) {
+            error(path + ".key", "Key meta wajib berupa teks yang tidak kosong.");
+          } else if (metaKeys.has(record.key)) {
+            error(path + ".key", "Key meta tidak boleh duplikat.");
+          } else {
+            metaKeys.add(record.key);
+          }
+        });
+      }
+    }
+
     const materials = requireSchemaArray(bundle.materials, "materials");
     const jobs = requireSchemaArray(bundle.jobs, "jobs");
     const remainders = requireSchemaArray(bundle.remainders, "remainders");

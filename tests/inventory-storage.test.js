@@ -66,7 +66,7 @@ function deleteDatabase() {
 
 async function main() {
   await deleteDatabase();
-  const storage = createStorage();
+  const storage = createStorage({ allowUnsafeInventoryWrites: true });
 
   await test("database versi 2 dibuat dengan tujuh object store", async () => {
     const db = await storage.open();

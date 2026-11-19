@@ -147,6 +147,18 @@
     }
   }
 
+  const BUSINESS_MANAGED_STORES = ["remainders", "reservations", "movements", "plans"];
+
+  function ensureGenericWriteAllowed(storeName, options) {
+    if (BUSINESS_MANAGED_STORES.includes(storeName) &&
+        !(options && options.allowUnsafeInventoryWrites === true)) {
+      throw new Error(
+        "Penulisan langsung ke " + storeName +
+        " dibatasi. Gunakan operasi inventaris khusus agar status, reservasi, dan riwayat tetap atomik."
+      );
+    }
+  }
+
   function withTransaction(db, storeNames, mode, work) {
     return new Promise((resolve, reject) => {
       let tx;
@@ -224,6 +236,7 @@
 
     async function add(storeName, record) {
       ensureStore(storeName);
+      ensureGenericWriteAllowed(storeName, opts);
       const key = storeName === "meta" ? record && record.key : record && record.id;
       if (!record || typeof record !== "object" || key == null || key === "") {
         throw new Error("Record harus memiliki " + (storeName === "meta" ? "key." : "id."));
@@ -236,6 +249,7 @@
 
     async function put(storeName, record) {
       ensureStore(storeName);
+      ensureGenericWriteAllowed(storeName, opts);
       const key = storeName === "meta" ? record && record.key : record && record.id;
       if (!record || typeof record !== "object" || key == null || key === "") {
         throw new Error("Record harus memiliki " + (storeName === "meta" ? "key." : "id."));
@@ -248,6 +262,7 @@
 
     async function update(storeName, id, changes) {
       ensureStore(storeName);
+      ensureGenericWriteAllowed(storeName, opts);
       if (storeName === "meta") {
         throw new Error("Gunakan put() untuk memperbarui meta berdasarkan key.");
       }
@@ -271,6 +286,7 @@
 
     async function remove(storeName, id) {
       ensureStore(storeName);
+      ensureGenericWriteAllowed(storeName, opts);
       const database = await db();
       return withTransaction(database, [storeName], "readwrite", tx =>
         requestResult(tx.objectStore(storeName).delete(id))
@@ -279,6 +295,7 @@
 
     async function clear(storeName) {
       ensureStore(storeName);
+      ensureGenericWriteAllowed(storeName, opts);
       const database = await db();
       return withTransaction(database, [storeName], "readwrite", tx =>
         requestResult(tx.objectStore(storeName).clear())

@@ -302,6 +302,18 @@ async function main() {
     assert.equal(await storage.get("materials", "MAT-META-INVALID"), null);
   });
 
+
+  await test("kegagalan penulisan di tengah impor replace membatalkan seluruh transaksi", async () => {
+    const invalidAtStorage = bundle("CLONE-FAIL");
+    // Fungsi lolos dari pemeriksaan bentuk record, tetapi tidak dapat disimpan
+    // oleh structured clone IndexedDB. Ini mensimulasikan kegagalan saat transaksi.
+    invalidAtStorage.materials.materials[0].unsupportedValue = function () {};
+    await assert.rejects(storage.importJSON(invalidAtStorage, "replace"));
+    assert.notEqual(await storage.get("remainders", "REM-A"), null);
+    assert.equal(await storage.get("materials", "MAT-CLONE-FAIL"), null);
+    assert.equal(await storage.get("jobs", "JOB-CLONE-FAIL"), null);
+  });
+
   await test("impor replace menolak ID movement ganda tanpa menghapus data lokal", async () => {
     const invalid = bundle("DUP-MOVEMENT");
     invalid.movements.movements.push(

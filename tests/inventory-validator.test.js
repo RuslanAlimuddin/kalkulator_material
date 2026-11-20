@@ -342,6 +342,48 @@ test("movement terminal tidak boleh mendahului movement reservasi", () => {
   ));
 });
 
+test("waktu movement harus cocok dengan timestamp reservasi", () => {
+  const data = validBundle();
+  data.reservations.reservations.push({
+    id: "RSV-TIME-MISMATCH", remainderId: "REM-001", jobId: "JOB-A",
+    status: "released", createdAt: now,
+    releasedAt: "2026-11-18T05:00:00.000Z", consumedAt: null
+  });
+  data.movements.movements.push({
+    id: "MOV-RESERVED-TIME", remainderId: "REM-001",
+    type: "reserved", jobId: "JOB-A", timestamp: "2026-11-18T04:30:00.000Z",
+    fromStatus: "available", toStatus: "reserved",
+    referenceId: "RSV-TIME-MISMATCH"
+  }, {
+    id: "MOV-RELEASED-TIME", remainderId: "REM-001",
+    type: "reservation_released", jobId: "JOB-A",
+    timestamp: "2026-11-18T05:30:00.000Z",
+    fromStatus: "reserved", toStatus: "available",
+    referenceId: "RSV-TIME-MISMATCH"
+  });
+  const result = validate(data);
+  assert.ok(result.errors.some(e => /waktu pembuatan reservasi/.test(e.message)));
+  assert.ok(result.errors.some(e => /waktu akhir reservasi/.test(e.message)));
+});
+
+test("reservasi terminal tidak boleh memiliki dua timestamp akhir sekaligus", () => {
+  const released = validBundle();
+  released.reservations.reservations.push({
+    id: "RSV-RELEASED-BOTH", remainderId: "REM-001", jobId: "JOB-A",
+    status: "released", createdAt: now,
+    releasedAt: now, consumedAt: now
+  });
+  assert.ok(validate(released).errors.some(e => /released tidak boleh memiliki waktu pemakaian/.test(e.message)));
+
+  const consumed = validBundle();
+  consumed.reservations.reservations.push({
+    id: "RSV-CONSUMED-BOTH", remainderId: "REM-001", jobId: "JOB-A",
+    status: "consumed", createdAt: now,
+    releasedAt: now, consumedAt: now
+  });
+  assert.ok(validate(consumed).errors.some(e => /consumed tidak boleh memiliki waktu pelepasan/.test(e.message)));
+});
+
 test("movement dengan remainder yang tidak ada ditolak", () => {
   const data = validBundle();
   data.movements.movements.push({

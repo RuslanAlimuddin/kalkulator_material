@@ -358,6 +358,78 @@ async function main() {
     assert.equal(active.length, 1);
   });
 
+  await test("sisa yang sudah dikonsumsi tidak dapat direservasi, dilepas, atau dikonsumsi ulang", async () => {
+    await storage.importJSON(bundle("LIFECYCLE"), "merge");
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-LIFECYCLE", jobId: "JOB-LIFECYCLE", timestamp: now
+    });
+    await storage.consumeReservation({
+      reservationId: reservation.id,
+      timestamp: now,
+      remainders: [{ widthCm: 20, heightCm: 10 }]
+    });
+
+    const source = await storage.get("remainders", "REM-LIFECYCLE");
+    assert.equal(source.status, "consumed");
+    const remainderCount = (await storage.getAll("remainders")).length;
+
+    await assert.rejects(storage.reserveRemainder({
+      remainderId: "REM-LIFECYCLE", jobId: "JOB-LIFECYCLE", timestamp: now
+    }));
+    await assert.rejects(storage.releaseReservation(reservation.id, { timestamp: now }));
+    await assert.rejects(storage.consumeReservation({
+      reservationId: reservation.id,
+      timestamp: now,
+      remainders: [{ widthCm: 8, heightCm: 6 }]
+    }));
+
+    assert.equal((await storage.get("remainders", "REM-LIFECYCLE")).status, "consumed");
+    assert.equal((await storage.get("reservations", reservation.id)).status, "consumed");
+    assert.equal((await storage.getAll("remainders")).length, remainderCount);
+  });
+
+  await test("sisa yang dibuang tidak dapat direservasi secara tunggal maupun massal", async () => {
+    await storage.importJSON(bundle("DISCARD"), "merge");
+    await storage.updateRemainderState({
+      id: "REM-DISCARD", changes: { status: "discarded" }, timestamp: now
+    });
+
+    await assert.rejects(storage.reserveRemainder({
+      remainderId: "REM-DISCARD", jobId: "JOB-DISCARD", timestamp: now
+    }));
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-DISCARD"], jobId: "JOB-DISCARD", timestamp: now
+    }));
+
+    assert.equal((await storage.get("remainders", "REM-DISCARD")).status, "discarded");
+    assert.equal(
+      (await storage.getByIndex("reservations", "remainderId", "REM-DISCARD"))
+        .filter(item => item.status === "active").length,
+      0
+    );
+  });
+
+  await test("pencatatan sisa langsung menolak metadata asal-usul turunan", async () => {
+    await storage.importJSON(bundle("SOURCE-GUARD"), "merge");
+    const base = {
+      materialId: "MAT-SOURCE-GUARD", originJobId: "JOB-SOURCE-GUARD",
+      sourceSheetId: "SHEET-SOURCE-GUARD", widthCm: 20, heightCm: 15,
+      thicknessMm: 8, grainDirection: "none", motif: "plain",
+      rotationAllowed: true
+    };
+
+    await assert.rejects(storage.createRemainder({
+      ...base, id: "REM-CONFLICT-INVENTORY", sourceType: "inventory",
+      sourceRemainderId: "REM-SOURCE-GUARD", reservationId: "RSV-WRONG"
+    }), /Metadata asal-usul/);
+    await assert.rejects(storage.createRemainder({
+      ...base, id: "REM-CONFLICT-NEW", sourceType: "new"
+    }), /Metadata asal-usul/);
+
+    assert.equal(await storage.get("remainders", "REM-CONFLICT-INVENTORY"), null);
+    assert.equal(await storage.get("remainders", "REM-CONFLICT-NEW"), null);
+  });
+
   await test("reservasi dapat dilepas dan stok kembali tersedia", async () => {
     const active = (await storage.getAll("reservations"))
       .find(item => item.remainderId === "REM-A" && item.status === "active");

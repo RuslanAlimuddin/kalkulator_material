@@ -965,6 +965,29 @@ async function main() {
     assert.deepEqual(await storage.get("plans", plan.id), plan);
   });
 
+  await test("reservasi menolak tanggal kalender yang tidak ada tanpa mengubah stok", async () => {
+    await storage.importJSON(bundle("TIMESTAMP-IMPOSSIBLE-DATE"), "merge");
+
+    await assert.rejects(storage.reserveRemainder({
+      remainderId: "REM-TIMESTAMP-IMPOSSIBLE-DATE",
+      jobId: "JOB-TIMESTAMP-IMPOSSIBLE-DATE",
+      timestamp: "2026-02-30T12:00:00.000Z"
+    }));
+
+    assert.equal(
+      (await storage.get("remainders", "REM-TIMESTAMP-IMPOSSIBLE-DATE")).status,
+      "available"
+    );
+    assert.equal(
+      (await storage.getByIndex("reservations", "remainderId", "REM-TIMESTAMP-IMPOSSIBLE-DATE")).length,
+      0
+    );
+    assert.equal(
+      (await storage.getByIndex("movements", "remainderId", "REM-TIMESTAMP-IMPOSSIBLE-DATE")).length,
+      0
+    );
+  });
+
   await storage.close();
   console.log("Semua pengujian storage inventaris selesai.");
   await deleteDatabase();

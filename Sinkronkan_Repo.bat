@@ -49,6 +49,12 @@ if not defined REMOTE (
   echo [GAGAL] Remote "origin" tidak ditemukan.
   goto selesai_gagal
 )
+echo %REMOTE% | findstr /i /c:"RuslanAlimuddin/kalkulator_material" >nul
+if errorlevel 1 (
+  echo [DIHENTIKAN] Remote origin bukan repository proyek yang diharapkan.
+  echo Periksa alamat remote sebelum melanjutkan.
+  goto selesai_gagal
+)
 echo Remote : %REMOTE%
 echo Branch : %BRANCH%
 echo.

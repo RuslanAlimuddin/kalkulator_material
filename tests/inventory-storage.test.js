@@ -422,6 +422,33 @@ async function main() {
     assert.equal((await storage.get("reservations", "RSV-RELEASE-DUP-BULK-SECOND")).status, "active");
   });
 
+  await test("konsumsi rencana menolak jobId reservasi yang berbeda dari snapshot", async () => {
+    await storage.importJSON(bundle("PLAN-JOB-MISMATCH"), "merge");
+    const reserved = await storage.reserveRemainders({
+      remainderIds: ["REM-PLAN-JOB-MISMATCH"],
+      jobId: "JOB-PLAN-JOB-MISMATCH",
+      planId: "PLAN-JOB-MISMATCH",
+      planSnapshot: {
+        plan: { inventoryUsage: [{ remainderId: "REM-PLAN-JOB-MISMATCH" }], usableRemainders: [] }
+      },
+      timestamp: now
+    });
+    await storage.put("reservations", {
+      ...await storage.get("reservations", reserved[0].id),
+      jobId: "JOB-OTHER-PLAN-JOB-MISMATCH"
+    });
+
+    await assert.rejects(storage.consumeReservations({
+      planId: "PLAN-JOB-MISMATCH",
+      reservations: [{ reservationId: reserved[0].id, remainders: [] }],
+      newSheetRemainders: [],
+      timestamp: now
+    }));
+    assert.equal((await storage.get("remainders", "REM-PLAN-JOB-MISMATCH")).status, "reserved");
+    assert.equal((await storage.get("reservations", reserved[0].id)).status, "active");
+    assert.equal((await storage.get("plans", "PLAN-JOB-MISMATCH")).status, "reserved");
+  });
+
   await test("konsumsi tunggal menolak sumber dengan reservasi aktif ganda dan menjaga stok", async () => {
     await storage.importJSON(bundle("CONSUME-DUP-SINGLE"), "merge");
     const reservation = await storage.reserveRemainder({

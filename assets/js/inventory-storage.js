@@ -39,6 +39,19 @@
     });
   }
 
+  // Seluruh operasi bisnis menggunakan format tanggal UTC yang sama dengan
+  // validator paket agar timestamp tidak valid tidak pernah masuk ke riwayat.
+  function resolveTimestamp(value) {
+    const timestamp = value || new Date().toISOString();
+    const validIsoUtc = typeof timestamp === "string" &&
+      /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$/.test(timestamp) &&
+      Number.isFinite(Date.parse(timestamp));
+    if (!validIsoUtc) {
+      throw new Error("Timestamp harus berupa tanggal ISO 8601 UTC yang valid.");
+    }
+    return timestamp;
+  }
+
   function transactionDone(transaction) {
     return new Promise((resolve, reject) => {
       transaction.oncomplete = () => resolve();
@@ -418,7 +431,7 @@
         throw new Error("remainderId dan jobId wajib diisi untuk reservasi.");
       }
       const database = await db();
-      const timestamp = input.timestamp || new Date().toISOString();
+      const timestamp = resolveTimestamp(input.timestamp);
       const reservationId = input.id || makeId("RSV");
       const movementId = makeId("MOV");
 
@@ -498,8 +511,11 @@
       if (remainderIds.some(id => typeof id !== "string" || !id.trim()) || new Set(remainderIds).size !== remainderIds.length) {
         throw new Error("Daftar remainderIds harus berisi ID unik yang valid.");
       }
-      const timestamp = input.timestamp || new Date().toISOString();
+      const timestamp = resolveTimestamp(input.timestamp);
       const snapshot = input.planSnapshot || null;
+      const snapshotCreatedAt = snapshot
+        ? resolveTimestamp(snapshot.createdAt || timestamp)
+        : null;
       const planId = input.planId || (snapshot ? makeId("PLAN") : null);
       const out = remainderIds.map(remainderId => ({ id: makeId("RSV"), movementId: makeId("MOV"), remainderId, jobId: input.jobId, planId }));
       const database = await db();
@@ -513,7 +529,7 @@
             ss.add({ id: item.id, remainderId: item.remainderId, jobId: item.jobId, planId: item.planId || null, status: "active", createdAt: timestamp, releasedAt: null, consumedAt: null });
             ms.add({ id: item.movementId, remainderId: item.remainderId, type: "reserved", jobId: item.jobId, timestamp, fromStatus: "available", toStatus: "reserved", referenceId: item.id });
           });
-          if (snapshot) ps.add({ ...snapshot, id: planId, jobId: input.jobId, reservationIds: out.map(item => item.id), status: "reserved", legacy: false, createdAt: snapshot.createdAt || timestamp, completedAt: null, cancelledAt: null, schemaVersion: 1 });
+          if (snapshot) ps.add({ ...snapshot, id: planId, jobId: input.jobId, reservationIds: out.map(item => item.id), status: "reserved", legacy: false, createdAt: snapshotCreatedAt, completedAt: null, cancelledAt: null, schemaVersion: 1 });
         };
         const checkNext = () => {
           if (cursor >= remainderIds.length) { commit(); return; }
@@ -539,7 +555,7 @@
     async function releaseReservation(reservationId, optionsForRelease) {
       const releaseOptions = optionsForRelease || {};
       const database = await db();
-      const timestamp = releaseOptions.timestamp || new Date().toISOString();
+      const timestamp = resolveTimestamp(releaseOptions.timestamp);
 
       return withTransaction(
         database, ["remainders", "reservations", "movements"], "readwrite",
@@ -605,7 +621,7 @@
           new Set(reservationIds).size !== reservationIds.length) {
         throw new Error("Daftar reservationIds harus berisi ID unik yang valid.");
       }
-      const timestamp = input.timestamp || new Date().toISOString();
+      const timestamp = resolveTimestamp(input.timestamp);
       const database = await db();
 
       await withTransaction(
@@ -709,7 +725,7 @@
         throw new Error("reservationId dan daftar sisa turunan wajib diisi.");
       }
       const database = await db();
-      const timestamp = input.timestamp || new Date().toISOString();
+      const timestamp = resolveTimestamp(input.timestamp);
       const drafts = input.remainders.map(item => {
         if (!item || !Number.isFinite(item.widthCm) || item.widthCm <= 0 ||
             !Number.isFinite(item.heightCm) || item.heightCm <= 0) {
@@ -783,7 +799,7 @@
           !Array.isArray(input.newSheetRemainders)) {
         throw new Error("reservations dan newSheetRemainders harus berupa array.");
       }
-      const timestamp = input.timestamp || new Date().toISOString();
+      const timestamp = resolveTimestamp(input.timestamp);
       const batches = input.reservations.map((item, index) => {
         if (!item || typeof item.reservationId !== "string" ||
             !item.reservationId.trim() || !Array.isArray(item.remainders)) {
@@ -1030,7 +1046,7 @@
           "Metadata asal-usul sisa turunan harus dibuat melalui consumeReservations()."
         );
       }
-      const timestamp = record.createdAt || new Date().toISOString();
+      const timestamp = resolveTimestamp(record.createdAt);
       const remainder = {
         ...record,
         id: record.id || makeId("REM"),
@@ -1107,7 +1123,7 @@
         allowed.status = "discarded";
       }
       if (!Object.keys(allowed).length) throw new Error("Tidak ada perubahan status/kondisi.");
-      const timestamp = input.timestamp || new Date().toISOString();
+      const timestamp = resolveTimestamp(input.timestamp);
       const database = await db();
       let updated;
       await withTransaction(database, ["remainders", "reservations", "movements"], "readwrite", tx => {
@@ -1560,7 +1576,7 @@
           !["cancelled", "completed"].includes(input.status)) {
         throw new Error("planId dan status akhir rencana wajib valid.");
       }
-      const timestamp = input.timestamp || new Date().toISOString();
+      const timestamp = resolveTimestamp(input.timestamp);
       const database = await db();
       let updated = null;
       await withTransaction(database, ["plans", "reservations"], "readwrite", tx => {

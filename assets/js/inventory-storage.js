@@ -648,6 +648,8 @@
                     ? planReservations.some(item => item.reservation.jobId !== plan.jobId) ||
                       !Array.isArray(plan.plan.inventoryUsage) ||
                       plan.plan.inventoryUsage.length !== planReservations.length ||
+                      new Set(plan.plan.inventoryUsage.map(usage => usage && usage.remainderId)).size !==
+                        plan.plan.inventoryUsage.length ||
                       plan.plan.inventoryUsage.some(usage =>
                         !usage || typeof usage.remainderId !== "string" ||
                         !planReservations.some(item => item.reservation.remainderId === usage.remainderId)

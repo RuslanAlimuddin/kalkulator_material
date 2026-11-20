@@ -448,6 +448,37 @@ async function main() {
     assert.equal((await storage.get("plans", "PLAN-RELEASE-PLAN-JOB-MISMATCH")).status, "reserved");
   });
 
+  await test("pelepasan rencana menolak inventoryUsage dengan remainderId duplikat", async () => {
+    await storage.importJSON(bundle("RELEASE-PLAN-DUP-USAGE"), "merge");
+    const reserved = await storage.reserveRemainders({
+      remainderIds: ["REM-RELEASE-PLAN-DUP-USAGE"],
+      jobId: "JOB-RELEASE-PLAN-DUP-USAGE",
+      planId: "PLAN-RELEASE-PLAN-DUP-USAGE",
+      planSnapshot: {
+        plan: { inventoryUsage: [{ remainderId: "REM-RELEASE-PLAN-DUP-USAGE" }] }
+      },
+      timestamp: now
+    });
+    await storage.put("plans", {
+      ...await storage.get("plans", "PLAN-RELEASE-PLAN-DUP-USAGE"),
+      plan: {
+        inventoryUsage: [
+          { remainderId: "REM-RELEASE-PLAN-DUP-USAGE" },
+          { remainderId: "REM-RELEASE-PLAN-DUP-USAGE" }
+        ]
+      }
+    });
+
+    await assert.rejects(storage.releaseReservations({
+      planId: "PLAN-RELEASE-PLAN-DUP-USAGE",
+      reservationIds: [reserved[0].id],
+      timestamp: now
+    }));
+    assert.equal((await storage.get("remainders", "REM-RELEASE-PLAN-DUP-USAGE")).status, "reserved");
+    assert.equal((await storage.get("reservations", reserved[0].id)).status, "active");
+    assert.equal((await storage.get("plans", "PLAN-RELEASE-PLAN-DUP-USAGE")).status, "reserved");
+  });
+
   await test("konsumsi rencana menolak jobId reservasi yang berbeda dari snapshot", async () => {
     await storage.importJSON(bundle("PLAN-JOB-MISMATCH"), "merge");
     const reserved = await storage.reserveRemainders({

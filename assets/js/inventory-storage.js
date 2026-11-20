@@ -718,6 +718,8 @@
                 motif: source.motif, rotationAllowed: source.rotationAllowed,
                 condition: "good", status: "available", originJobId: reservation.jobId,
                 sourceSheetId: input.sourceSheetId || source.sourceSheetId,
+                sourceType: "inventory", reservationId: reservation.id,
+                sourceRemainderId: source.id,
                 createdAt: timestamp, updatedAt: timestamp, version: 1
               };
               rs.add(record);
@@ -834,6 +836,8 @@
                   motif: source.motif, rotationAllowed: source.rotationAllowed,
                   condition: "good", status: "available", originJobId: reservation.jobId,
                   sourceSheetId: batch.sourceSheetId || source.sourceSheetId,
+                  sourceType: "inventory", reservationId: reservation.id,
+                  sourceRemainderId: source.id,
                   createdAt: timestamp, updatedAt: timestamp, version: 1
                 };
                 createdRemainders.push({
@@ -855,7 +859,7 @@
                 thicknessMm: draft.thicknessMm, grainDirection: draft.grainDirection,
                 motif: draft.motif, rotationAllowed: draft.rotationAllowed,
                 condition: "good", status: "available", originJobId: draft.originJobId,
-                sourceSheetId: draft.sourceSheetId,
+                sourceSheetId: draft.sourceSheetId, sourceType: "new",
                 createdAt: timestamp, updatedAt: timestamp, version: 1
               };
               createdRemainders.push({ ...record, sourceType: "new" });

@@ -1371,6 +1371,65 @@
         completed: "consumed"
       };
       const remainderById = new Map(remainders.map(item => [item.id, item]));
+      // Audit rantai asal-usul sisa di database lokal, termasuk data yang
+      // mungkin masuk melalui pemulihan lama atau penulisan di luar jalur aman.
+      const remainderLineageIssues = [];
+      const lineageState = new Map();
+      const visitRemainderLineage = remainderId => {
+        const state = lineageState.get(remainderId) || 0;
+        if (state === 2) return;
+        if (state === 1) {
+          remainderLineageIssues.push({
+            severity: "error", type: "cyclic_lineage", remainderId,
+            message: "Rantai asal-usul sisa material mengandung siklus."
+          });
+          return;
+        }
+        lineageState.set(remainderId, 1);
+        const current = remainderById.get(remainderId);
+        if (current && current.sourceType === "inventory") {
+          const sourceId = current.sourceRemainderId;
+          const source = remainderById.get(sourceId);
+          if (typeof sourceId !== "string" || !source) {
+            remainderLineageIssues.push({
+              severity: "error", type: "missing_source", remainderId,
+              sourceRemainderId: sourceId || null,
+              message: "Sisa turunan merujuk sisa material sumber yang tidak ditemukan."
+            });
+          } else if (source.id === current.id) {
+            remainderLineageIssues.push({
+              severity: "error", type: "self_source", remainderId,
+              sourceRemainderId: sourceId,
+              message: "Sisa material tidak boleh menjadi sumber bagi dirinya sendiri."
+            });
+          } else {
+            if (source.status !== "consumed") {
+              remainderLineageIssues.push({
+                severity: "error", type: "source_not_consumed", remainderId,
+                sourceRemainderId: sourceId,
+                message: "Sumber sisa turunan harus berstatus consumed."
+              });
+            }
+            if (current.materialId !== source.materialId ||
+                current.thicknessMm !== source.thicknessMm ||
+                current.grainDirection !== source.grainDirection ||
+                current.motif !== source.motif ||
+                current.rotationAllowed !== source.rotationAllowed) {
+              remainderLineageIssues.push({
+                severity: "error", type: "source_attributes_mismatch", remainderId,
+                sourceRemainderId: sourceId,
+                message: "Identitas atau karakteristik material sisa turunan tidak cocok dengan sumbernya."
+              });
+            }
+            visitRemainderLineage(sourceId);
+          }
+        }
+        lineageState.set(remainderId, 2);
+      };
+      remainders.forEach(item => {
+        if (item && typeof item.id === "string") visitRemainderLineage(item.id);
+      });
+
       const reservationsByPlan = new Map();
       reservations.forEach(item => {
         if (!item.planId) return;
@@ -1427,6 +1486,7 @@
         reservationsWithoutSource,
         inconsistentPlans,
         inconsistentReservations,
+        remainderLineageIssues,
         movementHistoryIssues
       };
     }

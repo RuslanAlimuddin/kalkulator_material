@@ -423,6 +423,29 @@ test("asal-usul sisa turunan harus menunjuk sumber dan reservasi yang benar", ()
 });
 
 
+test("reservasi consumed wajib cocok dengan status sumber dan tidak boleh ganda", () => {
+  const sourceNotConsumed = validBundle();
+  sourceNotConsumed.reservations.reservations.push({
+    id: "RSV-CONSUMED-WRONG-SOURCE", remainderId: "REM-001", jobId: "JOB-A",
+    status: "consumed", createdAt: now, releasedAt: null, consumedAt: now
+  });
+  assert.ok(validate(sourceNotConsumed).errors.some(error =>
+    /sumber yang juga berstatus consumed/.test(error.message)
+  ));
+
+  const duplicate = validBundle();
+  duplicate.remainders.remainders[0].status = "consumed";
+  for (const id of ["RSV-CONSUMED-1", "RSV-CONSUMED-2"]) {
+    duplicate.reservations.reservations.push({
+      id, remainderId: "REM-001", jobId: "JOB-A",
+      status: "consumed", createdAt: now, releasedAt: null, consumedAt: now
+    });
+  }
+  assert.ok(validate(duplicate).errors.some(error =>
+    /lebih dari satu reservasi consumed/.test(error.message)
+  ));
+});
+
 test("sisa turunan wajib mempertahankan identitas dan karakter material sumber", () => {
   const fields = [
     ["materialId", "MAT-002"],

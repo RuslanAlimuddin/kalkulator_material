@@ -27,6 +27,10 @@ async function main() {
   await deleteDatabase();
   const storage = createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
+  await storage.add("jobs", {
+    id: "JOB-BATCH", name: "Pekerjaan Batch", status: "open",
+    createdAt: now, closedAt: null
+  });
 
   await storage.add("remainders", remainder("BATCH-OK-1"));
   await storage.add("remainders", remainder("BATCH-OK-2"));

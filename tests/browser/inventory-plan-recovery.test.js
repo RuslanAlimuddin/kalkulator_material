@@ -50,6 +50,10 @@ async function main() {
       const now = "2026-11-18T14:30:00.000Z";
       const storage = MaterialInventoryStorage.createStorage({ allowUnsafeInventoryWrites: true });
       await storage.open();
+      await storage.add("jobs", {
+        id: "JOB-BROWSER-RECOVERY", name: "Pekerjaan pemulihan browser",
+        status: "open", createdAt: now, closedAt: null
+      });
       await storage.add("remainders", {
         id: "BROWSER-RECOVERY-REM", materialId: "MAT-BROWSER",
         widthCm: 40, heightCm: 30, thicknessMm: 8,

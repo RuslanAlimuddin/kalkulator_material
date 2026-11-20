@@ -71,7 +71,7 @@ async function main() {
     thicknessMm: 8, surface: null, grainRequired: false, motif: "plain",
     rotationPolicy: "free", active: true
   });
-  for (const id of ["JOB-OLD", "JOB-RECOVERY"]) {
+  for (const id of ["JOB-OLD", "JOB-RECOVERY", "JOB-NEW-ONLY", "JOB-STATUS-GUARD", "JOB-COMPLETE-RELOAD"]) {
     await storage.add("jobs", {
       id, name: id, status: "open", createdAt: now, closedAt: null
     });

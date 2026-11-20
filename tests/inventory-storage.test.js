@@ -388,6 +388,26 @@ async function main() {
     assert.equal((await storage.getAll("remainders")).length, remainderCount);
   });
 
+  await test("sisa dengan reservasi aktif tidak dapat dibuang meskipun status stok tidak konsisten", async () => {
+    await storage.importJSON(bundle("ACTIVE-DISCARD"), "merge");
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-ACTIVE-DISCARD", jobId: "JOB-ACTIVE-DISCARD", timestamp: now
+    });
+
+    // Simulasikan data tidak konsisten dari penulisan langsung yang tidak aman.
+    await storage.update("remainders", "REM-ACTIVE-DISCARD", { status: "available" });
+    await assert.rejects(storage.updateRemainderState({
+      id: "REM-ACTIVE-DISCARD",
+      changes: { status: "discarded" },
+      timestamp: now
+    }));
+
+    assert.equal((await storage.get("remainders", "REM-ACTIVE-DISCARD")).status, "available");
+    assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+    const movements = await storage.getByIndex("movements", "remainderId", "REM-ACTIVE-DISCARD");
+    assert.equal(movements.some(item => item.type === "discarded"), false);
+  });
+
   await test("sisa yang dibuang tidak dapat direservasi secara tunggal maupun massal", async () => {
     await storage.importJSON(bundle("DISCARD"), "merge");
     await storage.updateRemainderState({

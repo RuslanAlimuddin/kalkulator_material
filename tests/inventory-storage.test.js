@@ -448,14 +448,28 @@ async function main() {
     assert.equal((await storage.get("plans", "PLAN-RELEASE-PLAN-JOB-MISMATCH")).status, "reserved");
   });
 
-  await test("pelepasan rencana menolak inventoryUsage dengan remainderId duplikat", async () => {
-    await storage.importJSON(bundle("RELEASE-PLAN-DUP-USAGE"), "merge");
+  await test("pelepasan rencana menolak inventoryUsage duplikat yang menggantikan sumber lain", async () => {
+    const data = bundle("RELEASE-PLAN-DUP-USAGE");
+    data.remainders.remainders.push({
+      ...data.remainders.remainders[0],
+      id: "REM-RELEASE-PLAN-DUP-USAGE-SECOND",
+      sourceSheetId: "SHEET-RELEASE-PLAN-DUP-USAGE-SECOND"
+    });
+    await storage.importJSON(data, "merge");
     const reserved = await storage.reserveRemainders({
-      remainderIds: ["REM-RELEASE-PLAN-DUP-USAGE"],
+      remainderIds: [
+        "REM-RELEASE-PLAN-DUP-USAGE",
+        "REM-RELEASE-PLAN-DUP-USAGE-SECOND"
+      ],
       jobId: "JOB-RELEASE-PLAN-DUP-USAGE",
       planId: "PLAN-RELEASE-PLAN-DUP-USAGE",
       planSnapshot: {
-        plan: { inventoryUsage: [{ remainderId: "REM-RELEASE-PLAN-DUP-USAGE" }] }
+        plan: {
+          inventoryUsage: [
+            { remainderId: "REM-RELEASE-PLAN-DUP-USAGE" },
+            { remainderId: "REM-RELEASE-PLAN-DUP-USAGE-SECOND" }
+          ]
+        }
       },
       timestamp: now
     });
@@ -471,11 +485,14 @@ async function main() {
 
     await assert.rejects(storage.releaseReservations({
       planId: "PLAN-RELEASE-PLAN-DUP-USAGE",
-      reservationIds: [reserved[0].id],
+      reservationIds: reserved.map(item => item.id),
       timestamp: now
     }));
     assert.equal((await storage.get("remainders", "REM-RELEASE-PLAN-DUP-USAGE")).status, "reserved");
-    assert.equal((await storage.get("reservations", reserved[0].id)).status, "active");
+    assert.equal((await storage.get("remainders", "REM-RELEASE-PLAN-DUP-USAGE-SECOND")).status, "reserved");
+    for (const item of reserved) {
+      assert.equal((await storage.get("reservations", item.id)).status, "active");
+    }
     assert.equal((await storage.get("plans", "PLAN-RELEASE-PLAN-DUP-USAGE")).status, "reserved");
   });
 

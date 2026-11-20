@@ -42,7 +42,7 @@
   // Seluruh operasi bisnis menggunakan format tanggal UTC yang sama dengan
   // validator paket agar timestamp tidak valid tidak pernah masuk ke riwayat.
   function resolveTimestamp(value) {
-    const timestamp = value || new Date().toISOString();
+    const timestamp = value === undefined || value === null ? new Date().toISOString() : value;
     const match = typeof timestamp === "string"
       ? /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?Z$/.exec(timestamp)
       : null;

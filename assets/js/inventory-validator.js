@@ -162,6 +162,10 @@
     if (plans) plans.forEach((item, index) => {
       if (!isObject(item)) return;
       const p = "plans.plans[" + index + "]";
+      // Timestamp pada snapshot lama boleh tidak tersedia; bila ada, wajib valid.
+      if (item.createdAt != null) requireDate(item.createdAt, p + ".createdAt", false);
+      if (item.completedAt != null) requireDate(item.completedAt, p + ".completedAt", false);
+      if (item.cancelledAt != null) requireDate(item.cancelledAt, p + ".cancelledAt", false);
       requireString(item.jobId, p + ".jobId");
       if (!jobById.has(item.jobId)) {
         error(p + ".jobId", "Pekerjaan snapshot dengan ID " + item.jobId + " tidak ditemukan.");

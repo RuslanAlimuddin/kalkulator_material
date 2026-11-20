@@ -527,7 +527,7 @@
       const timestamp = resolveTimestamp(input.timestamp);
       const snapshot = input.planSnapshot || null;
       const snapshotCreatedAt = snapshot
-        ? resolveTimestamp(snapshot.createdAt || timestamp)
+        ? resolveTimestamp(snapshot.createdAt === undefined || snapshot.createdAt === null ? timestamp : snapshot.createdAt)
         : null;
       const planId = input.planId || (snapshot ? makeId("PLAN") : null);
       const out = remainderIds.map(remainderId => ({ id: makeId("RSV"), movementId: makeId("MOV"), remainderId, jobId: input.jobId, planId }));

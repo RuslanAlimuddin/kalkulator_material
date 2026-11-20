@@ -354,6 +354,45 @@
       }
     });
 
+    // Validasi asal-usul sisa baru. Record legacy tanpa sourceType tetap
+    // diterima karena versi lama belum menyimpan metadata lineage.
+    if (remainders) remainders.forEach((item, index) => {
+      if (!isObject(item) || item.sourceType == null) return;
+      const p = "remainders.remainders[" + index + "]";
+      if (!["inventory", "new"].includes(item.sourceType)) {
+        error(p + ".sourceType", "Jenis asal sisa material tidak dikenal.");
+        return;
+      }
+      if (item.sourceType === "new") {
+        if (item.sourceRemainderId != null || item.reservationId != null) {
+          error(p, "Sisa dari lembar baru tidak boleh menunjuk sumber inventaris atau reservasi.");
+        }
+        return;
+      }
+      requireString(item.sourceRemainderId, p + ".sourceRemainderId");
+      requireString(item.reservationId, p + ".reservationId");
+      const source = remainderById.get(item.sourceRemainderId);
+      const reservation = reservationById.get(item.reservationId);
+      if (!source) {
+        error(p + ".sourceRemainderId", "Sisa material sumber tidak ditemukan.");
+      } else if (source.id === item.id || source.status !== "consumed") {
+        error(p + ".sourceRemainderId", "Sumber sisa turunan harus merupakan sisa lain yang sudah dikonsumsi.");
+      }
+      if (!reservation) {
+        error(p + ".reservationId", "Reservasi sumber sisa turunan tidak ditemukan.");
+      } else {
+        if (reservation.status !== "consumed") {
+          error(p + ".reservationId", "Reservasi sumber sisa turunan harus berstatus consumed.");
+        }
+        if (reservation.remainderId !== item.sourceRemainderId) {
+          error(p + ".sourceRemainderId", "Sumber sisa turunan tidak cocok dengan sumber reservasinya.");
+        }
+        if (reservation.jobId !== item.originJobId) {
+          error(p + ".originJobId", "Pekerjaan asal sisa turunan tidak cocok dengan pekerjaan reservasi.");
+        }
+      }
+    });
+
     const expectedMovementTransitions = {
       created: [null, "available"],
       reserved: ["available", "reserved"],

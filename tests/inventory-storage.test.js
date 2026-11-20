@@ -388,6 +388,40 @@ async function main() {
     assert.equal((await storage.getAll("remainders")).length, remainderCount);
   });
 
+  await test("pelepasan tunggal menolak sumber dengan reservasi aktif ganda", async () => {
+    await storage.importJSON(bundle("RELEASE-DUP-SINGLE"), "merge");
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-RELEASE-DUP-SINGLE", jobId: "JOB-RELEASE-DUP-SINGLE", timestamp: now
+    });
+    await storage.put("reservations", {
+      ...await storage.get("reservations", reservation.id),
+      id: "RSV-RELEASE-DUP-SINGLE-SECOND"
+    });
+
+    await assert.rejects(storage.releaseReservation(reservation.id, { timestamp: now }));
+    assert.equal((await storage.get("remainders", "REM-RELEASE-DUP-SINGLE")).status, "reserved");
+    assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+    assert.equal((await storage.get("reservations", "RSV-RELEASE-DUP-SINGLE-SECOND")).status, "active");
+  });
+
+  await test("pelepasan massal menolak sumber dengan reservasi aktif di luar batch dan rollback", async () => {
+    await storage.importJSON(bundle("RELEASE-DUP-BULK"), "merge");
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-RELEASE-DUP-BULK", jobId: "JOB-RELEASE-DUP-BULK", timestamp: now
+    });
+    await storage.put("reservations", {
+      ...await storage.get("reservations", reservation.id),
+      id: "RSV-RELEASE-DUP-BULK-SECOND"
+    });
+
+    await assert.rejects(storage.releaseReservations({
+      reservationIds: [reservation.id], timestamp: now
+    }));
+    assert.equal((await storage.get("remainders", "REM-RELEASE-DUP-BULK")).status, "reserved");
+    assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+    assert.equal((await storage.get("reservations", "RSV-RELEASE-DUP-BULK-SECOND")).status, "active");
+  });
+
   await test("konsumsi tunggal menolak sumber dengan reservasi aktif ganda dan menjaga stok", async () => {
     await storage.importJSON(bundle("CONSUME-DUP-SINGLE"), "merge");
     const reservation = await storage.reserveRemainder({

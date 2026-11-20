@@ -283,6 +283,10 @@
       if (!JOB_STATUSES.includes(item.status)) error(p + ".status", "Status pekerjaan tidak dikenal.");
       requireDate(item.createdAt, p + ".createdAt", false);
       requireDate(item.closedAt, p + ".closedAt", true);
+      if (isIsoDate(item.createdAt) && isIsoDate(item.closedAt) &&
+          Date.parse(item.closedAt) < Date.parse(item.createdAt)) {
+        error(p + ".closedAt", "Waktu penutupan pekerjaan tidak boleh mendahului waktu pembuatannya.");
+      }
       if (item.status === "open" && item.closedAt !== null) {
         error(p + ".closedAt", "Pekerjaan berstatus open harus memiliki closedAt null.");
       }
@@ -307,6 +311,10 @@
       if (!STATUSES.includes(item.status)) error(p + ".status", "Status stok tidak dikenal.");
       requireDate(item.createdAt, p + ".createdAt", false);
       requireDate(item.updatedAt, p + ".updatedAt", false);
+      if (isIsoDate(item.createdAt) && isIsoDate(item.updatedAt) &&
+          Date.parse(item.updatedAt) < Date.parse(item.createdAt)) {
+        error(p + ".updatedAt", "Waktu pembaruan sisa material tidak boleh mendahului waktu pembuatannya.");
+      }
       if (!Number.isInteger(item.version) || item.version < 1) error(p + ".version", "Versi record harus bilangan bulat minimal 1.");
 
       const material = materialById.get(item.materialId);
@@ -334,6 +342,12 @@
       requireDate(item.createdAt, p + ".createdAt", false);
       requireDate(item.releasedAt, p + ".releasedAt", true);
       requireDate(item.consumedAt, p + ".consumedAt", true);
+      const reservationEndTime = item.status === "released" ? item.releasedAt
+        : item.status === "consumed" ? item.consumedAt : null;
+      if (isIsoDate(item.createdAt) && isIsoDate(reservationEndTime) &&
+          Date.parse(reservationEndTime) < Date.parse(item.createdAt)) {
+        error(p, "Waktu akhir reservasi tidak boleh mendahului waktu pembuatannya.");
+      }
       if (!remainderById.has(item.remainderId)) {
         error(p + ".remainderId", "Sisa material yang dirujuk tidak ditemukan.");
       }

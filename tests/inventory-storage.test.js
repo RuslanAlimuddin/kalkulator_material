@@ -388,6 +388,68 @@ async function main() {
     assert.equal((await storage.getAll("remainders")).length, remainderCount);
   });
 
+  await test("konsumsi tunggal menolak sumber dengan reservasi aktif ganda dan menjaga stok", async () => {
+    await storage.importJSON(bundle("CONSUME-DUP-SINGLE"), "merge");
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-CONSUME-DUP-SINGLE", jobId: "JOB-CONSUME-DUP-SINGLE", timestamp: now
+    });
+    await storage.put("reservations", {
+      ...await storage.get("reservations", reservation.id),
+      id: "RSV-CONSUME-DUP-SINGLE-SECOND"
+    });
+
+    await assert.rejects(storage.consumeReservation({
+      reservationId: reservation.id, timestamp: now,
+      remainders: [{ widthCm: 20, heightCm: 10 }]
+    }));
+    assert.equal((await storage.get("remainders", "REM-CONSUME-DUP-SINGLE")).status, "reserved");
+    assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+    assert.equal((await storage.get("reservations", "RSV-CONSUME-DUP-SINGLE-SECOND")).status, "active");
+    assert.equal(await storage.get("remainders", "REM-CONSUME-DUP-SINGLE-SECOND"), null);
+    await storage.remove("reservations", "RSV-CONSUME-DUP-SINGLE-SECOND");
+    await storage.consumeReservation({
+      reservationId: reservation.id, timestamp: now,
+      remainders: [{ widthCm: 20, heightCm: 10 }]
+    });
+    assert.equal((await storage.get("remainders", "REM-CONSUME-DUP-SINGLE")).status, "consumed");
+  });
+
+  await test("konsumsi massal menolak sumber dengan reservasi aktif di luar batch dan rollback", async () => {
+    await storage.importJSON(bundle("CONSUME-DUP-BULK"), "merge");
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-CONSUME-DUP-BULK", jobId: "JOB-CONSUME-DUP-BULK", timestamp: now
+    });
+    await storage.put("reservations", {
+      ...await storage.get("reservations", reservation.id),
+      id: "RSV-CONSUME-DUP-BULK-SECOND"
+    });
+
+    await assert.rejects(storage.consumeReservations({
+      reservations: [{
+        reservationId: reservation.id,
+        remainders: [{ widthCm: 20, heightCm: 10 }]
+      }],
+      newSheetRemainders: [],
+      timestamp: now
+    }));
+    assert.equal((await storage.get("remainders", "REM-CONSUME-DUP-BULK")).status, "reserved");
+    assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+    assert.equal((await storage.get("reservations", "RSV-CONSUME-DUP-BULK-SECOND")).status, "active");
+    assert.equal(await storage.get("remainders", "REM-CONSUME-DUP-BULK-SECOND"), null);
+    assert.equal((await storage.getByIndex("movements", "remainderId", "REM-CONSUME-DUP-BULK"))
+      .some(item => item.type === "consumed"), false);
+    await storage.remove("reservations", "RSV-CONSUME-DUP-BULK-SECOND");
+    await storage.consumeReservations({
+      reservations: [{
+        reservationId: reservation.id,
+        remainders: [{ widthCm: 20, heightCm: 10 }]
+      }],
+      newSheetRemainders: [],
+      timestamp: now
+    });
+    assert.equal((await storage.get("remainders", "REM-CONSUME-DUP-BULK")).status, "consumed");
+  });
+
   await test("sisa dengan reservasi aktif tidak dapat dibuang meskipun status stok tidak konsisten", async () => {
     await storage.importJSON(bundle("ACTIVE-DISCARD"), "merge");
     const reservation = await storage.reserveRemainder({

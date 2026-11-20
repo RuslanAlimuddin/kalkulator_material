@@ -403,6 +403,54 @@ async function main() {
   });
 
 
+  await test("cadangan yang kehilangan satu kelompok data wajib ditolak tanpa menyentuh data lokal", async () => {
+    const incomplete = bundle("MISSING-COLLECTION");
+    delete incomplete.materials;
+    await assert.rejects(storage.importJSON(incomplete, "replace"), /tidak valid/);
+    assert.notEqual(await storage.get("remainders", "REM-A"), null);
+    assert.equal(await storage.get("materials", "MAT-MISSING-COLLECTION"), null);
+  });
+
+  await test("cadangan dengan referensi material atau pekerjaan yang hilang ditolak", async () => {
+    const missingMaterial = bundle("MISSING-MATERIAL-REF");
+    missingMaterial.materials.materials = [];
+    await assert.rejects(storage.importJSON(missingMaterial, "replace"), /tidak valid/);
+
+    const missingJob = bundle("MISSING-JOB-REF");
+    missingJob.jobs.jobs = [];
+    await assert.rejects(storage.importJSON(missingJob, "replace"), /tidak valid/);
+
+    assert.notEqual(await storage.get("remainders", "REM-A"), null);
+    assert.equal(await storage.get("materials", "MAT-MISSING-MATERIAL-REF"), null);
+    assert.equal(await storage.get("jobs", "JOB-MISSING-JOB-REF"), null);
+  });
+
+  await test("riwayat reservasi legacy yang tidak lengkap diberi peringatan tetapi tetap dapat dipulihkan", async () => {
+    const Validator = require("../assets/js/inventory-validator.js");
+    const legacy = bundle("MISSING-MOVEMENT");
+    legacy.remainders.remainders[0].status = "reserved";
+    legacy.reservations.reservations.push({
+      id: "RSV-MISSING-MOVEMENT",
+      remainderId: "REM-MISSING-MOVEMENT",
+      jobId: "JOB-MISSING-MOVEMENT",
+      status: "active",
+      createdAt: now,
+      releasedAt: null,
+      consumedAt: null
+    });
+    const validation = Validator.validateInventoryBundle(legacy);
+    assert.equal(validation.valid, true, JSON.stringify(validation.errors));
+    assert.ok(validation.warnings.some(item =>
+      item.path === "reservations.reservations[0]" &&
+      item.message.includes("movement reserved")
+    ));
+    await storage.importJSON(legacy, "merge");
+    const imported = await storage.get("reservations", "RSV-MISSING-MOVEMENT");
+    assert.equal(imported.planId, "LEGACY-RSV-MISSING-MOVEMENT");
+    assert.equal((await storage.get("plans", imported.planId)).status, "legacy_recovery");
+  });
+
+
   await test("kegagalan penulisan di tengah impor replace membatalkan seluruh transaksi", async () => {
     const invalidAtStorage = bundle("CLONE-FAIL");
     // Fungsi lolos dari pemeriksaan bentuk record, tetapi tidak dapat disimpan

@@ -365,6 +365,7 @@
     };
 
     const reservationMovementEvents = new Map();
+    const movementsByRemainder = new Map();
 
     if (movements) movements.forEach((item, index) => {
       if (!isObject(item)) return;
@@ -372,6 +373,11 @@
       requireString(item.remainderId, p + ".remainderId");
       if (!MOVEMENT_TYPES.includes(item.type)) error(p + ".type", "Jenis pergerakan tidak dikenal.");
       requireDate(item.timestamp, p + ".timestamp", false);
+      if (isNonEmptyString(item.remainderId)) {
+        const history = movementsByRemainder.get(item.remainderId) || [];
+        history.push({ ...item, _sourceIndex: index });
+        movementsByRemainder.set(item.remainderId, history);
+      }
       if (!remainderById.has(item.remainderId)) {
         error(p + ".remainderId", "Sisa material pada riwayat tidak ditemukan.");
       }
@@ -413,6 +419,43 @@
           const events = reservationMovementEvents.get(linkedReservation.id) || [];
           events.push(item);
           reservationMovementEvents.set(linkedReservation.id, events);
+        }
+      }
+    });
+
+    // Periksa kesinambungan transisi per sisa material. Catatan import
+    // menjadi batas yang tidak dapat ditelusuri; timestamp yang sama juga
+    // ambigu sehingga tidak dipaksakan menjadi urutan yang pasti.
+    movementsByRemainder.forEach((history, remainderId) => {
+      const remainder = remainderById.get(remainderId);
+      if (!remainder) return;
+      const p = "remainders.remainders[" + remainderId + "]";
+      const ordered = history
+        .filter(item => isIsoDate(item.timestamp))
+        .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp) || a._sourceIndex - b._sourceIndex);
+      for (let i = 1; i < ordered.length; i += 1) {
+        const previous = ordered[i - 1];
+        const current = ordered[i];
+        const previousTime = Date.parse(previous.timestamp);
+        const currentTime = Date.parse(current.timestamp);
+        if (previousTime === currentTime || previous.type === "imported" || current.type === "imported") continue;
+        if (previous.toStatus !== current.fromStatus) {
+          error(p, "Urutan movement terputus: status tujuan riwayat sebelumnya tidak cocok dengan status asal riwayat berikutnya.");
+        }
+      }
+      if (ordered.length) {
+        const latest = ordered[ordered.length - 1];
+        const latestTime = Date.parse(latest.timestamp);
+        const updatedTime = isIsoDate(remainder.updatedAt) ? Date.parse(remainder.updatedAt) : null;
+        if (updatedTime !== null && latestTime > updatedTime) {
+          error(p, "Movement terakhir tercatat setelah waktu pembaruan sisa material.");
+        } else if (updatedTime !== null && latestTime === updatedTime && latest.toStatus !== remainder.status) {
+          error(p, "Status akhir sisa material tidak cocok dengan movement terakhir.");
+        } else if (updatedTime !== null && latestTime < updatedTime) {
+          warnings.push({
+            path: p,
+            message: "Movement terakhir lebih lama daripada pembaruan sisa material; riwayat mungkin tidak lengkap atau berasal dari data lama."
+          });
         }
       }
     });

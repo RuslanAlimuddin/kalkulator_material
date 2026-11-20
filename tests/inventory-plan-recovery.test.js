@@ -209,6 +209,27 @@ async function main() {
   await storage.put("remainders", auditRemainder);
   console.log("LULUS: audit mendeteksi jobId, remainderId, dan status sumber yang tidak cocok.");
 
+  // Audit riwayat pergerakan mendeteksi transisi yang terputus tanpa
+  // mengubah stok atau riwayat yang sedang diperiksa.
+  await storage.add("remainders", remainder("REC-REM-MOVEMENT-AUDIT"));
+  await storage.add("movements", {
+    id: "MOV-AUDIT-INITIAL", remainderId: "REC-REM-MOVEMENT-AUDIT",
+    type: "created", jobId: "JOB-OLD", timestamp: now,
+    fromStatus: null, toStatus: "available"
+  });
+  await storage.add("movements", {
+    id: "MOV-AUDIT-BROKEN", remainderId: "REC-REM-MOVEMENT-AUDIT",
+    type: "discarded", jobId: "JOB-OLD", timestamp: "2026-11-18T15:20:00.000Z",
+    fromStatus: "reserved", toStatus: "discarded"
+  });
+  const movementAudit = await storage.getRecoveryReport();
+  assert.ok(movementAudit.movementHistoryIssues.some(item =>
+    item.remainderId === "REC-REM-MOVEMENT-AUDIT" &&
+    item.type === "broken_transition" && item.severity === "error"
+  ));
+  assert.equal((await storage.get("remainders", "REC-REM-MOVEMENT-AUDIT")).status, "available");
+  console.log("LULUS: laporan audit mendeteksi riwayat terputus tanpa mengubah stok.");
+
   await recoveredEngine.cancelPlan({ reservedPlan: recovered, timestamp: now });
   assert.equal((await storage.get("plans", reserved.planId)).status, "cancelled");
   assert.equal((await storage.get("remainders", "REC-REM-1")).status, "available");

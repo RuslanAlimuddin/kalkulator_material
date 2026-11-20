@@ -278,6 +278,33 @@ test("tanggal kalender yang tidak ada ditolak", () => {
   assert.equal(validate(data).valid, false);
 });
 
+test("waktu penutupan pekerjaan tidak boleh mendahului waktu pembuatan", () => {
+  const data = validBundle();
+  data.jobs.jobs[0].status = "completed";
+  data.jobs.jobs[0].createdAt = "2026-11-18T06:00:00.000Z";
+  data.jobs.jobs[0].closedAt = "2026-11-18T05:00:00.000Z";
+  assert.equal(validate(data).valid, false);
+});
+
+test("updatedAt sisa material tidak boleh mendahului createdAt", () => {
+  const data = validBundle();
+  data.remainders.remainders[0].createdAt = "2026-11-18T06:00:00.000Z";
+  data.remainders.remainders[0].updatedAt = "2026-11-18T05:00:00.000Z";
+  assert.equal(validate(data).valid, false);
+});
+
+test("waktu pelepasan reservasi tidak boleh mendahului waktu pembuatan", () => {
+  const data = validBundle();
+  data.reservations.reservations.push({
+    id: "RSV-CHRONOLOGY", remainderId: "REM-001", jobId: "JOB-A",
+    status: "released",
+    createdAt: "2026-11-18T06:00:00.000Z",
+    releasedAt: "2026-11-18T05:00:00.000Z",
+    consumedAt: null
+  });
+  assert.equal(validate(data).valid, false);
+});
+
 test("timestamp snapshot rencana yang tidak valid ditolak", () => {
   const data = validPlanBundle();
   data.plans.plans[0].createdAt = "2026-02-30T12:00:00.000Z";

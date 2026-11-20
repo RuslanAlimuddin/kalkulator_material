@@ -832,6 +832,139 @@ async function main() {
     );
   });
 
+  await test("reservasi massal menolak timestamp tidak valid tanpa mengunci sebagian stok", async () => {
+    await storage.importJSON(bundle("TIMESTAMP-INVALID-BULK-1"), "merge");
+    await storage.importJSON(bundle("TIMESTAMP-INVALID-BULK-2"), "merge");
+
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-TIMESTAMP-INVALID-BULK-1", "REM-TIMESTAMP-INVALID-BULK-2"],
+      jobId: "JOB-TIMESTAMP-INVALID-BULK-1",
+      timestamp: "bukan-tanggal"
+    }));
+
+    for (const id of ["REM-TIMESTAMP-INVALID-BULK-1", "REM-TIMESTAMP-INVALID-BULK-2"]) {
+      assert.equal((await storage.get("remainders", id)).status, "available");
+      assert.equal((await storage.getByIndex("reservations", "remainderId", id)).length, 0);
+      assert.equal((await storage.getByIndex("movements", "remainderId", id)).length, 0);
+    }
+  });
+
+  await test("pelepasan tunggal menolak timestamp tidak valid tanpa melepas reservasi", async () => {
+    await storage.importJSON(bundle("TIMESTAMP-INVALID-RELEASE"), "merge");
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-TIMESTAMP-INVALID-RELEASE",
+      jobId: "JOB-TIMESTAMP-INVALID-RELEASE",
+      timestamp: now
+    });
+
+    await assert.rejects(storage.releaseReservation(reservation.id, { timestamp: "bukan-tanggal" }));
+    assert.equal((await storage.get("remainders", "REM-TIMESTAMP-INVALID-RELEASE")).status, "reserved");
+    assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+    assert.equal(
+      (await storage.getByIndex("movements", "remainderId", "REM-TIMESTAMP-INVALID-RELEASE"))
+        .some(item => item.type === "reservation_released"),
+      false
+    );
+  });
+
+  await test("pelepasan massal menolak timestamp tidak valid tanpa melepas reservasi", async () => {
+    await storage.importJSON(bundle("TIMESTAMP-INVALID-RELEASE-BULK"), "merge");
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-TIMESTAMP-INVALID-RELEASE-BULK",
+      jobId: "JOB-TIMESTAMP-INVALID-RELEASE-BULK",
+      timestamp: now
+    });
+
+    await assert.rejects(storage.releaseReservations({
+      reservationIds: [reservation.id], timestamp: "bukan-tanggal"
+    }));
+    assert.equal((await storage.get("remainders", "REM-TIMESTAMP-INVALID-RELEASE-BULK")).status, "reserved");
+    assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+  });
+
+  await test("konsumsi tunggal menolak timestamp tidak valid tanpa mengonsumsi stok", async () => {
+    await storage.importJSON(bundle("TIMESTAMP-INVALID-CONSUME"), "merge");
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-TIMESTAMP-INVALID-CONSUME",
+      jobId: "JOB-TIMESTAMP-INVALID-CONSUME",
+      timestamp: now
+    });
+
+    await assert.rejects(storage.consumeReservation({
+      reservationId: reservation.id, remainders: [], timestamp: "bukan-tanggal"
+    }));
+    assert.equal((await storage.get("remainders", "REM-TIMESTAMP-INVALID-CONSUME")).status, "reserved");
+    assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+    assert.equal((await storage.getAll("remainders")).some(item =>
+      item.sourceRemainderId === "REM-TIMESTAMP-INVALID-CONSUME"), false);
+  });
+
+  await test("konsumsi massal menolak timestamp tidak valid tanpa mengonsumsi stok", async () => {
+    await storage.importJSON(bundle("TIMESTAMP-INVALID-CONSUME-BULK"), "merge");
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-TIMESTAMP-INVALID-CONSUME-BULK",
+      jobId: "JOB-TIMESTAMP-INVALID-CONSUME-BULK",
+      timestamp: now
+    });
+
+    await assert.rejects(storage.consumeReservations({
+      reservations: [{ reservationId: reservation.id, remainders: [] }],
+      newSheetRemainders: [],
+      timestamp: "bukan-tanggal"
+    }));
+    assert.equal((await storage.get("remainders", "REM-TIMESTAMP-INVALID-CONSUME-BULK")).status, "reserved");
+    assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+  });
+
+  await test("pembuatan sisa menolak createdAt tidak valid tanpa menyimpan stok atau movement", async () => {
+    await assert.rejects(storage.createRemainder({
+      id: "REM-TIMESTAMP-INVALID-CREATE",
+      materialId: "MAT-A", originJobId: "JOB-A", sourceSheetId: "SHEET-TIMESTAMP-INVALID-CREATE",
+      widthCm: 20, heightCm: 15, thicknessMm: 8,
+      grainDirection: "none", motif: "plain", rotationAllowed: true,
+      createdAt: "bukan-tanggal"
+    }));
+    assert.equal(await storage.get("remainders", "REM-TIMESTAMP-INVALID-CREATE"), null);
+    assert.equal(
+      (await storage.getByIndex("movements", "remainderId", "REM-TIMESTAMP-INVALID-CREATE")).length,
+      0
+    );
+  });
+
+  await test("perubahan kondisi menolak timestamp tidak valid tanpa mengubah stok atau riwayat", async () => {
+    await storage.importJSON(bundle("TIMESTAMP-INVALID-CONDITION"), "merge");
+    await assert.rejects(storage.updateRemainderState({
+      id: "REM-TIMESTAMP-INVALID-CONDITION",
+      changes: { condition: "damaged" },
+      timestamp: "bukan-tanggal"
+    }));
+    assert.equal((await storage.get("remainders", "REM-TIMESTAMP-INVALID-CONDITION")).condition, "good");
+    assert.equal(
+      (await storage.getByIndex("movements", "remainderId", "REM-TIMESTAMP-INVALID-CONDITION"))
+        .some(item => item.type === "condition_changed"),
+      false
+    );
+  });
+
+  await test("penyelesaian rencana menolak timestamp tidak valid tanpa mengubah status", async () => {
+    const plan = {
+      id: "PLAN-TIMESTAMP-INVALID",
+      jobId: "JOB-A",
+      status: "reserved",
+      reservationIds: [],
+      createdAt: now,
+      completedAt: null,
+      cancelledAt: null,
+      schemaVersion: 1
+    };
+    await storage.add("plans", plan);
+
+    await assert.rejects(storage.updatePlanStatus({
+      planId: plan.id, status: "cancelled", timestamp: "bukan-tanggal"
+    }));
+    assert.deepEqual(await storage.get("plans", plan.id), plan);
+  });
+
   await storage.close();
   console.log("Semua pengujian storage inventaris selesai.");
   await deleteDatabase();

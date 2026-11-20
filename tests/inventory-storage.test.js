@@ -134,6 +134,14 @@ async function main() {
     await guarded.close();
   });
 
+  await test("perubahan ketebalan material ditolak jika sisa inventaris masih terhubung", async () => {
+    await assert.rejects(storage.update("materials", "MAT-A", { thicknessMm: 10 }));
+    const material = await storage.get("materials", "MAT-A");
+    await assert.rejects(storage.put("materials", { ...material, thicknessMm: 10 }));
+    assert.equal((await storage.get("materials", "MAT-A")).thicknessMm, 8);
+    assert.equal((await storage.get("remainders", "REM-A")).thicknessMm, 8);
+  });
+
   await test("penghapusan material dan pekerjaan ditolak jika masih dirujuk inventaris/riwayat", async () => {
     await assert.rejects(storage.remove("materials", "MAT-A"));
     await assert.rejects(storage.remove("jobs", "JOB-A"));

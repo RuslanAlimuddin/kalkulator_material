@@ -57,6 +57,9 @@ async function main() {
   assert.equal(child.sourceSheetId, "JOB-B-SHEET-01");
   assert.equal(child.status, "available");
   assert.equal(child.condition, "good");
+  assert.equal(child.sourceType, "inventory");
+  assert.equal(child.sourceRemainderId, "REM-A");
+  assert.equal(child.reservationId, reservation.id);
 
   const movements = await storage.getAll("movements");
   assert.equal(movements.filter(item => item.type === "consumed").length, 1);
@@ -88,6 +91,10 @@ async function main() {
   assert.equal(secondResult.createdRemainders.length, 1);
   assert.equal(secondResult.createdRemainders[0].widthCm, 10);
   assert.equal(secondResult.createdRemainders[0].heightCm, 10);
+  const secondChild = await storage.get("remainders", secondResult.createdRemainders[0].id);
+  assert.equal(secondChild.sourceType, "inventory");
+  assert.equal(secondChild.sourceRemainderId, "REM-SECOND");
+  assert.equal(secondChild.reservationId, secondReservation.id);
 
   const invalid = engineModule.createInventoryEngine({ storage });
   await assert.rejects(invalid.consumeReservation({

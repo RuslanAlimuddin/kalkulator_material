@@ -179,6 +179,14 @@ async function main() {
   assert.ok(wrongJobReport.inconsistentPlans.some(item => item.id === reserved.planId));
   await storage.put("reservations", auditReservation);
 
+  // Reservasi aktif legacy tanpa planId harus ditandai sebagai yatim, tetapi
+  // tetap dicatat dalam kelompok riwayat tanpa tautan agar tidak dihapus.
+  await storage.update("reservations", auditReservation.id, { planId: null });
+  const activeLegacyLinkReport = await storage.getRecoveryReport();
+  assert.ok(activeLegacyLinkReport.orphanedReservations.some(item => item.id === auditReservation.id));
+  assert.ok(activeLegacyLinkReport.legacyReservationsWithoutPlan.some(item => item.id === auditReservation.id));
+  await storage.put("reservations", auditReservation);
+
   // Laporan juga harus mendeteksi snapshot historis yang pekerjaan induknya hilang.
   const auditPlan = await storage.get("plans", reserved.planId);
   await storage.update("plans", auditPlan.id, { jobId: "JOB-MISSING-HISTORIC" });
@@ -292,6 +300,15 @@ async function main() {
     item.id === consumedReservation.id && item.status === "consumed"
   ));
   assert.deepEqual(missingParentReport.orphanedReservations, []);
+  await storage.put("reservations", consumedReservation);
+  // Reservasi terminal tanpa planId tetap muncul sebagai riwayat legacy,
+  // tetapi tidak salah dikategorikan sebagai reservasi aktif yatim.
+  await storage.update("reservations", consumedReservation.id, { planId: null });
+  const terminalLegacyReport = await storage.getRecoveryReport();
+  assert.ok(terminalLegacyReport.legacyReservationsWithoutPlan.some(item =>
+    item.id === consumedReservation.id && item.status === "consumed"
+  ));
+  assert.deepEqual(terminalLegacyReport.orphanedReservations, []);
   await storage.put("reservations", consumedReservation);
   const restoredParentReport = await storage.getRecoveryReport();
   assert.deepEqual(restoredParentReport.inconsistentPlans, []);

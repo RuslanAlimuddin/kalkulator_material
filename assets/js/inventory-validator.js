@@ -532,6 +532,13 @@
         .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp) || a._sourceIndex - b._sourceIndex);
       const originEvents = ordered.filter(item => ["created", "remainder_created"].includes(item.type));
       const terminalEvents = ordered.filter(item => ["consumed", "discarded"].includes(item.type));
+      if (originEvents.length === 0 &&
+          !["inventory", "new"].includes(remainder.sourceType)) {
+        warnings.push({
+          path: p,
+          message: "Movement awal tidak ditemukan; riwayat mungkin berasal dari data legacy yang belum lengkap."
+        });
+      }
       if (originEvents.length > 1) {
         error(p, "Satu sisa material tidak boleh memiliki lebih dari satu movement awal.");
       }

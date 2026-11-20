@@ -905,7 +905,22 @@
                 if (!savedPlan || savedPlan.status !== "reserved") { tx.abort(); return; }
                 const expectedIds = Array.isArray(savedPlan.reservationIds) ? savedPlan.reservationIds.slice().sort() : [];
                 const consumedIds = checked.map(item => item.reservation.id).sort();
-                if (JSON.stringify(expectedIds) !== JSON.stringify(consumedIds)) { tx.abort(); return; }
+                const usage = savedPlan.plan && Array.isArray(savedPlan.plan.inventoryUsage)
+                  ? savedPlan.plan.inventoryUsage : [];
+                const usageIds = usage.map(item => item && item.remainderId);
+                const reservationJobMismatch = checked.some(item =>
+                  item.reservation.jobId !== savedPlan.jobId ||
+                  (input.jobId && item.reservation.jobId !== input.jobId)
+                );
+                const sourceMismatch = usageIds.some(id => typeof id !== "string" || !id.trim()) ||
+                  new Set(usageIds).size !== usageIds.length ||
+                  usageIds.length !== checked.length ||
+                  checked.some(item => !usageIds.includes(item.reservation.remainderId));
+                if (JSON.stringify(expectedIds) !== JSON.stringify(consumedIds) ||
+                    reservationJobMismatch || sourceMismatch) {
+                  tx.abort();
+                  return;
+                }
                 plans.put({ ...savedPlan, status: "completed", completedAt: timestamp });
               };
             }

@@ -1215,7 +1215,7 @@
       const plansWithoutJob = plans.filter(item => !jobIds.has(item.jobId));
       const activeReservations = reservations.filter(item => item.status === "active");
       // Riwayat dari database lama dapat tidak memiliki planId; tampilkan terpisah
-      // agar dapat diaudit tanpa otomatis dianggap rusak atau diubah.
+      // termasuk reservasi terminal, yang bukan reservasi aktif yatim dan tidak diubah.
       const legacyReservationsWithoutPlan = reservations.filter(item => !item.planId);
       const activeByRemainder = new Map();
       activeReservations.forEach(item => {

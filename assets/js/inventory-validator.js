@@ -433,6 +433,14 @@
       const ordered = history
         .filter(item => isIsoDate(item.timestamp))
         .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp) || a._sourceIndex - b._sourceIndex);
+      const originEvents = ordered.filter(item => ["created", "remainder_created"].includes(item.type));
+      const terminalEvents = ordered.filter(item => ["consumed", "discarded"].includes(item.type));
+      if (originEvents.length > 1) {
+        error(p, "Satu sisa material tidak boleh memiliki lebih dari satu movement awal.");
+      }
+      if (terminalEvents.length > 1) {
+        error(p, "Satu sisa material tidak boleh memiliki lebih dari satu movement terminal.");
+      }
       for (let i = 1; i < ordered.length; i += 1) {
         const previous = ordered[i - 1];
         const current = ordered[i];

@@ -797,8 +797,10 @@
       const database = await db();
       const createdRemainders = [];
       await withTransaction(
-        database, ["remainders", "reservations", "movements", "plans"], "readwrite",
+        database, ["materials", "jobs", "remainders", "reservations", "movements", "plans"], "readwrite",
         tx => {
+          const materials = tx.objectStore("materials");
+          const jobs = tx.objectStore("jobs");
           const remainders = tx.objectStore("remainders");
           const reservations = tx.objectStore("reservations");
           const movements = tx.objectStore("movements");
@@ -904,7 +906,42 @@
               };
             };
           };
-          checkNext();
+
+          // Sisa dari lembar baru wajib menunjuk katalog material dan pekerjaan
+          // yang benar-benar ada. Pemeriksaan berada di transaksi yang sama
+          // dengan penulisan agar penghapusan katalog tidak dapat berlomba.
+          let pendingReferences = newSheetDrafts.length * 2;
+          const referencesReady = () => {
+            pendingReferences -= 1;
+            if (pendingReferences === 0) checkNext();
+          };
+          if (pendingReferences === 0) {
+            checkNext();
+          } else {
+            newSheetDrafts.forEach(draft => {
+              const materialRequest = materials.get(draft.materialId);
+              materialRequest.onsuccess = () => {
+                const material = materialRequest.result;
+                if (!material || material.active === false ||
+                    Number(material.thicknessMm) !== Number(draft.thicknessMm) ||
+                    material.motif !== draft.motif ||
+                    (material.rotationPolicy === "fixed" && draft.rotationAllowed) ||
+                    (material.grainRequired === true && draft.rotationAllowed)) {
+                  tx.abort();
+                  return;
+                }
+                referencesReady();
+              };
+              const jobRequest = jobs.get(draft.originJobId);
+              jobRequest.onsuccess = () => {
+                if (!jobRequest.result) {
+                  tx.abort();
+                  return;
+                }
+                referencesReady();
+              };
+            });
+          }
         }
       );
       return { consumedReservations: reservationIds, createdRemainders };

@@ -411,6 +411,11 @@ test("asal-usul sisa turunan harus menunjuk sumber dan reservasi yang benar", ()
     id: "RSV-SOURCE", remainderId: "REM-001", jobId: "JOB-B",
     status: "consumed", createdAt: now, releasedAt: null, consumedAt: now
   });
+  data.movements.movements.push({
+    id: "MOV-CHILD-CREATED", remainderId: "REM-CHILD",
+    type: "remainder_created", jobId: "JOB-B", timestamp: now,
+    fromStatus: null, toStatus: "available", referenceId: "REM-001"
+  });
   assert.equal(validate(data).valid, true, JSON.stringify(validate(data).errors));
 
   data.remainders.remainders[1].sourceRemainderId = "REM-MISSING";

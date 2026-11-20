@@ -148,6 +148,9 @@
       if (!isObject(item)) return;
       const p = "plans.plans[" + index + "]";
       requireString(item.jobId, p + ".jobId");
+      if (!jobById.has(item.jobId)) {
+        error(p + ".jobId", "Pekerjaan snapshot dengan ID " + item.jobId + " tidak ditemukan.");
+      }
       if (!["reserved", "cancelled", "completed", "legacy_recovery"].includes(item.status)) {
         error(p + ".status", "Status snapshot rencana tidak dikenal.");
       }

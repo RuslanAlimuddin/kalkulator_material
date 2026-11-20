@@ -383,6 +383,24 @@
         error(p + ".sourceRemainderId", "Sisa material sumber tidak ditemukan.");
       } else if (source.id === item.id || source.status !== "consumed") {
         error(p + ".sourceRemainderId", "Sumber sisa turunan harus merupakan sisa lain yang sudah dikonsumsi.");
+      } else {
+        // Sisa turunan harus mempertahankan identitas dan karakter material
+        // dari sumber fisiknya; dimensi boleh berubah karena proses pemotongan.
+        if (item.materialId !== source.materialId) {
+          error(p + ".materialId", "Material sisa turunan harus sama dengan material sumbernya.");
+        }
+        if (item.thicknessMm !== source.thicknessMm) {
+          error(p + ".thicknessMm", "Ketebalan sisa turunan harus sama dengan sumbernya.");
+        }
+        if (item.grainDirection !== source.grainDirection) {
+          error(p + ".grainDirection", "Arah serat sisa turunan harus sama dengan sumbernya.");
+        }
+        if (item.motif !== source.motif) {
+          error(p + ".motif", "Motif sisa turunan harus sama dengan sumbernya.");
+        }
+        if (item.rotationAllowed !== source.rotationAllowed) {
+          error(p + ".rotationAllowed", "Aturan rotasi sisa turunan harus sama dengan sumbernya.");
+        }
       }
       if (!reservation) {
         error(p + ".reservationId", "Reservasi sumber sisa turunan tidak ditemukan.");

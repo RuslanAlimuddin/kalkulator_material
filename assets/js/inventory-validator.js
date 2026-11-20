@@ -429,6 +429,33 @@
       }
     });
 
+    // Pastikan hubungan sumber sisa material membentuk rantai satu arah.
+    // Tanpa pemeriksaan siklus, paket dapat menyatakan A berasal dari B dan
+    // B berasal dari A, meskipun masing-masing sumber berstatus consumed.
+    const lineageState = new Map();
+    const lineageStack = new Set();
+    const lineageById = remainderById;
+    function visitLineage(remainderId) {
+      const state = lineageState.get(remainderId) || 0;
+      if (state === 2) return;
+      if (state === 1) {
+        error("remainders", "Rantai asal-usul sisa material mengandung siklus.");
+        return;
+      }
+      lineageState.set(remainderId, 1);
+      lineageStack.add(remainderId);
+      const current = lineageById.get(remainderId);
+      if (current && current.sourceType === "inventory" &&
+          isNonEmptyString(current.sourceRemainderId) && lineageById.has(current.sourceRemainderId)) {
+        visitLineage(current.sourceRemainderId);
+      }
+      lineageStack.delete(remainderId);
+      lineageState.set(remainderId, 2);
+    }
+    if (remainders) remainders.forEach(item => {
+      if (isObject(item) && isNonEmptyString(item.id)) visitLineage(item.id);
+    });
+
     const expectedMovementTransitions = {
       created: [null, "available"],
       reserved: ["available", "reserved"],

@@ -331,8 +331,14 @@
       if (item.status === "released" && item.releasedAt === null) {
         error(p + ".releasedAt", "Reservasi released wajib memiliki waktu pelepasan.");
       }
+      if (item.status === "released" && item.consumedAt !== null) {
+        error(p + ".consumedAt", "Reservasi released tidak boleh memiliki waktu pemakaian.");
+      }
       if (item.status === "consumed" && item.consumedAt === null) {
         error(p + ".consumedAt", "Reservasi consumed wajib memiliki waktu pemakaian.");
+      }
+      if (item.status === "consumed" && item.releasedAt !== null) {
+        error(p + ".releasedAt", "Reservasi consumed tidak boleh memiliki waktu pelepasan.");
       }
     });
 
@@ -442,6 +448,18 @@
         } else if (expectedTerminal.length > 1) {
           error(p, "Satu reservasi tidak boleh memiliki lebih dari satu movement terminal.");
         }
+      }
+      if (reservedEvents.length === 1 && isIsoDate(reservation.createdAt) &&
+          isIsoDate(reservedEvents[0].timestamp) &&
+          Date.parse(reservedEvents[0].timestamp) !== Date.parse(reservation.createdAt)) {
+        error(p + ".createdAt", "Waktu movement reserved harus sama dengan waktu pembuatan reservasi.");
+      }
+      const terminalTimestamp = reservation.status === "released"
+        ? reservation.releasedAt : reservation.status === "consumed" ? reservation.consumedAt : null;
+      if (expectedTerminal.length === 1 && isIsoDate(terminalTimestamp) &&
+          isIsoDate(expectedTerminal[0].timestamp) &&
+          Date.parse(expectedTerminal[0].timestamp) !== Date.parse(terminalTimestamp)) {
+        error(p, "Waktu movement terminal harus sama dengan waktu akhir reservasi.");
       }
       if (reservedEvents.length === 1 && expectedTerminal.length === 1 &&
           Date.parse(reservedEvents[0].timestamp) > Date.parse(expectedTerminal[0].timestamp)) {

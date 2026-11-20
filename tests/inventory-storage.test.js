@@ -134,24 +134,6 @@ async function main() {
     await guarded.close();
   });
 
-  await test("perubahan ketebalan material ditolak jika sisa inventaris masih terhubung", async () => {
-    await assert.rejects(storage.update("materials", "MAT-A", { thicknessMm: 10 }));
-    const material = await storage.get("materials", "MAT-A");
-    await assert.rejects(storage.put("materials", { ...material, thicknessMm: 10 }));
-    assert.equal((await storage.get("materials", "MAT-A")).thicknessMm, 8);
-    assert.equal((await storage.get("remainders", "REM-A")).thicknessMm, 8);
-  });
-
-  await test("penghapusan material dan pekerjaan ditolak jika masih dirujuk inventaris/riwayat", async () => {
-    await assert.rejects(storage.remove("materials", "MAT-A"));
-    await assert.rejects(storage.remove("jobs", "JOB-A"));
-    await assert.rejects(storage.clear("materials"));
-    await assert.rejects(storage.clear("jobs"));
-    assert.ok(await storage.get("materials", "MAT-A"));
-    assert.ok(await storage.get("jobs", "JOB-A"));
-    assert.ok(await storage.get("remainders", "REM-A"));
-  });
-
   await test("CRUD mendukung meta dengan key sebagai primary key", async () => {
     await storage.put("meta", { key: "test-key", value: "aktif" });
     assert.deepEqual(await storage.get("meta", "test-key"), {
@@ -176,6 +158,24 @@ async function main() {
     assert.ok(exported.meta.some(item => item.key === "lastExportAt"));
   });
 
+
+  await test("perubahan ketebalan material ditolak jika sisa inventaris masih terhubung", async () => {
+    await assert.rejects(storage.update("materials", "MAT-A", { thicknessMm: 10 }));
+    const material = await storage.get("materials", "MAT-A");
+    await assert.rejects(storage.put("materials", { ...material, thicknessMm: 10 }));
+    assert.equal((await storage.get("materials", "MAT-A")).thicknessMm, 8);
+    assert.equal((await storage.get("remainders", "REM-A")).thicknessMm, 8);
+  });
+
+  await test("penghapusan material dan pekerjaan ditolak jika masih dirujuk inventaris/riwayat", async () => {
+    await assert.rejects(storage.remove("materials", "MAT-A"));
+    await assert.rejects(storage.remove("jobs", "JOB-A"));
+    await assert.rejects(storage.clear("materials"));
+    await assert.rejects(storage.clear("jobs"));
+    assert.ok(await storage.get("materials", "MAT-A"));
+    assert.ok(await storage.get("jobs", "JOB-A"));
+    assert.ok(await storage.get("remainders", "REM-A"));
+  });
 
   await test("impor cadangan lama dengan reservasi aktif membentuk snapshot pemulihan", async () => {
     const legacy = bundle("LEGACY-ACTIVE");

@@ -357,8 +357,14 @@
     // Validasi asal-usul sisa baru. Record legacy tanpa sourceType tetap
     // diterima karena versi lama belum menyimpan metadata lineage.
     if (remainders) remainders.forEach((item, index) => {
-      if (!isObject(item) || item.sourceType == null) return;
+      if (!isObject(item)) return;
       const p = "remainders.remainders[" + index + "]";
+      if (item.sourceType == null) {
+        if (item.sourceRemainderId != null || item.reservationId != null) {
+          error(p, "Metadata sumber inventaris wajib disertai sourceType inventory.");
+        }
+        return;
+      }
       if (!["inventory", "new"].includes(item.sourceType)) {
         error(p + ".sourceType", "Jenis asal sisa material tidak dikenal.");
         return;

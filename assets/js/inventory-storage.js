@@ -261,6 +261,19 @@
         throw new Error("Record harus memiliki " + (storeName === "meta" ? "key." : "id."));
       }
       const database = await db();
+      if (storeName === "materials") {
+        return withTransaction(database, ["materials", "remainders"], "readwrite", tx => {
+          const references = tx.objectStore("remainders").index("materialId").getAll(record.id);
+          references.onsuccess = () => {
+            if (references.result.some(item => Number(item.thicknessMm) !== Number(record.thicknessMm))) {
+              tx.abort();
+              return;
+            }
+            tx.objectStore("materials").put(record);
+          };
+          return record.id;
+        });
+      }
       return withTransaction(database, [storeName], "readwrite", tx =>
         requestResult(tx.objectStore(storeName).put(record))
       );
@@ -276,7 +289,9 @@
         throw new Error("ID dan objek perubahan wajib diisi.");
       }
       const database = await db();
-      return withTransaction(database, [storeName], "readwrite", tx => {
+      const transactionStores = storeName === "materials"
+        ? ["materials", "remainders"] : [storeName];
+      return withTransaction(database, transactionStores, "readwrite", tx => {
         const store = tx.objectStore(storeName);
         const request = store.get(id);
         request.onsuccess = () => {
@@ -284,7 +299,19 @@
             tx.abort();
             return;
           }
-          store.put({ ...request.result, ...changes, id });
+          const updated = { ...request.result, ...changes, id };
+          if (storeName !== "materials") {
+            store.put(updated);
+            return;
+          }
+          const references = tx.objectStore("remainders").index("materialId").getAll(id);
+          references.onsuccess = () => {
+            if (references.result.some(item => Number(item.thicknessMm) !== Number(updated.thicknessMm))) {
+              tx.abort();
+              return;
+            }
+            store.put(updated);
+          };
         };
         return id;
       });

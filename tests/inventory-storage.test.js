@@ -422,6 +422,32 @@ async function main() {
     assert.equal((await storage.get("reservations", "RSV-RELEASE-DUP-BULK-SECOND")).status, "active");
   });
 
+  await test("pelepasan rencana menolak jobId reservasi yang berbeda dari snapshot", async () => {
+    await storage.importJSON(bundle("RELEASE-PLAN-JOB-MISMATCH"), "merge");
+    const reserved = await storage.reserveRemainders({
+      remainderIds: ["REM-RELEASE-PLAN-JOB-MISMATCH"],
+      jobId: "JOB-RELEASE-PLAN-JOB-MISMATCH",
+      planId: "PLAN-RELEASE-PLAN-JOB-MISMATCH",
+      planSnapshot: {
+        plan: { inventoryUsage: [{ remainderId: "REM-RELEASE-PLAN-JOB-MISMATCH" }] }
+      },
+      timestamp: now
+    });
+    await storage.put("reservations", {
+      ...await storage.get("reservations", reserved[0].id),
+      jobId: "JOB-OTHER-RELEASE-PLAN-JOB-MISMATCH"
+    });
+
+    await assert.rejects(storage.releaseReservations({
+      planId: "PLAN-RELEASE-PLAN-JOB-MISMATCH",
+      reservationIds: [reserved[0].id],
+      timestamp: now
+    }));
+    assert.equal((await storage.get("remainders", "REM-RELEASE-PLAN-JOB-MISMATCH")).status, "reserved");
+    assert.equal((await storage.get("reservations", reserved[0].id)).status, "active");
+    assert.equal((await storage.get("plans", "PLAN-RELEASE-PLAN-JOB-MISMATCH")).status, "reserved");
+  });
+
   await test("konsumsi rencana menolak jobId reservasi yang berbeda dari snapshot", async () => {
     await storage.importJSON(bundle("PLAN-JOB-MISMATCH"), "merge");
     const reserved = await storage.reserveRemainders({

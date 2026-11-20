@@ -1046,32 +1046,39 @@
       const timestamp = input.timestamp || new Date().toISOString();
       const database = await db();
       let updated;
-      await withTransaction(database, ["remainders", "movements"], "readwrite", tx => {
+      await withTransaction(database, ["remainders", "reservations", "movements"], "readwrite", tx => {
         const remainders = tx.objectStore("remainders");
+        const reservations = tx.objectStore("reservations");
         const movements = tx.objectStore("movements");
         const request = remainders.get(input.id);
         request.onsuccess = () => {
           const current = request.result;
-          if (!current) { tx.abort(); return; }
-          if (!["available"].includes(current.status)) { tx.abort(); return; }
-          updated = {
-            ...current,
-            ...allowed,
-            updatedAt: timestamp,
-            version: Number(current.version || 0) + 1
+          if (!current || current.status !== "available") { tx.abort(); return; }
+          const activeRequest = reservations.index("remainderId").getAll(current.id);
+          activeRequest.onsuccess = () => {
+            if (activeRequest.result.some(item => item.status === "active")) {
+              tx.abort();
+              return;
+            }
+            updated = {
+              ...current,
+              ...allowed,
+              updatedAt: timestamp,
+              version: Number(current.version || 0) + 1
+            };
+            remainders.put(updated);
+            const discarded = allowed.status === "discarded";
+            movements.add({
+              id: makeId("MOV"),
+              remainderId: current.id,
+              type: discarded ? "discarded" : "condition_changed",
+              jobId: input.jobId || current.originJobId,
+              timestamp,
+              fromStatus: current.status,
+              toStatus: updated.status,
+              referenceId: input.referenceId || null
+            });
           };
-          remainders.put(updated);
-          const discarded = allowed.status === "discarded";
-          movements.add({
-            id: makeId("MOV"),
-            remainderId: current.id,
-            type: discarded ? "discarded" : "condition_changed",
-            jobId: input.jobId || current.originJobId,
-            timestamp,
-            fromStatus: current.status,
-            toStatus: updated.status,
-            referenceId: input.referenceId || null
-          });
         };
       });
       return updated;

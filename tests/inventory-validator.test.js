@@ -394,6 +394,41 @@ test("riwayat yang tertinggal dari updatedAt diberi peringatan legacy", () => {
   assert.ok(result.warnings.some(w => /Movement terakhir lebih lama/.test(w.message)));
 });
 
+test("asal-usul sisa turunan harus menunjuk sumber dan reservasi yang benar", () => {
+  const data = validBundle();
+  data.jobs.jobs.push({ id: "JOB-B", name: "Pekerjaan B", status: "open", createdAt: now, closedAt: null });
+  data.remainders.remainders[0].status = "consumed";
+  data.remainders.remainders.push({
+    id: "REM-CHILD", materialId: "MAT-001", widthCm: 20, heightCm: 10,
+    thicknessMm: 8, grainDirection: "none", motif: "plain",
+    rotationAllowed: true, condition: "good", status: "available",
+    originJobId: "JOB-B", sourceSheetId: "SHEET-B",
+    sourceType: "inventory", sourceRemainderId: "REM-001",
+    reservationId: "RSV-SOURCE",
+    createdAt: now, updatedAt: now, version: 1
+  });
+  data.reservations.reservations.push({
+    id: "RSV-SOURCE", remainderId: "REM-001", jobId: "JOB-B",
+    status: "consumed", createdAt: now, releasedAt: null, consumedAt: now
+  });
+  assert.equal(validate(data).valid, true, JSON.stringify(validate(data).errors));
+
+  data.remainders.remainders[1].sourceRemainderId = "REM-MISSING";
+  assert.ok(validate(data).errors.some(e => /Sisa material sumber tidak ditemukan/.test(e.message)));
+});
+
+test("sisa dari lembar baru tidak boleh memiliki referensi sumber inventaris", () => {
+  const data = validBundle();
+  data.remainders.remainders[0].sourceType = "new";
+  data.remainders.remainders[0].sourceRemainderId = "REM-OTHER";
+  assert.ok(validate(data).errors.some(e => /Sisa dari lembar baru tidak boleh menunjuk/.test(e.message)));
+});
+
+test("record legacy tanpa metadata asal-usul tetap diterima", () => {
+  const data = validBundle();
+  assert.equal(validate(data).valid, true);
+});
+
 test("waktu movement harus cocok dengan timestamp reservasi", () => {
   const data = validBundle();
   data.reservations.reservations.push({

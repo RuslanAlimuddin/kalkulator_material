@@ -422,6 +422,42 @@ test("asal-usul sisa turunan harus menunjuk sumber dan reservasi yang benar", ()
   assert.ok(validate(data).errors.some(e => /Sisa material sumber tidak ditemukan/.test(e.message)));
 });
 
+
+test("sisa turunan wajib mempertahankan identitas dan karakter material sumber", () => {
+  const fields = [
+    ["materialId", "MAT-LAIN"],
+    ["thicknessMm", 10],
+    ["grainDirection", "vertical"],
+    ["motif", "striped"],
+    ["rotationAllowed", false]
+  ];
+  for (const [field, value] of fields) {
+    const data = validBundle();
+    data.jobs.jobs.push({ id: "JOB-B", name: "Pekerjaan B", status: "open", createdAt: now, closedAt: null });
+    data.remainders.remainders[0].status = "consumed";
+    data.remainders.remainders.push({
+      id: "REM-CHILD", materialId: "MAT-001", widthCm: 20, heightCm: 10,
+      thicknessMm: 8, grainDirection: "none", motif: "plain",
+      rotationAllowed: true, condition: "good", status: "available",
+      originJobId: "JOB-B", sourceSheetId: "SHEET-B",
+      sourceType: "inventory", sourceRemainderId: "REM-001",
+      reservationId: "RSV-SOURCE", createdAt: now, updatedAt: now, version: 1
+    });
+    data.reservations.reservations.push({
+      id: "RSV-SOURCE", remainderId: "REM-001", jobId: "JOB-B",
+      status: "consumed", createdAt: now, releasedAt: null, consumedAt: now
+    });
+    data.movements.movements.push({
+      id: "MOV-CHILD-CREATED", remainderId: "REM-CHILD",
+      type: "remainder_created", jobId: "JOB-B", timestamp: now,
+      fromStatus: null, toStatus: "available", referenceId: "REM-001"
+    });
+    data.remainders.remainders[1][field] = value;
+    const result = validate(data);
+    assert.equal(result.valid, false, field + " harus cocok dengan sumber");
+  }
+});
+
 test("movement pembuatan harus cocok dengan referensi asal-usul sisa", () => {
   const data = validBundle();
   data.remainders.remainders[0].sourceType = "new";

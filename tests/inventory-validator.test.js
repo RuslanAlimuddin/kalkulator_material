@@ -342,6 +342,18 @@ test("movement terminal tidak boleh mendahului movement reservasi", () => {
   ));
 });
 
+test("movement awal ganda ditolak meskipun timestamp-nya sama", () => {
+  const data = validBundle();
+  data.movements.movements.push({
+    id: "MOV-INITIAL-1", remainderId: "REM-001", type: "created",
+    timestamp: now, fromStatus: null, toStatus: "available"
+  }, {
+    id: "MOV-INITIAL-2", remainderId: "REM-001", type: "remainder_created",
+    timestamp: now, fromStatus: null, toStatus: "available"
+  });
+  assert.ok(validate(data).errors.some(e => /lebih dari satu movement awal/.test(e.message)));
+});
+
 test("rantai status movement yang terputus ditolak", () => {
   const data = validBundle();
   data.movements.movements.push({

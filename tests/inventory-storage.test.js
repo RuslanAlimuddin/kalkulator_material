@@ -809,6 +809,29 @@ async function main() {
     assert.equal((await storage.get("remainders", "REM-NEW-VALID")).status, "available");
   });
 
+  await test("reservasi menolak timestamp tidak valid tanpa mengubah stok atau membuat riwayat", async () => {
+    await storage.importJSON(bundle("TIMESTAMP-INVALID-RESERVE"), "merge");
+
+    await assert.rejects(storage.reserveRemainder({
+      remainderId: "REM-TIMESTAMP-INVALID-RESERVE",
+      jobId: "JOB-TIMESTAMP-INVALID-RESERVE",
+      timestamp: "bukan-tanggal"
+    }));
+
+    assert.equal(
+      (await storage.get("remainders", "REM-TIMESTAMP-INVALID-RESERVE")).status,
+      "available"
+    );
+    assert.equal(
+      (await storage.getByIndex("reservations", "remainderId", "REM-TIMESTAMP-INVALID-RESERVE")).length,
+      0
+    );
+    assert.equal(
+      (await storage.getByIndex("movements", "remainderId", "REM-TIMESTAMP-INVALID-RESERVE")).length,
+      0
+    );
+  });
+
   await storage.close();
   console.log("Semua pengujian storage inventaris selesai.");
   await deleteDatabase();

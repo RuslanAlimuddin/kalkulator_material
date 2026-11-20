@@ -101,12 +101,12 @@ REM Jangan menghapus atau memindahkan file BAT yang sedang berjalan.
 REM Jika file belum terlacak, hentikan dan minta pengguna mengganti namanya
 REM setelah proses ini selesai. Ini mencegah CMD kehilangan file batch aktif.
 git ls-files --error-unmatch Sinkronkan_Repo.bat >nul 2>nul
-if errorlevel 1 (
-  echo [TINDAKAN DIPERLUKAN] File tool ini belum tercatat di Git lokal.
+if errorlevel 1 if exist "%~dp0Sinkronkan_Repo.bat" (
+  echo [TINDAKAN DIPERLUKAN] Ada file lama dengan nama yang sama.
   echo Setelah jendela ini selesai, ubah nama file:
   echo Sinkronkan_Repo.bat menjadi Sinkronkan_Repo_lama.bat
-  echo Lalu jalankan file yang sudah berganti nama tersebut.
-  echo Git akan mengambil file tool terbaru dari GitHub.
+  echo Unduh versi terbaru dengan nama Sinkronkan_Repo_baru.bat
+  echo lalu jalankan file baru tersebut.
   goto selesai_gagal
 )
 

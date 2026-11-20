@@ -1276,6 +1276,20 @@
           .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp) || a._sourceIndex - b._sourceIndex);
         const originEvents = ordered.filter(item => ["created", "remainder_created"].includes(item.type));
         const terminalEvents = ordered.filter(item => ["consumed", "discarded"].includes(item.type));
+        const modernRemainder = ["inventory", "new"].includes(remainder.sourceType);
+        const expectedOriginEvents = modernRemainder
+          ? ordered.filter(item => item.type === "remainder_created")
+          : originEvents;
+        if (expectedOriginEvents.length === 0) {
+          addMovementIssue(
+            modernRemainder ? "error" : "warning",
+            "missing_origin",
+            remainder.id,
+            modernRemainder
+              ? "Sisa material modern tidak memiliki movement remainder_created."
+              : "Movement awal tidak ditemukan; riwayat mungkin berasal dari data legacy yang belum lengkap."
+          );
+        }
         if (originEvents.length > 1) {
           addMovementIssue("error", "duplicate_origin", remainder.id,
             "Satu sisa material memiliki lebih dari satu riwayat awal.", originEvents.map(item => item.id));

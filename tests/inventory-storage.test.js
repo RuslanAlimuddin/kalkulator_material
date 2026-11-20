@@ -134,6 +134,16 @@ async function main() {
     await guarded.close();
   });
 
+  await test("penghapusan material dan pekerjaan ditolak jika masih dirujuk inventaris/riwayat", async () => {
+    await assert.rejects(storage.remove("materials", "MAT-A"));
+    await assert.rejects(storage.remove("jobs", "JOB-A"));
+    await assert.rejects(storage.clear("materials"));
+    await assert.rejects(storage.clear("jobs"));
+    assert.ok(await storage.get("materials", "MAT-A"));
+    assert.ok(await storage.get("jobs", "JOB-A"));
+    assert.ok(await storage.get("remainders", "REM-A"));
+  });
+
   await test("CRUD mendukung meta dengan key sebagai primary key", async () => {
     await storage.put("meta", { key: "test-key", value: "aktif" });
     assert.deepEqual(await storage.get("meta", "test-key"), {

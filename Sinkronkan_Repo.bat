@@ -95,13 +95,39 @@ if errorlevel 1 (
 )
 
 echo.
-echo [3/3] Menyamakan file kerja dengan commit GitHub...
+echo [3/3] Menyiapkan file tool dan menyamakan file kerja dengan GitHub...
+
+REM Jika tool ini belum tercatat di Git lokal, amankan salinannya sementara.
+REM Ini menangani pemasangan pertama ketika file tool baru ada di GitHub.
+set "SELF_BACKUP="
+git ls-files --error-unmatch Sinkronkan_Repo.bat >nul 2>nul
+if errorlevel 1 (
+  set "SELF_BACKUP=%TEMP%\Sinkronkan_Repo_%RANDOM%_%RANDOM%.bat"
+  copy /y "%~f0" "%SELF_BACKUP%" >nul
+  if errorlevel 1 (
+    echo [GAGAL] Tidak dapat membuat salinan pengaman tool.
+    goto selesai_gagal
+  )
+  del /f /q "%~f0"
+  if exist "%~f0" (
+    echo [GAGAL] Tool lokal tidak dapat dipindahkan sementara.
+    del /f /q "%SELF_BACKUP%"
+    goto selesai_gagal
+  )
+)
+
 git merge --ff-only FETCH_HEAD
 if errorlevel 1 (
   echo [GAGAL] Git tidak dapat menyelesaikan fast-forward.
   echo File lokal tidak dibersihkan atau dipaksa ditimpa.
+  if defined SELF_BACKUP (
+    if not exist "%~dp0Sinkronkan_Repo.bat" copy /y "%SELF_BACKUP%" "%~dp0Sinkronkan_Repo.bat" >nul
+    del /f /q "%SELF_BACKUP%"
+  )
   goto selesai_gagal
 )
+
+if defined SELF_BACKUP del /f /q "%SELF_BACKUP%"
 
 echo.
 echo ============================================================

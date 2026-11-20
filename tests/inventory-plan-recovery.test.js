@@ -159,6 +159,14 @@ async function main() {
   assert.ok(wrongJobReport.inconsistentPlans.some(item => item.id === reserved.planId));
   await storage.put("reservations", auditReservation);
 
+  // Laporan juga harus mendeteksi snapshot historis yang pekerjaan induknya hilang.
+  const auditPlan = await storage.get("plans", reserved.planId);
+  await storage.update("plans", auditPlan.id, { jobId: "JOB-MISSING-HISTORIC" });
+  const missingPlanJobReport = await storage.getRecoveryReport();
+  assert.ok(missingPlanJobReport.plansWithoutJob.some(item => item.id === auditPlan.id));
+  assert.ok(missingPlanJobReport.inconsistentPlans.some(item => item.id === auditPlan.id));
+  await storage.put("plans", auditPlan);
+
   await storage.update("reservations", auditReservation.id, { remainderId: "REC-REM-MISSING" });
   const wrongSourceReport = await storage.getRecoveryReport();
   assert.ok(wrongSourceReport.inconsistentReservations.some(item => item.id === auditReservation.id));

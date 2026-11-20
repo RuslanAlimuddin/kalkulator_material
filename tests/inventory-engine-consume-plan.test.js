@@ -27,6 +27,11 @@ async function main() {
   await deleteDatabase();
   const storage = storageModule.createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
+  await storage.add("materials", {
+    id: "MAT-CONSUME", name: "Material uji konsumsi", category: "uji",
+    thicknessMm: 8, surface: "glossy", grainRequired: false,
+    motif: "plain", rotationPolicy: "free", active: true
+  });
   for (const id of ["JOB-TARGET", "JOB-C", "JOB-NEW-ONLY"]) {
     await storage.add("jobs", {
       id, name: id, status: "open", createdAt: now, closedAt: null

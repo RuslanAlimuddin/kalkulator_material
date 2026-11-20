@@ -44,7 +44,7 @@
   function resolveTimestamp(value) {
     const timestamp = value || new Date().toISOString();
     const validIsoUtc = typeof timestamp === "string" &&
-      /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,3})?Z$/.test(timestamp) &&
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/.test(timestamp) &&
       Number.isFinite(Date.parse(timestamp));
     if (!validIsoUtc) {
       throw new Error("Timestamp harus berupa tanggal ISO 8601 UTC yang valid.");

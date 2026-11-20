@@ -394,6 +394,26 @@ test("riwayat yang tertinggal dari updatedAt diberi peringatan legacy", () => {
   assert.ok(result.warnings.some(w => /Movement terakhir lebih lama/.test(w.message)));
 });
 
+test("riwayat legacy yang memiliki aktivitas tetapi kehilangan movement awal diberi peringatan", () => {
+  const data = validBundle();
+  data.movements.movements.push({
+    id: "MOV-LEGACY-CONDITION", remainderId: "REM-001",
+    type: "condition_changed", timestamp: now,
+    fromStatus: "available", toStatus: "available"
+  });
+  const result = validate(data);
+  assert.equal(result.valid, true);
+  assert.ok(result.warnings.some(w => /movement awal tidak ditemukan/i.test(w.message)));
+});
+
+test("sisa modern tanpa movement pembuatan tetap ditolak", () => {
+  const data = validBundle();
+  data.remainders.remainders[0].sourceType = "new";
+  const result = validate(data);
+  assert.equal(result.valid, false);
+  assert.ok(result.errors.some(e => /tepat satu movement remainder_created/.test(e.message)));
+});
+
 test("asal-usul sisa turunan harus menunjuk sumber dan reservasi yang benar", () => {
   const data = validBundle();
   data.jobs.jobs.push({ id: "JOB-B", name: "Pekerjaan B", status: "open", createdAt: now, closedAt: null });

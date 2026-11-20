@@ -438,6 +438,40 @@ async function main() {
     assert.notEqual(first, second);
   });
 
+  await test("sisa lembar baru menolak material atau pekerjaan yang tidak terdaftar", async () => {
+    const base = {
+      materialId: "MAT-A", originJobId: "JOB-A", sourceSheetId: "SHEET-NEW-VALIDATION",
+      widthCm: 20, heightCm: 15, thicknessMm: 8,
+      grainDirection: "none", motif: "plain", rotationAllowed: true
+    };
+    await assert.rejects(storage.consumeReservations({
+      reservations: [], newSheetRemainders: [{ ...base, id: "REM-NEW-MISSING-JOB", originJobId: "JOB-MISSING" }]
+    }));
+    await assert.rejects(storage.consumeReservations({
+      reservations: [], newSheetRemainders: [{ ...base, id: "REM-NEW-MISSING-MATERIAL", materialId: "MAT-MISSING" }]
+    }));
+    await assert.rejects(storage.consumeReservations({
+      reservations: [], newSheetRemainders: [{ ...base, id: "REM-NEW-WRONG-THICKNESS", thicknessMm: 10 }]
+    }));
+    assert.equal(await storage.get("remainders", "REM-NEW-MISSING-JOB"), null);
+    assert.equal(await storage.get("remainders", "REM-NEW-MISSING-MATERIAL"), null);
+    assert.equal(await storage.get("remainders", "REM-NEW-WRONG-THICKNESS"), null);
+  });
+
+  await test("sisa lembar baru yang referensinya valid dapat disimpan", async () => {
+    const result = await storage.consumeReservations({
+      reservations: [],
+      newSheetRemainders: [{
+        id: "REM-NEW-VALID", materialId: "MAT-A", originJobId: "JOB-A",
+        sourceSheetId: "SHEET-NEW-VALID", widthCm: 20, heightCm: 15,
+        thicknessMm: 8, grainDirection: "none", motif: "plain",
+        rotationAllowed: true
+      }]
+    });
+    assert.equal(result.createdRemainders.length, 1);
+    assert.equal((await storage.get("remainders", "REM-NEW-VALID")).status, "available");
+  });
+
   await storage.close();
   console.log("Semua pengujian storage inventaris selesai.");
   await deleteDatabase();

@@ -278,6 +278,12 @@ test("tanggal kalender yang tidak ada ditolak", () => {
   assert.equal(validate(data).valid, false);
 });
 
+test("timestamp snapshot rencana yang tidak valid ditolak", () => {
+  const data = validPlanBundle();
+  data.plans.plans[0].createdAt = "2026-02-30T12:00:00.000Z";
+  assert.equal(validate(data).valid, false);
+});
+
 test("ID movement wajib diisi", () => {
   const data = validBundle();
   data.movements.movements.push({

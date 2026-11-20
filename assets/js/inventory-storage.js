@@ -290,9 +290,84 @@
       });
     }
 
+    // Katalog material dan pekerjaan adalah data induk. Penghapusan hanya
+    // diizinkan bila tidak ada inventaris/riwayat yang masih merujuk kepadanya.
+    async function removeCatalogRecordSafely(storeName, id) {
+      const database = await db();
+      const storeNames = storeName === "materials"
+        ? ["materials", "remainders"]
+        : ["jobs", "remainders", "reservations", "movements", "plans"];
+      return withTransaction(database, storeNames, "readwrite", tx => {
+        const checks = storeName === "materials"
+          ? [tx.objectStore("remainders").index("materialId").getAll(id)]
+          : [
+              tx.objectStore("remainders").index("originJobId").getAll(id),
+              tx.objectStore("reservations").index("jobId").getAll(id),
+              tx.objectStore("movements").index("jobId").getAll(id),
+              tx.objectStore("plans").index("jobId").getAll(id)
+            ];
+        let pending = checks.length;
+        let referenced = false;
+        checks.forEach(request => {
+          request.onsuccess = () => {
+            if (request.result.length) referenced = true;
+            pending -= 1;
+            if (pending !== 0) return;
+            if (referenced) {
+              tx.abort();
+              return;
+            }
+            tx.objectStore(storeName).delete(id);
+          };
+        });
+        return id;
+      }).then(() => true);
+    }
+
+    async function clearCatalogSafely(storeName) {
+      const database = await db();
+      const storeNames = storeName === "materials"
+        ? ["materials", "remainders"]
+        : ["jobs", "remainders", "reservations", "movements", "plans"];
+      return withTransaction(database, storeNames, "readwrite", tx => {
+        const checks = storeName === "materials"
+          ? [tx.objectStore("remainders").getAll()]
+          : [
+              tx.objectStore("remainders").getAll(),
+              tx.objectStore("reservations").getAll(),
+              tx.objectStore("movements").getAll(),
+              tx.objectStore("plans").getAll()
+            ];
+        let pending = checks.length;
+        let referenced = false;
+        checks.forEach((request, index) => {
+          request.onsuccess = () => {
+            const records = request.result;
+            if (storeName === "materials") {
+              if (records.length) referenced = true;
+            } else {
+              const field = index === 0 ? "originJobId" : "jobId";
+              if (records.some(record => record[field] != null)) referenced = true;
+            }
+            pending -= 1;
+            if (pending !== 0) return;
+            if (referenced) {
+              tx.abort();
+              return;
+            }
+            tx.objectStore(storeName).clear();
+          };
+        });
+        return true;
+      }).then(() => true);
+    }
+
     async function remove(storeName, id) {
       ensureStore(storeName);
       ensureGenericWriteAllowed(storeName, opts);
+      if (storeName === "materials" || storeName === "jobs") {
+        return removeCatalogRecordSafely(storeName, id);
+      }
       const database = await db();
       return withTransaction(database, [storeName], "readwrite", tx =>
         requestResult(tx.objectStore(storeName).delete(id))
@@ -302,6 +377,9 @@
     async function clear(storeName) {
       ensureStore(storeName);
       ensureGenericWriteAllowed(storeName, opts);
+      if (storeName === "materials" || storeName === "jobs") {
+        return clearCatalogSafely(storeName);
+      }
       const database = await db();
       return withTransaction(database, [storeName], "readwrite", tx =>
         requestResult(tx.objectStore(storeName).clear())

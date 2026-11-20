@@ -272,6 +272,12 @@ test("tanggal yang tidak valid ditolak", () => {
   assert.equal(validate(data).valid, false);
 });
 
+test("tanggal kalender yang tidak ada ditolak", () => {
+  const data = validBundle();
+  data.jobs.jobs[0].createdAt = "2026-02-30T12:00:00.000Z";
+  assert.equal(validate(data).valid, false);
+});
+
 test("ID movement wajib diisi", () => {
   const data = validBundle();
   data.movements.movements.push({

@@ -957,6 +957,15 @@
       if (!record || typeof record !== "object") {
         throw new Error("Data sisa material wajib disediakan.");
       }
+      // Jalur ini hanya untuk pencatatan sisa lembar secara langsung.
+      // Sisa turunan inventaris harus dibuat bersama konsumsi reservasi agar
+      // sumber, reservasi, status induk, dan movement tercatat atomik.
+      if (record.sourceType != null || record.sourceRemainderId != null ||
+          record.reservationId != null) {
+        throw new Error(
+          "Metadata asal-usul sisa turunan harus dibuat melalui consumeReservations()."
+        );
+      }
       const timestamp = record.createdAt || new Date().toISOString();
       const remainder = {
         ...record,

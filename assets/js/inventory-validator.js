@@ -166,6 +166,23 @@
       if (item.createdAt != null) requireDate(item.createdAt, p + ".createdAt", false);
       if (item.completedAt != null) requireDate(item.completedAt, p + ".completedAt", false);
       if (item.cancelledAt != null) requireDate(item.cancelledAt, p + ".cancelledAt", false);
+      if (item.status === "reserved" && (item.completedAt != null || item.cancelledAt != null)) {
+        error(p, "Snapshot rencana reserved tidak boleh memiliki waktu penyelesaian atau pembatalan.");
+      }
+      if (item.status === "cancelled" && item.completedAt != null) {
+        error(p + ".completedAt", "Snapshot rencana cancelled tidak boleh memiliki waktu penyelesaian.");
+      }
+      if (item.status === "completed" && item.cancelledAt != null) {
+        error(p + ".cancelledAt", "Snapshot rencana completed tidak boleh memiliki waktu pembatalan.");
+      }
+      if (item.createdAt != null) {
+        const createdTime = Date.parse(item.createdAt);
+        const terminalTime = item.status === "completed" ? item.completedAt
+          : item.status === "cancelled" ? item.cancelledAt : null;
+        if (terminalTime != null && Date.parse(terminalTime) < createdTime) {
+          error(p, "Waktu akhir snapshot rencana tidak boleh mendahului waktu pembuatannya.");
+        }
+      }
       requireString(item.jobId, p + ".jobId");
       if (!jobById.has(item.jobId)) {
         error(p + ".jobId", "Pekerjaan snapshot dengan ID " + item.jobId + " tidak ditemukan.");

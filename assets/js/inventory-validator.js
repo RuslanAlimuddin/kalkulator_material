@@ -255,6 +255,16 @@
           if (reservation.status !== expectedStatus) {
             error(p + ".reservationIds[" + i + "]", "Status reservasi tidak sesuai dengan status snapshot.");
           }
+          const snapshotTerminalTime = item.status === "completed" ? item.completedAt
+            : item.status === "cancelled" ? item.cancelledAt : null;
+          const reservationTerminalTime = item.status === "completed" ? reservation.consumedAt
+            : item.status === "cancelled" ? reservation.releasedAt : null;
+          if (snapshotTerminalTime != null && reservationTerminalTime != null &&
+              isIsoDate(snapshotTerminalTime) && isIsoDate(reservationTerminalTime) &&
+              Date.parse(snapshotTerminalTime) !== Date.parse(reservationTerminalTime)) {
+            error(p + ".reservationIds[" + i + "]",
+              "Waktu akhir snapshot rencana harus sama dengan waktu akhir reservasinya.");
+          }
         }
       });
     });

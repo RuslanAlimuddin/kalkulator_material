@@ -149,6 +149,44 @@ test("referensi pekerjaan asal yang tidak ditemukan ditolak", () => {
   assert.ok(validate(data).errors.some(e => /Pekerjaan asal/.test(e.message)));
 });
 
+test("rantai asal-usul sisa material yang membentuk siklus ditolak", () => {
+  const data = validBundle();
+  const createdAt = "2026-11-18T04:00:00.000Z";
+  const reservedAt = "2026-11-18T05:00:00.000Z";
+  const consumedAt = "2026-11-18T06:00:00.000Z";
+  const base = data.remainders.remainders[0];
+  const a = {
+    ...base, id: "REM-CYCLE-A", status: "consumed", sourceType: "inventory",
+    sourceRemainderId: "REM-CYCLE-B", reservationId: "RSV-CYCLE-A",
+    createdAt, updatedAt: consumedAt
+  };
+  const b = {
+    ...base, id: "REM-CYCLE-B", status: "consumed", sourceType: "inventory",
+    sourceRemainderId: "REM-CYCLE-A", reservationId: "RSV-CYCLE-B",
+    createdAt, updatedAt: consumedAt
+  };
+  data.remainders.remainders.push(a, b);
+  for (const [remainder, reservationId] of [[a, "RSV-CYCLE-A"], [b, "RSV-CYCLE-B"]]) {
+    data.reservations.reservations.push({
+      id: reservationId, remainderId: remainder.id, jobId: "JOB-A",
+      status: "consumed", createdAt: reservedAt, releasedAt: null, consumedAt
+    });
+    data.movements.movements.push(
+      { id: "MOV-CREATE-" + remainder.id, remainderId: remainder.id,
+        type: "remainder_created", jobId: "JOB-A", timestamp: createdAt,
+        fromStatus: null, toStatus: "available", referenceId: remainder.sourceRemainderId },
+      { id: "MOV-RESERVE-" + remainder.id, remainderId: remainder.id,
+        type: "reserved", jobId: "JOB-A", timestamp: reservedAt,
+        fromStatus: "available", toStatus: "reserved", referenceId: reservationId },
+      { id: "MOV-CONSUME-" + remainder.id, remainderId: remainder.id,
+        type: "consumed", jobId: "JOB-A", timestamp: consumedAt,
+        fromStatus: "reserved", toStatus: "consumed", referenceId: reservationId }
+    );
+  }
+  const result = validate(data);
+  assert.ok(result.errors.some(e => /Rantai asal-usul sisa material mengandung siklus/.test(e.message)));
+});
+
 test("status sisa yang tidak dikenal ditolak", () => {
   const data = validBundle();
   data.remainders.remainders[0].status = "ready";

@@ -284,6 +284,20 @@ test("timestamp snapshot rencana yang tidak valid ditolak", () => {
   assert.equal(validate(data).valid, false);
 });
 
+test("snapshot rencana dibatalkan tidak boleh memiliki completedAt", () => {
+  const data = validBundle();
+  data.plans = {
+    schemaVersion: 1,
+    plans: [{
+      id: "PLAN-CANCELLED-TIMESTAMP", jobId: "JOB-A",
+      plan: { inventoryUsage: [] }, reservationIds: [],
+      status: "cancelled", legacy: false,
+      createdAt: now, cancelledAt: now, completedAt: now
+    }]
+  };
+  assert.equal(validate(data).valid, false);
+});
+
 test("ID movement wajib diisi", () => {
   const data = validBundle();
   data.movements.movements.push({

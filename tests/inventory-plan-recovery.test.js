@@ -228,6 +228,36 @@ async function main() {
     item.type === "broken_transition" && item.severity === "error"
   ));
   assert.equal((await storage.get("remainders", "REC-REM-MOVEMENT-AUDIT")).status, "available");
+  // Riwayat aktivitas tanpa catatan awal harus terlihat, tetapi record legacy
+  // tidak boleh langsung dianggap rusak fatal.
+  await storage.add("remainders", remainder("REC-REM-MISSING-ORIGIN-LEGACY"));
+  await storage.add("movements", {
+    id: "MOV-MISSING-ORIGIN-LEGACY",
+    remainderId: "REC-REM-MISSING-ORIGIN-LEGACY",
+    type: "condition_changed", jobId: "JOB-OLD", timestamp: now,
+    fromStatus: "available", toStatus: "available"
+  });
+  const missingLegacyOriginReport = await storage.getRecoveryReport();
+  assert.ok(missingLegacyOriginReport.movementHistoryIssues.some(item =>
+    item.remainderId === "REC-REM-MISSING-ORIGIN-LEGACY" &&
+    item.type === "missing_origin" && item.severity === "warning"
+  ));
+
+  // Sisa dengan metadata modern wajib memiliki catatan pembuatan.
+  const modernMissingOrigin = remainder("REC-REM-MISSING-ORIGIN-MODERN");
+  modernMissingOrigin.sourceType = "new";
+  await storage.add("remainders", modernMissingOrigin);
+  await storage.add("movements", {
+    id: "MOV-MISSING-ORIGIN-MODERN",
+    remainderId: "REC-REM-MISSING-ORIGIN-MODERN",
+    type: "condition_changed", jobId: "JOB-OLD", timestamp: now,
+    fromStatus: "available", toStatus: "available"
+  });
+  const missingModernOriginReport = await storage.getRecoveryReport();
+  assert.ok(missingModernOriginReport.movementHistoryIssues.some(item =>
+    item.remainderId === "REC-REM-MISSING-ORIGIN-MODERN" &&
+    item.type === "missing_origin" && item.severity === "error"
+  ));
   console.log("LULUS: laporan audit mendeteksi riwayat terputus tanpa mengubah stok.");
 
   await recoveredEngine.cancelPlan({ reservedPlan: recovered, timestamp: now });

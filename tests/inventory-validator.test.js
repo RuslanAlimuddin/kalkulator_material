@@ -445,6 +445,19 @@ test("record legacy tanpa metadata asal-usul tetap diterima", () => {
   assert.equal(validate(data).valid, true);
 });
 
+test("metadata sumber inventaris tanpa sourceType ditolak, tetapi record legacy tetap diterima", () => {
+  const data = validBundle();
+  data.remainders.remainders[0].sourceRemainderId = "REM-001";
+  const result = validate(data);
+  assert.ok(result.errors.some(e => /Metadata sumber inventaris wajib disertai sourceType/.test(e.message)));
+
+  const reservationOnly = validBundle();
+  reservationOnly.remainders.remainders[0].reservationId = "RSV-ORPHAN";
+  assert.ok(validate(reservationOnly).errors.some(e =>
+    /Metadata sumber inventaris wajib disertai sourceType/.test(e.message)
+  ));
+});
+
 test("waktu movement harus cocok dengan timestamp reservasi", () => {
   const data = validBundle();
   data.reservations.reservations.push({

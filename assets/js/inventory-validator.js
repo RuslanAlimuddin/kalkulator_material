@@ -462,6 +462,28 @@
       }
     });
 
+    if (remainders && movements) remainders.forEach((item, index) => {
+      if (!isObject(item) || !["inventory", "new"].includes(item.sourceType)) return;
+      const p = "remainders.remainders[" + index + "]";
+      const history = movementsByRemainder.get(item.id) || [];
+      const creationEvents = history.filter(event => event.type === "remainder_created");
+      if (creationEvents.length !== 1) {
+        error(p, "Sisa material baru harus memiliki tepat satu movement remainder_created.");
+        return;
+      }
+      const creation = creationEvents[0];
+      const expectedReference = item.sourceType === "inventory"
+        ? item.sourceRemainderId : item.sourceSheetId;
+      if (creation.referenceId !== expectedReference) {
+        error(p, "Referensi movement pembuatan tidak cocok dengan asal-usul sisa material.");
+      }
+      if (creation.jobId !== item.originJobId ||
+          (isIsoDate(item.createdAt) && isIsoDate(creation.timestamp) &&
+           Date.parse(creation.timestamp) !== Date.parse(item.createdAt))) {
+        error(p, "Movement pembuatan tidak cocok dengan pekerjaan atau waktu pembuatan sisa material.");
+      }
+    });
+
     // Periksa kesinambungan transisi per sisa material. Catatan import
     // menjadi batas yang tidak dapat ditelusuri; timestamp yang sama juga
     // ambigu sehingga tidak dipaksakan menjadi urutan yang pasti.

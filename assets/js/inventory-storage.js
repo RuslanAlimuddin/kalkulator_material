@@ -1269,6 +1269,10 @@
         if (!history.length) {
           addMovementIssue("warning", "missing_history", remainder.id,
             "Sisa material belum memiliki riwayat pergerakan; mungkin berasal dari data lama.");
+          if (["inventory", "new"].includes(remainder.sourceType)) {
+            addMovementIssue("error", "missing_origin", remainder.id,
+              "Sisa material modern tidak memiliki riwayat pembuatan remainder_created.");
+          }
           return;
         }
         const ordered = history

@@ -243,6 +243,17 @@ async function main() {
     item.type === "missing_origin" && item.severity === "warning"
   ));
 
+  // Riwayat yang hilang seluruhnya pada sisa modern juga merupakan error,
+  // bukan sekadar peringatan missing_history.
+  const modernWithoutAnyHistory = remainder("REC-REM-MODERN-NO-HISTORY");
+  modernWithoutAnyHistory.sourceType = "new";
+  await storage.add("remainders", modernWithoutAnyHistory);
+  const modernNoHistoryReport = await storage.getRecoveryReport();
+  assert.ok(modernNoHistoryReport.movementHistoryIssues.some(item =>
+    item.remainderId === "REC-REM-MODERN-NO-HISTORY" &&
+    item.type === "missing_origin" && item.severity === "error"
+  ));
+
   // Sisa dengan metadata modern wajib memiliki catatan pembuatan.
   const modernMissingOrigin = remainder("REC-REM-MISSING-ORIGIN-MODERN");
   modernMissingOrigin.sourceType = "new";

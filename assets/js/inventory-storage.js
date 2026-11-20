@@ -703,7 +703,16 @@
           sr.onsuccess = () => {
             const source = sr.result;
             if (!source || source.status !== "reserved" || source.condition !== "good") { tx.abort(); return; }
-            ss.put({ ...reservation, status: "consumed", consumedAt: timestamp });
+            // Satu stok fisik hanya boleh memiliki satu reservasi aktif.
+            // Tolak konsumsi jika data rusak menyisakan reservasi aktif lain.
+            const activeRequest = ss.index("remainderId").getAll(source.id);
+            activeRequest.onsuccess = () => {
+              const active = activeRequest.result.filter(item => item.status === "active");
+              if (active.length !== 1 || active[0].id !== reservation.id) {
+                tx.abort();
+                return;
+              }
+              ss.put({ ...reservation, status: "consumed", consumedAt: timestamp });
             rs.put({ ...source, status: "consumed", updatedAt: timestamp, version: Number(source.version || 0) + 1 });
             ms.add({
               id: makeId("MOV"), remainderId: source.id, type: "consumed",
@@ -729,6 +738,7 @@
                 toStatus: "available", referenceId: source.id
               });
             });
+            };
           };
         };
         return true;
@@ -904,9 +914,19 @@
                   tx.abort();
                   return;
                 }
-                checked.push({ reservation, source });
-                cursor += 1;
-                checkNext();
+                // Pastikan tidak ada reservasi aktif lain di luar batch ini
+                // yang masih mengklaim sumber fisik yang sama.
+                const activeRequest = reservations.index("remainderId").getAll(source.id);
+                activeRequest.onsuccess = () => {
+                  const active = activeRequest.result.filter(item => item.status === "active");
+                  if (active.length !== 1 || active[0].id !== reservation.id) {
+                    tx.abort();
+                    return;
+                  }
+                  checked.push({ reservation, source });
+                  cursor += 1;
+                  checkNext();
+                };
               };
             };
           };

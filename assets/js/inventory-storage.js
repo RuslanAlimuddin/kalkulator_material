@@ -1197,22 +1197,107 @@
 
     async function getRecoveryReport() {
       const database = await db();
-      const tx = database.transaction(["plans", "reservations", "remainders", "jobs"], "readonly");
+      const tx = database.transaction(["plans", "reservations", "remainders", "jobs", "movements"], "readonly");
       const done = transactionDone(tx);
       done.catch(() => {});
       const results = await Promise.all([
         requestResult(tx.objectStore("plans").getAll()),
         requestResult(tx.objectStore("reservations").getAll()),
         requestResult(tx.objectStore("remainders").getAll()),
-        requestResult(tx.objectStore("jobs").getAll())
+        requestResult(tx.objectStore("jobs").getAll()),
+        requestResult(tx.objectStore("movements").getAll())
       ]);
       await done;
       const plans = results[0];
       const reservations = results[1];
       const remainders = results[2];
       const jobs = results[3];
+      const movements = results[4];
       const jobIds = new Set(jobs.map(item => item.id));
       const plansWithoutJob = plans.filter(item => !jobIds.has(item.jobId));
+      const movementHistoryIssues = [];
+      const movementByRemainder = new Map();
+      const remainderById = new Map(remainders.map(item => [item.id, item]));
+      movements.forEach((movement, index) => {
+        if (!remainderById.has(movement.remainderId)) {
+          movementHistoryIssues.push({
+            severity: "error", type: "missing_remainder",
+            remainderId: movement.remainderId || null, movementId: movement.id || null,
+            message: "Riwayat pergerakan merujuk sisa material yang tidak ditemukan."
+          });
+        }
+        const list = movementByRemainder.get(movement.remainderId) || [];
+        list.push({ ...movement, _sourceIndex: index });
+        movementByRemainder.set(movement.remainderId, list);
+        if (!Number.isFinite(Date.parse(movement.timestamp || ""))) {
+          movementHistoryIssues.push({
+            severity: "error", type: "invalid_timestamp",
+            remainderId: movement.remainderId || null, movementId: movement.id || null,
+            message: "Timestamp riwayat pergerakan tidak valid."
+          });
+        }
+      });
+      const addMovementIssue = (severity, type, remainderId, message, movementIds) => {
+        movementHistoryIssues.push({
+          severity, type, remainderId,
+          movementIds: (movementIds || []).filter(Boolean),
+          message
+        });
+      };
+      remainders.forEach(remainder => {
+        const history = movementByRemainder.get(remainder.id) || [];
+        if (!history.length) {
+          addMovementIssue("warning", "missing_history", remainder.id,
+            "Sisa material belum memiliki riwayat pergerakan; mungkin berasal dari data lama.");
+          return;
+        }
+        const ordered = history
+          .filter(item => Number.isFinite(Date.parse(item.timestamp || "")))
+          .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp) || a._sourceIndex - b._sourceIndex);
+        const originEvents = ordered.filter(item => ["created", "remainder_created"].includes(item.type));
+        const terminalEvents = ordered.filter(item => ["consumed", "discarded"].includes(item.type));
+        if (originEvents.length > 1) {
+          addMovementIssue("error", "duplicate_origin", remainder.id,
+            "Satu sisa material memiliki lebih dari satu riwayat awal.", originEvents.map(item => item.id));
+        }
+        if (terminalEvents.length > 1) {
+          addMovementIssue("error", "duplicate_terminal", remainder.id,
+            "Satu sisa material memiliki lebih dari satu riwayat terminal.", terminalEvents.map(item => item.id));
+        }
+        for (let i = 1; i < ordered.length; i += 1) {
+          const previous = ordered[i - 1], current = ordered[i];
+          const previousTime = Date.parse(previous.timestamp), currentTime = Date.parse(current.timestamp);
+          if (previousTime === currentTime || previous.type === "imported" || current.type === "imported") continue;
+          if (previous.toStatus !== current.fromStatus) {
+            addMovementIssue("error", "broken_transition", remainder.id,
+              "Urutan riwayat terputus: status tujuan catatan sebelumnya tidak cocok dengan status asal catatan berikutnya.",
+              [previous.id, current.id]);
+          }
+        }
+        if (ordered.length) {
+          const latestTime = Date.parse(ordered[ordered.length - 1].timestamp);
+          const latestAtSameTime = ordered.filter(item => Date.parse(item.timestamp) === latestTime);
+          const updatedTime = Number.isFinite(Date.parse(remainder.updatedAt || "")) ? Date.parse(remainder.updatedAt) : null;
+          if (updatedTime !== null && latestTime > updatedTime) {
+            addMovementIssue("error", "movement_after_update", remainder.id,
+              "Riwayat terakhir tercatat setelah waktu pembaruan sisa material.", latestAtSameTime.map(item => item.id));
+          } else if (updatedTime !== null && latestTime === updatedTime) {
+            const statuses = new Set(latestAtSameTime.map(item => item.toStatus));
+            if (statuses.size === 1 && !statuses.has(remainder.status)) {
+              addMovementIssue("error", "final_status_mismatch", remainder.id,
+                "Status sisa material tidak cocok dengan status riwayat terakhir.", latestAtSameTime.map(item => item.id));
+            } else if (statuses.size > 1) {
+              addMovementIssue("warning", "ambiguous_latest_timestamp", remainder.id,
+                "Beberapa riwayat terakhir memiliki waktu sama dan status tujuan berbeda; urutan akhirnya tidak dapat dipastikan.",
+                latestAtSameTime.map(item => item.id));
+            }
+          } else if (updatedTime !== null && latestTime < updatedTime) {
+            addMovementIssue("warning", "history_behind_update", remainder.id,
+              "Riwayat terakhir lebih lama daripada pembaruan sisa material; riwayat mungkin tidak lengkap atau berasal dari data lama.",
+              [ordered[ordered.length - 1].id]);
+          }
+        }
+      });
       const activeReservations = reservations.filter(item => item.status === "active");
       // Riwayat dari database lama dapat tidak memiliki planId; tampilkan terpisah
       // termasuk reservasi terminal, yang bukan reservasi aktif yatim dan tidak diubah.
@@ -1303,7 +1388,8 @@
         multiplyReservedRemainders,
         reservationsWithoutSource,
         inconsistentPlans,
-        inconsistentReservations
+        inconsistentReservations,
+        movementHistoryIssues
       };
     }
 

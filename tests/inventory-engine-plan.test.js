@@ -28,6 +28,10 @@ async function main() {
   await deleteDatabase();
   const storage = storageModule.createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
+  await storage.add("jobs", {
+    id: "JOB-TARGET", name: "Pekerjaan Target", status: "open",
+    createdAt: now, closedAt: null
+  });
   const engine = engineModule.createInventoryEngine({ storage });
 
   await storage.add("remainders", remainder("PLAN-REM-1"));

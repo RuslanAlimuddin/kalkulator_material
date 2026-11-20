@@ -641,11 +641,20 @@
                     tx.abort();
                     return;
                   }
+                  const planReservations = checked.filter(item => item.reservation.planId === planId);
                   const expectedIds = Array.isArray(plan.reservationIds) ? plan.reservationIds.slice().sort() : [];
-                  const releasedIds = checked
-                    .filter(item => item.reservation.planId === planId)
-                    .map(item => item.reservation.id).sort();
-                  if (JSON.stringify(expectedIds) !== JSON.stringify(releasedIds)) {
+                  const releasedIds = planReservations.map(item => item.reservation.id).sort();
+                  const modernPlanMismatch = plan.status === "reserved" && plan.plan
+                    ? planReservations.some(item => item.reservation.jobId !== plan.jobId) ||
+                      !Array.isArray(plan.plan.inventoryUsage) ||
+                      plan.plan.inventoryUsage.length !== planReservations.length ||
+                      plan.plan.inventoryUsage.some(usage =>
+                        !usage || typeof usage.remainderId !== "string" ||
+                        !planReservations.some(item => item.reservation.remainderId === usage.remainderId)
+                      )
+                    : false;
+                  if (JSON.stringify(expectedIds) !== JSON.stringify(releasedIds) ||
+                      modernPlanMismatch) {
                     tx.abort();
                     return;
                   }

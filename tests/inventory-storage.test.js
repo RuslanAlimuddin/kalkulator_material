@@ -444,15 +444,19 @@ async function main() {
       widthCm: 20, heightCm: 15, thicknessMm: 8,
       grainDirection: "none", motif: "plain", rotationAllowed: true
     };
+    console.log("DEBUG sisa baru: mulai cek pekerjaan hilang");
     await assert.rejects(storage.consumeReservations({
       reservations: [], newSheetRemainders: [{ ...base, id: "REM-NEW-MISSING-JOB", originJobId: "JOB-MISSING" }]
     }));
+    console.log("DEBUG sisa baru: pekerjaan hilang ditolak");
     await assert.rejects(storage.consumeReservations({
       reservations: [], newSheetRemainders: [{ ...base, id: "REM-NEW-MISSING-MATERIAL", materialId: "MAT-MISSING" }]
     }));
+    console.log("DEBUG sisa baru: material hilang ditolak");
     await assert.rejects(storage.consumeReservations({
       reservations: [], newSheetRemainders: [{ ...base, id: "REM-NEW-WRONG-THICKNESS", thicknessMm: 10 }]
     }));
+    console.log("DEBUG sisa baru: ketebalan salah ditolak");
     assert.equal(await storage.get("remainders", "REM-NEW-MISSING-JOB"), null);
     assert.equal(await storage.get("remainders", "REM-NEW-MISSING-MATERIAL"), null);
     assert.equal(await storage.get("remainders", "REM-NEW-WRONG-THICKNESS"), null);

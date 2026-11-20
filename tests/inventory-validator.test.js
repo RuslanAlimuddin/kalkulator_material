@@ -180,6 +180,21 @@ test("snapshot rencana dan reservasi dengan sumber serta pekerjaan cocok diterim
   assert.equal(validate(validPlanBundle()).valid, true);
 });
 
+test("snapshot pemulihan tanpa pekerjaan induk ditolak", () => {
+  const data = validBundle();
+  data.plans = {
+    schemaVersion: 1,
+    plans: [{
+      id: "PLAN-ORPHAN", jobId: "JOB-TIDAK-ADA", plan: null,
+      reservationIds: [], status: "legacy_recovery", legacy: true
+    }]
+  };
+  const result = validate(data);
+  assert.ok(result.errors.some(e =>
+    e.path === "plans.plans[0].jobId" && /tidak ditemukan/.test(e.message)
+  ));
+});
+
 test("reservasi dengan jobId berbeda dari snapshot rencana ditolak", () => {
   const data = validPlanBundle();
   data.reservations.reservations[0].jobId = "JOB-B";

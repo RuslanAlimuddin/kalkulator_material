@@ -375,6 +375,26 @@ async function main() {
   const restoredParentReport = await storage.getRecoveryReport();
   assert.deepEqual(restoredParentReport.inconsistentPlans, []);
   assert.deepEqual(restoredParentReport.inconsistentReservations, []);
+  // Laporan pemulihan harus menemukan siklus asal-usul yang sudah berada
+  // di database lokal, bukan hanya menolak siklus saat impor.
+  const cycleA = {
+    ...remainder("REC-LINEAGE-A"), status: "consumed", sourceType: "inventory",
+    sourceRemainderId: "REC-LINEAGE-B", reservationId: "RSV-LINEAGE-A"
+  };
+  const cycleB = {
+    ...remainder("REC-LINEAGE-B"), status: "consumed", sourceType: "inventory",
+    sourceRemainderId: "REC-LINEAGE-A", reservationId: "RSV-LINEAGE-B"
+  };
+  await storage.put("remainders", cycleA);
+  await storage.put("remainders", cycleB);
+  const cyclicLineageReport = await storage.getRecoveryReport();
+  assert.ok(cyclicLineageReport.remainderLineageIssues.some(item => item.type === "cyclic_lineage"));
+  await storage.remove("remainders", cycleA.id);
+  await storage.remove("remainders", cycleB.id);
+  const cleanLineageReport = await storage.getRecoveryReport();
+  assert.deepEqual(cleanLineageReport.remainderLineageIssues, []);
+  console.log("LULUS: laporan pemulihan mendeteksi siklus asal-usul lokal tanpa mengubah data.");
+
   console.log("LULUS: audit mendeteksi reservasi terminal yang kehilangan rencana induk.");
 
   console.log("LULUS: rencana multi-sumber dipulihkan dan diselesaikan dari snapshot setelah reload.");

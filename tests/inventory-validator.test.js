@@ -417,6 +417,17 @@ test("asal-usul sisa turunan harus menunjuk sumber dan reservasi yang benar", ()
   assert.ok(validate(data).errors.some(e => /Sisa material sumber tidak ditemukan/.test(e.message)));
 });
 
+test("movement pembuatan harus cocok dengan referensi asal-usul sisa", () => {
+  const data = validBundle();
+  data.remainders.remainders[0].sourceType = "new";
+  data.movements.movements.push({
+    id: "MOV-CHILD-CREATED", remainderId: "REM-001",
+    type: "remainder_created", jobId: "JOB-A", timestamp: now,
+    fromStatus: null, toStatus: "available", referenceId: "SHEET-WRONG"
+  });
+  assert.ok(validate(data).errors.some(e => /Referensi movement pembuatan tidak cocok/.test(e.message)));
+});
+
 test("sisa dari lembar baru tidak boleh memiliki referensi sumber inventaris", () => {
   const data = validBundle();
   data.remainders.remainders[0].sourceType = "new";

@@ -46,12 +46,32 @@ function createVersionOneDatabase() {
     };
     request.onsuccess = () => {
       const db = request.result;
-      const tx = db.transaction(["remainders", "reservations"], "readwrite");
+      const tx = db.transaction(["materials", "jobs", "remainders", "reservations"], "readwrite");
+      tx.objectStore("materials").put({
+        id: "MAT-RECOVERY", name: "Material Uji Legacy", category: "triplek",
+        thicknessMm: 8, surface: null, grainRequired: false, motif: "plain",
+        rotationPolicy: "free", active: true
+      });
+      tx.objectStore("jobs").put({
+        id: "JOB-OLD", name: "Pekerjaan asal lama", status: "archived",
+        createdAt: now, closedAt: now
+      });
+      tx.objectStore("jobs").put({
+        id: "JOB-LEGACY", name: "Pekerjaan reservasi lama", status: "open",
+        createdAt: now, closedAt: null
+      });
       tx.objectStore("remainders").put({
         ...remainder("LEGACY-REM"), status: "reserved"
       });
+      tx.objectStore("remainders").put({
+        ...remainder("LEGACY-REM-2"), status: "reserved"
+      });
       tx.objectStore("reservations").put({
         id: "LEGACY-RSV", remainderId: "LEGACY-REM", jobId: "JOB-LEGACY",
+        status: "active", createdAt: now, releasedAt: null, consumedAt: null
+      });
+      tx.objectStore("reservations").put({
+        id: "LEGACY-RSV-2", remainderId: "LEGACY-REM-2", jobId: "JOB-LEGACY",
         status: "active", createdAt: now, releasedAt: null, consumedAt: null
       });
       tx.oncomplete = () => { db.close(); resolve(); };
@@ -286,16 +306,35 @@ async function main() {
   storage = Storage.createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
   const recoveryPlans = await storage.getRecoveryPlans();
-  assert.equal(recoveryPlans.length, 1);
-  assert.equal(recoveryPlans[0].status, "legacy_recovery");
-  assert.equal(recoveryPlans[0].legacy, true);
-  assert.equal((await storage.get("reservations", "LEGACY-RSV")).planId, recoveryPlans[0].id);
+  assert.equal(recoveryPlans.length, 2);
+  const recoveryPlanByReservation = new Map(recoveryPlans.map(plan => [plan.reservationIds[0], plan]));
+  for (const reservationId of ["LEGACY-RSV", "LEGACY-RSV-2"]) {
+    const plan = recoveryPlanByReservation.get(reservationId);
+    assert.ok(plan);
+    assert.equal(plan.status, "legacy_recovery");
+    assert.equal(plan.legacy, true);
+    assert.equal((await storage.get("reservations", reservationId)).planId, plan.id);
+  }
+  assert.equal((await storage.get("meta", "schemaVersion")).value, 2);
+  const migratedReport = await storage.getRecoveryReport();
+  assert.deepEqual(migratedReport.plansWithoutJob, []);
+  assert.deepEqual(migratedReport.inconsistentPlans, []);
+  const migratedBundle = await storage.exportJSON();
+  const migratedValidation = Validator.validateInventoryBundle(migratedBundle);
+  assert.equal(migratedValidation.valid, true, JSON.stringify(migratedValidation.errors));
   await storage.releaseReservations({
-    reservationIds: ["LEGACY-RSV"], planId: recoveryPlans[0].id, timestamp: now
+    reservationIds: ["LEGACY-RSV"], planId: recoveryPlanByReservation.get("LEGACY-RSV").id, timestamp: now
   });
-  assert.equal((await storage.get("plans", recoveryPlans[0].id)).status, "cancelled");
+  await storage.releaseReservations({
+    reservationIds: ["LEGACY-RSV-2"], planId: recoveryPlanByReservation.get("LEGACY-RSV-2").id, timestamp: now
+  });
+  for (const reservationId of ["LEGACY-RSV", "LEGACY-RSV-2"]) {
+    const plan = recoveryPlanByReservation.get(reservationId);
+    assert.equal((await storage.get("plans", plan.id)).status, "cancelled");
+  }
   assert.equal((await storage.get("remainders", "LEGACY-REM")).status, "available");
-  console.log("LULUS: migrasi v1 mempertahankan reservasi aktif sebagai pemulihan legacy dan dapat dibatalkan dengan aman.");
+  assert.equal((await storage.get("remainders", "LEGACY-REM-2")).status, "available");
+  console.log("LULUS: migrasi v1 mempertahankan dua reservasi aktif, memperbarui metadata skema, menghasilkan cadangan valid, dan keduanya dapat dibatalkan.");
 
   await storage.close();
   await deleteDatabase();

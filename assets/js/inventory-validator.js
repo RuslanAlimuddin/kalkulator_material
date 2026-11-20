@@ -444,13 +444,21 @@
         }
       }
       if (ordered.length) {
-        const latest = ordered[ordered.length - 1];
-        const latestTime = Date.parse(latest.timestamp);
+        const latestTime = Date.parse(ordered[ordered.length - 1].timestamp);
+        const latestAtSameTime = ordered.filter(item => Date.parse(item.timestamp) === latestTime);
         const updatedTime = isIsoDate(remainder.updatedAt) ? Date.parse(remainder.updatedAt) : null;
         if (updatedTime !== null && latestTime > updatedTime) {
           error(p, "Movement terakhir tercatat setelah waktu pembaruan sisa material.");
-        } else if (updatedTime !== null && latestTime === updatedTime && latest.toStatus !== remainder.status) {
-          error(p, "Status akhir sisa material tidak cocok dengan movement terakhir.");
+        } else if (updatedTime !== null && latestTime === updatedTime) {
+          const finalStatuses = new Set(latestAtSameTime.map(item => item.toStatus));
+          if (finalStatuses.size === 1 && !finalStatuses.has(remainder.status)) {
+            error(p, "Status akhir sisa material tidak cocok dengan movement terakhir.");
+          } else if (finalStatuses.size > 1) {
+            warnings.push({
+              path: p,
+              message: "Beberapa movement memiliki timestamp terakhir yang sama dan status tujuan berbeda; urutan akhirnya tidak dapat dipastikan."
+            });
+          }
         } else if (updatedTime !== null && latestTime < updatedTime) {
           warnings.push({
             path: p,

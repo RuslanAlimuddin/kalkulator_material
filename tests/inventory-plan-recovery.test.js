@@ -79,7 +79,6 @@ async function main() {
   await storage.add("remainders", remainder("REC-REM-1"));
   await storage.add("remainders", remainder("REC-REM-2"));
 
-  console.log("TRACE: reservePlan awal");
   const reserved = await engine.reservePlan({
     plan: {
       inventoryUsage: [
@@ -185,7 +184,6 @@ async function main() {
   assert.deepEqual(reportAfterCancel.inconsistentReservations, []);
   console.log("LULUS: pembatalan sah menghasilkan laporan tanpa ketidaksesuaian reservasi.");
 
-  console.log("TRACE: reservePlan tanpa inventaris");
   const newOnly = await recoveredEngine.reservePlan({
     plan: { inventoryUsage: [], usableRemainders: [], sheets: [] },
     jobId: "JOB-NEW-ONLY", material: { id: "MAT-RECOVERY", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },
@@ -205,7 +203,6 @@ async function main() {
   // Status rencana berinventaris tidak boleh diubah tanpa melepas/mengonsumsi
   // reservasi dan memperbarui sumber stok dalam transaksi yang sama.
   await storage.add("remainders", remainder("REC-REM-STATUS-GUARD"));
-  console.log("TRACE: reservePlan status guard");
   const guardedPlan = await afterReloadEngine.reservePlan({
     plan: {
       inventoryUsage: [{ remainderId: "REC-REM-STATUS-GUARD", placedCount: 1 }],
@@ -239,7 +236,6 @@ async function main() {
   console.log("LULUS: updatePlanStatus menolak perubahan langsung pada rencana yang masih memakai inventaris.");
 
   await storage.add("remainders", remainder("REC-REM-COMPLETE"));
-  console.log("TRACE: reservePlan setelah reload");
   const inventoryPlan = await afterReloadEngine.reservePlan({
     plan: {
       inventoryUsage: [{ remainderId: "REC-REM-COMPLETE", placedCount: 1 }],
@@ -286,7 +282,6 @@ async function main() {
   assert.equal(recoveryPlans[0].status, "legacy_recovery");
   assert.equal(recoveryPlans[0].legacy, true);
   assert.equal((await storage.get("reservations", "LEGACY-RSV")).planId, recoveryPlans[0].id);
-  console.log("TRACE: pelepasan reservasi legacy v1");
   await storage.releaseReservations({
     reservationIds: ["LEGACY-RSV"], planId: recoveryPlans[0].id, timestamp: now
   });

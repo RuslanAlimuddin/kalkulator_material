@@ -325,6 +325,32 @@ test("snapshot rencana dibatalkan tidak boleh memiliki completedAt", () => {
   assert.equal(validate(data).valid, false);
 });
 
+test("waktu completedAt snapshot harus sama dengan consumedAt reservasi", () => {
+  const data = validPlanBundle();
+  const completedAt = "2026-11-18T06:00:00.000Z";
+  const consumedAt = "2026-11-18T07:00:00.000Z";
+  data.remainders.remainders[0].status = "consumed";
+  data.reservations.reservations[0].status = "consumed";
+  data.reservations.reservations[0].consumedAt = consumedAt;
+  data.plans.plans[0].status = "completed";
+  data.plans.plans[0].createdAt = now;
+  data.plans.plans[0].completedAt = completedAt;
+  assert.equal(validate(data).valid, false);
+});
+
+test("waktu cancelledAt snapshot harus sama dengan releasedAt reservasi", () => {
+  const data = validPlanBundle();
+  const cancelledAt = "2026-11-18T06:00:00.000Z";
+  const releasedAt = "2026-11-18T07:00:00.000Z";
+  data.remainders.remainders[0].status = "available";
+  data.reservations.reservations[0].status = "released";
+  data.reservations.reservations[0].releasedAt = releasedAt;
+  data.plans.plans[0].status = "cancelled";
+  data.plans.plans[0].createdAt = now;
+  data.plans.plans[0].cancelledAt = cancelledAt;
+  assert.equal(validate(data).valid, false);
+});
+
 test("ID movement wajib diisi", () => {
   const data = validBundle();
   data.movements.movements.push({

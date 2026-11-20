@@ -118,6 +118,7 @@
     const reservationById = new Map();
     const movementById = new Map();
     const activeReservationByRemainder = new Map();
+    const consumedReservationByRemainder = new Map();
 
     function indexUnique(records, path, map) {
       if (!records) return;
@@ -339,6 +340,17 @@
       }
       if (item.status === "consumed" && item.releasedAt !== null) {
         error(p + ".releasedAt", "Reservasi consumed tidak boleh memiliki waktu pelepasan.");
+      }
+      if (item.status === "consumed") {
+        const source = remainderById.get(item.remainderId);
+        if (source && source.status !== "consumed") {
+          error(p + ".status", "Reservasi consumed harus menunjuk sisa sumber yang juga berstatus consumed.");
+        }
+        if (consumedReservationByRemainder.has(item.remainderId)) {
+          error(p + ".remainderId", "Satu sisa sumber tidak boleh memiliki lebih dari satu reservasi consumed.");
+        } else {
+          consumedReservationByRemainder.set(item.remainderId, item);
+        }
       }
     });
 

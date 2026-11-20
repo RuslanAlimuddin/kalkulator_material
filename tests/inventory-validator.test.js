@@ -425,7 +425,7 @@ test("asal-usul sisa turunan harus menunjuk sumber dan reservasi yang benar", ()
 
 test("sisa turunan wajib mempertahankan identitas dan karakter material sumber", () => {
   const fields = [
-    ["materialId", "MAT-LAIN"],
+    ["materialId", "MAT-002"],
     ["thicknessMm", 10],
     ["grainDirection", "vertical"],
     ["motif", "striped"],
@@ -434,6 +434,11 @@ test("sisa turunan wajib mempertahankan identitas dan karakter material sumber",
   for (const [field, value] of fields) {
     const data = validBundle();
     data.jobs.jobs.push({ id: "JOB-B", name: "Pekerjaan B", status: "open", createdAt: now, closedAt: null });
+    data.materials.materials.push({
+      id: "MAT-002", name: "Keramik lain", category: "keramik",
+      thicknessMm: 8, grainRequired: false, motif: "plain",
+      rotationPolicy: "free", active: true
+    });
     data.remainders.remainders[0].status = "consumed";
     data.remainders.remainders.push({
       id: "REM-CHILD", materialId: "MAT-001", widthCm: 20, heightCm: 10,
@@ -454,7 +459,10 @@ test("sisa turunan wajib mempertahankan identitas dan karakter material sumber",
     });
     data.remainders.remainders[1][field] = value;
     const result = validate(data);
-    assert.equal(result.valid, false, field + " harus cocok dengan sumber");
+    assert.ok(result.errors.some(error =>
+      error.path === "remainders.remainders[1]." + field &&
+      /sumbernya|sumbernya|material sumber|sama dengan material sumbernya/i.test(error.message)
+    ), field + " harus ditolak karena berbeda dari sumber");
   }
 });
 

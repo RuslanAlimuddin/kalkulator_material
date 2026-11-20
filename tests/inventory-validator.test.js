@@ -342,6 +342,46 @@ test("movement terminal tidak boleh mendahului movement reservasi", () => {
   ));
 });
 
+test("rantai status movement yang terputus ditolak", () => {
+  const data = validBundle();
+  data.movements.movements.push({
+    id: "MOV-CREATED", remainderId: "REM-001", type: "created",
+    timestamp: "2026-11-18T04:00:00.000Z",
+    fromStatus: null, toStatus: "available"
+  }, {
+    id: "MOV-DISCARDED", remainderId: "REM-001", type: "discarded",
+    timestamp: "2026-11-18T05:00:00.000Z",
+    fromStatus: "reserved", toStatus: "discarded"
+  });
+  const result = validate(data);
+  assert.ok(result.errors.some(e => /Urutan movement terputus/.test(e.message)));
+});
+
+test("status akhir harus cocok dengan movement terakhir pada timestamp pembaruan", () => {
+  const data = validBundle();
+  data.remainders.remainders[0].status = "discarded";
+  data.remainders.remainders[0].updatedAt = "2026-11-18T05:00:00.000Z";
+  data.movements.movements.push({
+    id: "MOV-LAST-AVAILABLE", remainderId: "REM-001", type: "created",
+    timestamp: "2026-11-18T05:00:00.000Z",
+    fromStatus: null, toStatus: "available"
+  });
+  assert.ok(validate(data).errors.some(e => /Status akhir sisa material tidak cocok/.test(e.message)));
+});
+
+test("riwayat yang tertinggal dari updatedAt diberi peringatan legacy", () => {
+  const data = validBundle();
+  data.remainders.remainders[0].updatedAt = "2026-11-18T06:00:00.000Z";
+  data.movements.movements.push({
+    id: "MOV-OLD", remainderId: "REM-001", type: "created",
+    timestamp: "2026-11-18T04:00:00.000Z",
+    fromStatus: null, toStatus: "available"
+  });
+  const result = validate(data);
+  assert.equal(result.valid, true);
+  assert.ok(result.warnings.some(w => /Movement terakhir lebih lama/.test(w.message)));
+});
+
 test("waktu movement harus cocok dengan timestamp reservasi", () => {
   const data = validBundle();
   data.reservations.reservations.push({

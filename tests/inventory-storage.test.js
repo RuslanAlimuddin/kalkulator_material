@@ -863,6 +863,24 @@ async function main() {
     }
   });
 
+  await test("reservasi massal menolak createdAt snapshot kosong tanpa mengunci stok", async () => {
+    await storage.importJSON(bundle("EMPTY-SNAPSHOT-TIMESTAMP"), "merge");
+
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-EMPTY-SNAPSHOT-TIMESTAMP"],
+      jobId: "JOB-EMPTY-SNAPSHOT-TIMESTAMP",
+      timestamp: now,
+      planSnapshot: {
+        createdAt: "",
+        plan: { inventoryUsage: [] }
+      }
+    }));
+
+    assert.equal((await storage.get("remainders", "REM-EMPTY-SNAPSHOT-TIMESTAMP")).status, "available");
+    assert.equal((await storage.getByIndex("reservations", "remainderId", "REM-EMPTY-SNAPSHOT-TIMESTAMP")).length, 0);
+    assert.equal((await storage.getAll("plans")).some(item => item.jobId === "JOB-EMPTY-SNAPSHOT-TIMESTAMP"), false);
+  });
+
   await test("pelepasan tunggal menolak timestamp tidak valid tanpa melepas reservasi", async () => {
     await storage.importJSON(bundle("TIMESTAMP-INVALID-RELEASE"), "merge");
     const reservation = await storage.reserveRemainder({

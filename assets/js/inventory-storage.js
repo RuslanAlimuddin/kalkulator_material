@@ -1217,9 +1217,9 @@
       const plansWithoutJob = plans.filter(item => !jobIds.has(item.jobId));
       const movementHistoryIssues = [];
       const movementByRemainder = new Map();
-      const remainderById = new Map(remainders.map(item => [item.id, item]));
+      const movementRemainderById = new Map(remainders.map(item => [item.id, item]));
       movements.forEach((movement, index) => {
-        if (!remainderById.has(movement.remainderId)) {
+        if (!movementRemainderById.has(movement.remainderId)) {
           movementHistoryIssues.push({
             severity: "error", type: "missing_remainder",
             remainderId: movement.remainderId || null, movementId: movement.id || null,

@@ -177,6 +177,21 @@ async function main() {
     assert.ok(await storage.get("remainders", "REM-A"));
   });
 
+  await test("reservasi menolak pekerjaan yang tidak terdaftar tanpa mengubah stok", async () => {
+    await assert.rejects(storage.reserveRemainder({
+      remainderId: "REM-A", jobId: "JOB-TIDAK-ADA"
+    }));
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-A"], jobId: "JOB-TIDAK-ADA"
+    }));
+    assert.equal((await storage.get("remainders", "REM-A")).status, "available");
+    assert.equal(
+      (await storage.getByIndex("reservations", "remainderId", "REM-A"))
+        .filter(item => item.status === "active").length,
+      0
+    );
+  });
+
   await test("impor cadangan lama dengan reservasi aktif membentuk snapshot pemulihan", async () => {
     const legacy = bundle("LEGACY-ACTIVE");
     legacy.remainders.remainders[0].status = "reserved";

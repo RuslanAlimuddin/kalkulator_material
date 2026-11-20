@@ -1197,18 +1197,22 @@
 
     async function getRecoveryReport() {
       const database = await db();
-      const tx = database.transaction(["plans", "reservations", "remainders"], "readonly");
+      const tx = database.transaction(["plans", "reservations", "remainders", "jobs"], "readonly");
       const done = transactionDone(tx);
       done.catch(() => {});
       const results = await Promise.all([
         requestResult(tx.objectStore("plans").getAll()),
         requestResult(tx.objectStore("reservations").getAll()),
-        requestResult(tx.objectStore("remainders").getAll())
+        requestResult(tx.objectStore("remainders").getAll()),
+        requestResult(tx.objectStore("jobs").getAll())
       ]);
       await done;
       const plans = results[0];
       const reservations = results[1];
       const remainders = results[2];
+      const jobs = results[3];
+      const jobIds = new Set(jobs.map(item => item.id));
+      const plansWithoutJob = plans.filter(item => !jobIds.has(item.jobId));
       const activeReservations = reservations.filter(item => item.status === "active");
       const activeByRemainder = new Map();
       activeReservations.forEach(item => {
@@ -1280,7 +1284,8 @@
         const expected = Array.isArray(plan.reservationIds) ? plan.reservationIds.slice().sort() : [];
         const linked = reservationsByPlan.get(plan.id) || [];
         const actual = linked.map(item => item.id).sort();
-        if (!expectedStatus || JSON.stringify(expected) !== JSON.stringify(actual) ||
+        if (!expectedStatus || !jobIds.has(plan.jobId) ||
+            JSON.stringify(expected) !== JSON.stringify(actual) ||
             !planHasMatchingSources(plan, linked)) return true;
         return linked.some(item => item.status !== expectedStatus ||
           item.jobId !== plan.jobId || !reservationHasConsistentSource(item));
@@ -1288,6 +1293,7 @@
       return {
         activePlans,
         activeReservations,
+        plansWithoutJob,
         orphanedReservations,
         orphanedRemainders,
         multiplyReservedRemainders,

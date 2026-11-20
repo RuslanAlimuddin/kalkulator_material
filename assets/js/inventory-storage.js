@@ -562,23 +562,32 @@
                 tx.abort();
                 return;
               }
-              reservations.put({
-                ...reservation, status: "released", releasedAt: timestamp
-              });
+              // Jangan bebaskan stok fisik jika masih ada reservasi aktif lain.
+              const activeRequest = reservations.index("remainderId").getAll(remainder.id);
+              activeRequest.onsuccess = () => {
+                const active = activeRequest.result.filter(item => item.status === "active");
+                if (active.length !== 1 || active[0].id !== reservation.id) {
+                  tx.abort();
+                  return;
+                }
+                reservations.put({
+                  ...reservation, status: "released", releasedAt: timestamp
+                });
               remainders.put({
                 ...remainder, status: "available", updatedAt: timestamp,
                 version: Number(remainder.version || 0) + 1
               });
-              movements.add({
-                id: makeId("MOV"),
-                remainderId: remainder.id,
-                type: "reservation_released",
-                jobId: reservation.jobId,
-                timestamp,
-                fromStatus: "reserved",
-                toStatus: "available",
-                referenceId: reservationId
-              });
+                movements.add({
+                  id: makeId("MOV"),
+                  remainderId: remainder.id,
+                  type: "reservation_released",
+                  jobId: reservation.jobId,
+                  timestamp,
+                  fromStatus: "reserved",
+                  toStatus: "available",
+                  referenceId: reservationId
+                });
+              };
             };
           };
           return reservationId;
@@ -661,9 +670,18 @@
                   tx.abort();
                   return;
                 }
-                checked.push({ reservation, remainder });
-                cursor += 1;
-                checkNext();
+                // Satu sumber fisik tidak boleh dibebaskan saat reservasi aktifnya ganda.
+                const activeRequest = reservations.index("remainderId").getAll(remainder.id);
+                activeRequest.onsuccess = () => {
+                  const active = activeRequest.result.filter(item => item.status === "active");
+                  if (active.length !== 1 || active[0].id !== reservation.id) {
+                    tx.abort();
+                    return;
+                  }
+                  checked.push({ reservation, remainder });
+                  cursor += 1;
+                  checkNext();
+                };
               };
             };
           };

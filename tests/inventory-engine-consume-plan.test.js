@@ -27,6 +27,11 @@ async function main() {
   await deleteDatabase();
   const storage = storageModule.createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
+  for (const id of ["JOB-TARGET", "JOB-C", "JOB-NEW-ONLY"]) {
+    await storage.add("jobs", {
+      id, name: id, status: "open", createdAt: now, closedAt: null
+    });
+  }
   const engine = engineModule.createInventoryEngine({ storage });
 
   await storage.add("remainders", remainder("CONSUME-1"));

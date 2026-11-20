@@ -423,14 +423,17 @@
       const movementId = makeId("MOV");
 
       return withTransaction(
-        database, ["remainders", "reservations", "movements"], "readwrite",
+        database, ["jobs", "remainders", "reservations", "movements"], "readwrite",
         tx => {
+          const jobs = tx.objectStore("jobs");
           const remainders = tx.objectStore("remainders");
           const reservations = tx.objectStore("reservations");
           const movements = tx.objectStore("movements");
-          const remainderRequest = remainders.get(input.remainderId);
-
-          remainderRequest.onsuccess = () => {
+          const jobRequest = jobs.get(input.jobId);
+          jobRequest.onsuccess = () => {
+            if (!jobRequest.result) { tx.abort(); return; }
+            const remainderRequest = remainders.get(input.remainderId);
+            remainderRequest.onsuccess = () => {
             const remainder = remainderRequest.result;
             if (!remainder) {
               tx.abort();
@@ -480,6 +483,7 @@
                 referenceId: reservationId
               });
             };
+            };
           };
           return { reservationId, movementId };
         }
@@ -499,8 +503,8 @@
       const planId = input.planId || (snapshot ? makeId("PLAN") : null);
       const out = remainderIds.map(remainderId => ({ id: makeId("RSV"), movementId: makeId("MOV"), remainderId, jobId: input.jobId, planId }));
       const database = await db();
-      await withTransaction(database, ["remainders", "reservations", "movements", "plans"], "readwrite", tx => {
-        const rs = tx.objectStore("remainders"), ss = tx.objectStore("reservations"), ms = tx.objectStore("movements"), ps = tx.objectStore("plans");
+      await withTransaction(database, ["jobs", "remainders", "reservations", "movements", "plans"], "readwrite", tx => {
+        const js = tx.objectStore("jobs"), rs = tx.objectStore("remainders"), ss = tx.objectStore("reservations"), ms = tx.objectStore("movements"), ps = tx.objectStore("plans");
         const checked = []; let cursor = 0;
         const commit = () => {
           out.forEach((item, index) => {
@@ -524,7 +528,11 @@
             };
           };
         };
-        checkNext();
+        const jobRequest = js.get(input.jobId);
+        jobRequest.onsuccess = () => {
+          if (!jobRequest.result) { tx.abort(); return; }
+          checkNext();
+        };
       });
       return out.map(item => ({ id: item.id, remainderId: item.remainderId, jobId: item.jobId, planId: item.planId || null }));
     }

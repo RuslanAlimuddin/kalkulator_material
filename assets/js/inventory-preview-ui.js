@@ -306,16 +306,21 @@
         .map(item => item.planId || item.id)
         .filter(id => !inconsistentPlanIds.has(id))
     ).size;
+    const movementErrors = report.movementHistoryIssues.filter(item => item.severity === "error").length;
+    const movementWarnings = report.movementHistoryIssues.filter(item => item.severity === "warning").length;
     const problems = report.orphanedReservations.length +
       report.orphanedRemainders.length +
       report.multiplyReservedRemainders.length +
       report.reservationsWithoutSource.length +
       report.inconsistentPlans.length +
-      additionalReservationIssues;
+      additionalReservationIssues + movementErrors;
     const notice = $("inventoryRecoveryNotice");
-    if (problems) {
-      notice.textContent = "Peringatan audit inventaris: ditemukan " + problems +
-        " ketidaksesuaian. Jangan menyelesaikan rencana yang bermasalah sebelum diperiksa.";
+    if (problems || movementWarnings) {
+      const parts = [];
+      if (problems) parts.push(problems + " ketidaksesuaian yang perlu diperiksa");
+      if (movementWarnings) parts.push(movementWarnings + " peringatan riwayat (mungkin data lama/ambigu)");
+      notice.textContent = "Peringatan audit inventaris: ditemukan " + parts.join(" dan ") +
+        ". Jangan menyelesaikan rencana yang bermasalah sebelum diperiksa.";
       notice.hidden = false;
     } else {
       notice.hidden = true;

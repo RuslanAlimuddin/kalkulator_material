@@ -1381,6 +1381,32 @@ async function main() {
     assert.deepEqual(movementsAfter, movementsBefore);
   });
 
+  await test("perubahan kondisi menolak timestamp sama dengan movement operasional terakhir", async () => {
+    await storage.importJSON(bundle("SAME-TIME-CONDITION"), "merge");
+    const timestamp = "2026-11-18T12:05:00.000Z";
+    await storage.updateRemainderState({
+      id: "REM-SAME-TIME-CONDITION",
+      changes: { condition: "damaged" },
+      timestamp
+    });
+    const before = await storage.get("remainders", "REM-SAME-TIME-CONDITION");
+    const movementsBefore = await storage.getByIndex(
+      "movements", "remainderId", "REM-SAME-TIME-CONDITION"
+    );
+    await assert.rejects(storage.updateRemainderState({
+      id: "REM-SAME-TIME-CONDITION",
+      changes: { condition: "good" },
+      timestamp
+    }));
+    assert.deepEqual(
+      await storage.get("remainders", "REM-SAME-TIME-CONDITION"), before
+    );
+    assert.deepEqual(
+      await storage.getByIndex("movements", "remainderId", "REM-SAME-TIME-CONDITION"),
+      movementsBefore
+    );
+  });
+
   await test("pelepasan reservasi menolak timestamp yang mendahului reservasi", async () => {
     await storage.importJSON(bundle("BACKDATED-RELEASE"), "merge");
     const reservation = await storage.reserveRemainder({

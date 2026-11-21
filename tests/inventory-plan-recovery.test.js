@@ -692,6 +692,36 @@ async function main() {
   ), "Remainder dengan pekerjaan asal yang hilang harus terdeteksi");
   await storage.remove("remainders", "REC-ORPHAN-MATERIAL-JOB");
 
+  // Movement pembuatan sisa turunan harus menunjuk sumber yang sama dengan metadata lineage.
+  const movementLineageParent = {
+    ...remainder("REC-MOV-LINEAGE-PARENT"), status: "consumed", sourceType: "new"
+  };
+  const movementLineageChild = {
+    ...remainder("REC-MOV-LINEAGE-CHILD"), sourceType: "inventory",
+    sourceRemainderId: movementLineageParent.id, reservationId: "RSV-MOV-LINEAGE"
+  };
+  await storage.put("remainders", movementLineageParent);
+  await storage.put("remainders", movementLineageChild);
+  await storage.put("reservations", {
+    id: "RSV-MOV-LINEAGE", remainderId: movementLineageParent.id,
+    jobId: "JOB-OLD", status: "consumed", createdAt: now,
+    releasedAt: null, consumedAt: now
+  });
+  await storage.put("movements", {
+    id: "MOV-MOV-LINEAGE-CHILD", remainderId: movementLineageChild.id,
+    type: "remainder_created", jobId: "JOB-OLD", timestamp: now,
+    fromStatus: null, toStatus: "available", referenceId: "WRONG-SOURCE"
+  });
+  const movementLineageReport = await storage.getRecoveryReport();
+  assert.ok(movementLineageReport.movementHistoryIssues.some(item =>
+    item.remainderId === movementLineageChild.id &&
+    item.type === "origin_reference_mismatch"
+  ), "Movement pembuatan harus merujuk sumber yang sama dengan metadata remainder");
+  await storage.remove("movements", "MOV-MOV-LINEAGE-CHILD");
+  await storage.remove("reservations", "RSV-MOV-LINEAGE");
+  await storage.remove("remainders", movementLineageChild.id);
+  await storage.remove("remainders", movementLineageParent.id);
+
   // Referensi reservasi pada sisa turunan juga harus diaudit secara lokal.
   const lineageParent = {
     ...remainder("REC-LINEAGE-PARENT"),

@@ -196,16 +196,23 @@
     const request = movements.index("remainderId").getAll(remainder.id);
     request.onsuccess = () => {
       const updatedAtMs = Date.parse(remainder.updatedAt || "");
-      const movementTimes = request.result
-        .map(item => Date.parse(item.timestamp || ""))
-        .filter(Number.isFinite);
-      const latestMovementMs = movementTimes.length
-        ? Math.max(...movementTimes) : null;
+      const movementEvents = request.result
+        .map(item => ({ item, time: Date.parse(item.timestamp || "") }))
+        .filter(entry => Number.isFinite(entry.time));
+      const latestMovementMs = movementEvents.length
+        ? Math.max(...movementEvents.map(entry => entry.time)) : null;
+      const latestEvents = latestMovementMs === null ? []
+        : movementEvents.filter(entry => entry.time === latestMovementMs);
       const timestampMs = Date.parse(timestamp);
-      // Timestamp boleh sama dengan updatedAt pada data awal tanpa movement,
-      // tetapi setiap movement baru wajib lebih maju dari movement sebelumnya.
+      // Timestamp boleh sama dengan waktu record awal dan movement asal
+      // (created/remainder_created). Setelah ada movement operasional, waktu
+      // setiap movement berikutnya wajib lebih maju agar transisinya berurutan.
       const notBeforeRecord = !Number.isFinite(updatedAtMs) || timestampMs >= updatedAtMs;
-      const afterMovement = latestMovementMs === null || timestampMs > latestMovementMs;
+      const sameAsOnlyOrigin = latestEvents.length > 0 &&
+        latestEvents.every(entry => ["created", "remainder_created"].includes(entry.item.type));
+      const afterMovement = latestMovementMs === null ||
+        timestampMs > latestMovementMs ||
+        (timestampMs === latestMovementMs && sameAsOnlyOrigin);
       callback(notBeforeRecord && afterMovement);
     };
   }

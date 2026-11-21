@@ -296,6 +296,42 @@ async function main() {
       expectedIssue: "reservation_timestamp_invalid"
     },
     {
+      remainderId: "REC-REM-RESV-INVALID-TIMESTAMP",
+      reservationId: "RSV-AUDIT-INVALID-TIMESTAMP",
+      reservationRemainderId: "REC-REM-RESV-INVALID-TIMESTAMP",
+      movementType: "reserved",
+      movementJobId: "JOB-OLD",
+      reservationJobId: "JOB-OLD",
+      reservationStatus: "active",
+      createdAt: "bukan-timestamp",
+      movementTimestamp: now,
+      expectedIssue: "reservation_timestamp_invalid"
+    },
+    {
+      remainderId: "REC-REM-RESV-MISSING-RELEASED-AT",
+      reservationId: "RSV-AUDIT-MISSING-RELEASED-AT",
+      reservationRemainderId: "REC-REM-RESV-MISSING-RELEASED-AT",
+      movementType: "reservation_released",
+      movementJobId: "JOB-OLD",
+      reservationJobId: "JOB-OLD",
+      reservationStatus: "released",
+      createdAt: now,
+      movementTimestamp: now,
+      expectedIssue: "reservation_timestamp_invalid"
+    },
+    {
+      remainderId: "REC-REM-RESV-MISSING-CONSUMED-AT",
+      reservationId: "RSV-AUDIT-MISSING-CONSUMED-AT",
+      reservationRemainderId: "REC-REM-RESV-MISSING-CONSUMED-AT",
+      movementType: "consumed",
+      movementJobId: "JOB-OLD",
+      reservationJobId: "JOB-OLD",
+      reservationStatus: "consumed",
+      createdAt: now,
+      movementTimestamp: now,
+      expectedIssue: "reservation_timestamp_invalid"
+    },
+    {
       remainderId: "REC-REM-RESV-TIMESTAMP",
       reservationId: "RSV-AUDIT-TIMESTAMP",
       reservationRemainderId: "REC-REM-RESV-TIMESTAMP",

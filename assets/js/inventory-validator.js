@@ -674,6 +674,10 @@
         if (previous.toStatus !== current.fromStatus) {
           error(p, "Urutan movement terputus: status tujuan riwayat sebelumnya tidak cocok dengan status asal riwayat berikutnya.");
         }
+        if (previous.toCondition != null && current.fromCondition != null &&
+            previous.toCondition !== current.fromCondition) {
+          error(p, "Urutan movement kondisi terputus: kondisi tujuan riwayat sebelumnya tidak cocok dengan kondisi asal riwayat berikutnya.");
+        }
       }
       if (ordered.length) {
         const latestTime = Date.parse(ordered[ordered.length - 1].timestamp);

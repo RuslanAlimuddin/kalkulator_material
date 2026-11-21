@@ -1258,26 +1258,10 @@
               tx.abort();
               return;
             }
-            // Jangan izinkan catatan baru mundur melewati waktu record atau
-            // movement terakhir. Pemeriksaan berada dalam transaksi yang sama
-            // agar dua perubahan bersamaan tidak dapat menyisipkan urutan palsu.
-            const historyRequest = movements.index("remainderId").getAll(current.id);
-            historyRequest.onsuccess = () => {
-              const timestampMs = Date.parse(timestamp);
-              const updatedAtMs = Date.parse(current.updatedAt || "");
-              const movementTimes = historyRequest.result
-                .map(item => Date.parse(item.timestamp || ""))
-                .filter(Number.isFinite);
-              const latestMovementMs = movementTimes.length
-                ? Math.max(...movementTimes) : null;
-              const latestKnownMs = Math.max(
-                Number.isFinite(updatedAtMs) ? updatedAtMs : -Infinity,
-                latestMovementMs === null ? -Infinity : latestMovementMs
-              );
-              if (timestampMs < latestKnownMs) {
-                tx.abort();
-                return;
-              }
+            // Gunakan aturan kronologi yang sama dengan reservasi dan konsumsi.
+            // Pemeriksaan tetap berada dalam transaksi yang sama.
+            isTimestampAtOrAfterMovementHistory(movements, current, timestamp, validTime => {
+              if (!validTime) { tx.abort(); return; }
               updated = {
                 ...current,
                 ...allowed,
@@ -1298,7 +1282,7 @@
                 toCondition: updated.condition,
                 referenceId: input.referenceId || null
               });
-            };
+            });
           };
         };
       });

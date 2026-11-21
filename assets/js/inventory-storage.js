@@ -1505,6 +1505,27 @@
             });
           }
         }
+        if (originRemainder && ["inventory", "new"].includes(originRemainder.sourceType) &&
+            movement.type === "remainder_created") {
+          if (movement.jobId !== originRemainder.originJobId) {
+            movementHistoryIssues.push({
+              severity: "error", type: "origin_job_mismatch",
+              remainderId: movement.remainderId || null, movementId: movement.id || null,
+              expectedJobId: originRemainder.originJobId || null, actualJobId: movement.jobId || null,
+              message: "Pekerjaan pada movement pembuatan tidak cocok dengan pekerjaan asal sisa material."
+            });
+          }
+          const createdTime = Date.parse(originRemainder.createdAt || "");
+          const movementTime = Date.parse(movement.timestamp || "");
+          if (Number.isFinite(createdTime) && Number.isFinite(movementTime) && createdTime !== movementTime) {
+            movementHistoryIssues.push({
+              severity: "error", type: "origin_timestamp_mismatch",
+              remainderId: movement.remainderId || null, movementId: movement.id || null,
+              expectedTimestamp: originRemainder.createdAt, actualTimestamp: movement.timestamp,
+              message: "Waktu movement pembuatan tidak cocok dengan waktu pembuatan sisa material."
+            });
+          }
+        }
         if (["reserved", "reservation_released", "consumed"].includes(movement.type)) {
           const reservation = reservationById.get(movement.referenceId);
           if (!reservation) {

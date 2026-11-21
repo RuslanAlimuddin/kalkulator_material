@@ -1272,8 +1272,8 @@ async function main() {
     assert.equal(movement.fromCondition, "good");
     assert.equal(movement.toCondition, "good");
 
-    await storage.releaseReservation({
-      reservationId: first.id, timestamp: "2026-11-18T12:02:00.000Z"
+    await storage.releaseReservation(first.id, {
+      timestamp: "2026-11-18T12:02:00.000Z"
     });
     movement = (await storage.getByIndex(
       "movements", "remainderId", "REM-MOVEMENT-CONDITION-PROPAGATION"

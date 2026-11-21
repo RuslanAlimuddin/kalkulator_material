@@ -248,6 +248,8 @@ async function main() {
     ),
     "Laporan pemulihan harus mendeteksi pekerjaan sumber reservasi yang hilang."
   );
+  await storage.remove("reservations", "RSV-RESERVATION-MISSING-JOB");
+  await storage.remove("remainders", "REC-REM-RESERVATION-MISSING-JOB");
 
   // Movement yang merujuk pekerjaan yang sudah hilang harus masuk audit orphan.
   await storage.add("remainders", remainder("REC-REM-MISSING-MOVEMENT-JOB"));

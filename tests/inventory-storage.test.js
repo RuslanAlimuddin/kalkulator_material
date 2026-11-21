@@ -1299,6 +1299,25 @@ async function main() {
     assert.equal(movement.toCondition, "good");
   });
 
+  await test("audit pemulihan menandai reservasi aktif pada sisa yang rusak", async () => {
+    await storage.importJSON(bundle("ACTIVE-DAMAGED-AUDIT"), "merge");
+    await storage.update("remainders", "REM-ACTIVE-DAMAGED-AUDIT", {
+      status: "reserved", condition: "damaged"
+    });
+    await storage.add("reservations", {
+      id: "RSV-ACTIVE-DAMAGED-AUDIT",
+      remainderId: "REM-ACTIVE-DAMAGED-AUDIT",
+      jobId: "JOB-ACTIVE-DAMAGED-AUDIT",
+      status: "active",
+      createdAt: now, releasedAt: null, consumedAt: null
+    });
+    const report = await storage.getRecoveryReport();
+    assert.ok(report.reservationReferenceIssues.some(issue =>
+      issue.type === "active_reservation_condition_mismatch" &&
+      issue.reservationId === "RSV-ACTIVE-DAMAGED-AUDIT"
+    ));
+  });
+
   await storage.close();
   console.log("Semua pengujian storage inventaris selesai.");
   await deleteDatabase();

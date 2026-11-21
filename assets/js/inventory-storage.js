@@ -192,6 +192,18 @@
       !(material.grainRequired === true && remainder.rotationAllowed === true);
   }
 
+  function isTimestampAtOrAfterMovementHistory(movements, remainder, timestamp, callback) {
+    const request = movements.index("remainderId").getAll(remainder.id);
+    request.onsuccess = () => {
+      const knownTimes = [remainder.updatedAt]
+        .concat(request.result.map(item => item.timestamp))
+        .map(value => Date.parse(value || ""))
+        .filter(Number.isFinite);
+      const latestKnownTime = knownTimes.length ? Math.max(...knownTimes) : -Infinity;
+      callback(Date.parse(timestamp) >= latestKnownTime);
+    };
+  }
+
   function withTransaction(db, storeNames, mode, work) {
     return new Promise((resolve, reject) => {
       let tx;
@@ -514,34 +526,37 @@
                 tx.abort();
                 return;
               }
-              const updated = {
-                ...remainder,
-                status: "reserved",
-                updatedAt: timestamp,
-                version: Number(remainder.version || 0) + 1
-              };
-              const reservation = {
-                id: reservationId,
-                remainderId: input.remainderId,
-                jobId: input.jobId,
-                status: "active",
-                createdAt: timestamp,
-                releasedAt: null,
-                consumedAt: null
-              };
-              remainders.put(updated);
-              reservations.add(reservation);
-              movements.add({
-                id: movementId,
-                remainderId: input.remainderId,
-                type: "reserved",
-                jobId: input.jobId,
-                timestamp,
-                fromStatus: "available",
-                toStatus: "reserved",
-                fromCondition: remainder.condition,
-                toCondition: remainder.condition,
-                referenceId: reservationId
+              isTimestampAtOrAfterMovementHistory(movements, remainder, timestamp, validTime => {
+                if (!validTime) { tx.abort(); return; }
+                const updated = {
+                  ...remainder,
+                  status: "reserved",
+                  updatedAt: timestamp,
+                  version: Number(remainder.version || 0) + 1
+                };
+                const reservation = {
+                  id: reservationId,
+                  remainderId: input.remainderId,
+                  jobId: input.jobId,
+                  status: "active",
+                  createdAt: timestamp,
+                  releasedAt: null,
+                  consumedAt: null
+                };
+                remainders.put(updated);
+                reservations.add(reservation);
+                movements.add({
+                  id: movementId,
+                  remainderId: input.remainderId,
+                  type: "reserved",
+                  jobId: input.jobId,
+                  timestamp,
+                  fromStatus: "available",
+                  toStatus: "reserved",
+                  fromCondition: remainder.condition,
+                  toCondition: remainder.condition,
+                  referenceId: reservationId
+                });
               });
             };
             };
@@ -604,7 +619,10 @@
             const active = ss.index("remainderId").getAll(id);
             active.onsuccess = () => {
               if (active.result.some(item => item.status === "active")) { tx.abort(); return; }
-              checked.push(source); cursor += 1; checkNext();
+              isTimestampAtOrAfterMovementHistory(ms, source, timestamp, validTime => {
+                if (!validTime) { tx.abort(); return; }
+                checked.push(source); cursor += 1; checkNext();
+              });
             };
           };
         };
@@ -650,24 +668,27 @@
                   tx.abort();
                   return;
                 }
-                reservations.put({
-                  ...reservation, status: "released", releasedAt: timestamp
-                });
-              remainders.put({
-                ...remainder, status: "available", updatedAt: timestamp,
-                version: Number(remainder.version || 0) + 1
-              });
-                movements.add({
-                  id: makeId("MOV"),
-                  remainderId: remainder.id,
-                  type: "reservation_released",
-                  jobId: reservation.jobId,
-                  timestamp,
-                  fromStatus: "reserved",
-                  toStatus: "available",
-                  fromCondition: remainder.condition,
-                  toCondition: remainder.condition,
-                  referenceId: reservationId
+                isTimestampAtOrAfterMovementHistory(movements, remainder, timestamp, validTime => {
+                  if (!validTime) { tx.abort(); return; }
+                  reservations.put({
+                    ...reservation, status: "released", releasedAt: timestamp
+                  });
+                  remainders.put({
+                    ...remainder, status: "available", updatedAt: timestamp,
+                    version: Number(remainder.version || 0) + 1
+                  });
+                  movements.add({
+                    id: makeId("MOV"),
+                    remainderId: remainder.id,
+                    type: "reservation_released",
+                    jobId: reservation.jobId,
+                    timestamp,
+                    fromStatus: "reserved",
+                    toStatus: "available",
+                    fromCondition: remainder.condition,
+                    toCondition: remainder.condition,
+                    referenceId: reservationId
+                  });
                 });
               };
             };
@@ -771,9 +792,12 @@
                     tx.abort();
                     return;
                   }
-                  checked.push({ reservation, remainder });
-                  cursor += 1;
-                  checkNext();
+                  isTimestampAtOrAfterMovementHistory(movements, remainder, timestamp, validTime => {
+                    if (!validTime) { tx.abort(); return; }
+                    checked.push({ reservation, remainder });
+                    cursor += 1;
+                    checkNext();
+                  });
                 };
               };
             };
@@ -823,34 +847,37 @@
                 tx.abort();
                 return;
               }
-              ss.put({ ...reservation, status: "consumed", consumedAt: timestamp });
-            rs.put({ ...source, status: "consumed", updatedAt: timestamp, version: Number(source.version || 0) + 1 });
-            ms.add({
-              id: makeId("MOV"), remainderId: source.id, type: "consumed",
-              jobId: reservation.jobId, timestamp, fromStatus: "reserved",
-              toStatus: "consumed", fromCondition: source.condition,
-              toCondition: source.condition, referenceId: reservation.id
-            });
-            drafts.forEach(draft => {
-              const record = {
-                id: draft.id, materialId: source.materialId,
-                widthCm: draft.widthCm, heightCm: draft.heightCm,
-                thicknessMm: source.thicknessMm, grainDirection: source.grainDirection,
-                motif: source.motif, rotationAllowed: source.rotationAllowed,
-                condition: "good", status: "available", originJobId: reservation.jobId,
-                sourceSheetId: input.sourceSheetId || source.sourceSheetId,
-                sourceType: "inventory", reservationId: reservation.id,
-                sourceRemainderId: source.id,
-                createdAt: timestamp, updatedAt: timestamp, version: 1
-              };
-              rs.add(record);
-              ms.add({
-                id: makeId("MOV"), remainderId: record.id, type: "remainder_created",
-                jobId: reservation.jobId, timestamp, fromStatus: null,
-                toStatus: "available", toCondition: record.condition,
-                referenceId: source.id
+              isTimestampAtOrAfterMovementHistory(ms, source, timestamp, validTime => {
+                if (!validTime) { tx.abort(); return; }
+                ss.put({ ...reservation, status: "consumed", consumedAt: timestamp });
+                rs.put({ ...source, status: "consumed", updatedAt: timestamp, version: Number(source.version || 0) + 1 });
+                ms.add({
+                  id: makeId("MOV"), remainderId: source.id, type: "consumed",
+                  jobId: reservation.jobId, timestamp, fromStatus: "reserved",
+                  toStatus: "consumed", fromCondition: source.condition,
+                  toCondition: source.condition, referenceId: reservation.id
+                });
+                drafts.forEach(draft => {
+                  const record = {
+                    id: draft.id, materialId: source.materialId,
+                    widthCm: draft.widthCm, heightCm: draft.heightCm,
+                    thicknessMm: source.thicknessMm, grainDirection: source.grainDirection,
+                    motif: source.motif, rotationAllowed: source.rotationAllowed,
+                    condition: "good", status: "available", originJobId: reservation.jobId,
+                    sourceSheetId: input.sourceSheetId || source.sourceSheetId,
+                    sourceType: "inventory", reservationId: reservation.id,
+                    sourceRemainderId: source.id,
+                    createdAt: timestamp, updatedAt: timestamp, version: 1
+                  };
+                  rs.add(record);
+                  ms.add({
+                    id: makeId("MOV"), remainderId: record.id, type: "remainder_created",
+                    jobId: reservation.jobId, timestamp, fromStatus: null,
+                    toStatus: "available", toCondition: record.condition,
+                    referenceId: source.id
+                  });
+                });
               });
-            });
             };
           };
         };
@@ -1057,9 +1084,12 @@
                     tx.abort();
                     return;
                   }
-                  checked.push({ reservation, source });
-                  cursor += 1;
-                  checkNext();
+                  isTimestampAtOrAfterMovementHistory(movements, source, timestamp, validTime => {
+                    if (!validTime) { tx.abort(); return; }
+                    checked.push({ reservation, source });
+                    cursor += 1;
+                    checkNext();
+                  });
                 };
               };
             };

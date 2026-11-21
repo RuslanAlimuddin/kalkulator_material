@@ -750,6 +750,39 @@ async function main() {
   await storage.remove("reservations", "RSV-DUPLICATE-RESERVED");
   await storage.remove("remainders", duplicateMovementRemainder.id);
 
+  // Movement terminal tidak boleh terjadi sebelum reservasi dibuat,
+  // meskipun masing-masing timestamp cocok dengan record reservasi.
+  const reversedMovementRemainder = {
+    ...remainder("REC-REVERSED-RESERVATION-MOVEMENT"), status: "available"
+  };
+  const reversedCreatedAt = "2026-11-18T14:21:00.000Z";
+  const reversedReleasedAt = "2026-11-18T14:20:00.000Z";
+  await storage.put("remainders", reversedMovementRemainder);
+  await storage.put("reservations", {
+    id: "RSV-REVERSED-MOVEMENT", remainderId: reversedMovementRemainder.id,
+    jobId: "JOB-OLD", status: "released", createdAt: reversedCreatedAt,
+    releasedAt: reversedReleasedAt, consumedAt: null
+  });
+  await storage.put("movements", {
+    id: "MOV-REVERSED-RESERVED", remainderId: reversedMovementRemainder.id,
+    type: "reserved", jobId: "JOB-OLD", timestamp: reversedCreatedAt,
+    fromStatus: "available", toStatus: "reserved", referenceId: "RSV-REVERSED-MOVEMENT"
+  });
+  await storage.put("movements", {
+    id: "MOV-REVERSED-RELEASED", remainderId: reversedMovementRemainder.id,
+    type: "reservation_released", jobId: "JOB-OLD", timestamp: reversedReleasedAt,
+    fromStatus: "reserved", toStatus: "available", referenceId: "RSV-REVERSED-MOVEMENT"
+  });
+  const reversedReservationMovementReport = await storage.getRecoveryReport();
+  assert.ok(reversedReservationMovementReport.movementHistoryIssues.some(item =>
+    item.type === "reservation_movement_order_mismatch" &&
+    item.reservationId === "RSV-REVERSED-MOVEMENT"
+  ), "Laporan pemulihan harus mendeteksi movement terminal sebelum movement reserved");
+  await storage.remove("movements", "MOV-REVERSED-RESERVED");
+  await storage.remove("movements", "MOV-REVERSED-RELEASED");
+  await storage.remove("reservations", "RSV-REVERSED-MOVEMENT");
+  await storage.remove("remainders", reversedMovementRemainder.id);
+
   // Referensi reservasi pada sisa turunan juga harus diaudit secara lokal.
   const lineageParent = {
     ...remainder("REC-LINEAGE-PARENT"),

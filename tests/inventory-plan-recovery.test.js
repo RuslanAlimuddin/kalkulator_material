@@ -268,6 +268,41 @@ async function main() {
   ));
   await storage.remove("reservations", "RSV-RESERVATION-MISSING-REMAINDER");
 
+  // Reservasi consumed wajib tetap menunjuk sumber yang berstatus consumed.
+  await storage.add("remainders", remainder("REC-REM-CONSUMED-SOURCE-MISMATCH"));
+  await storage.add("reservations", {
+    id: "RSV-CONSUMED-SOURCE-MISMATCH",
+    remainderId: "REC-REM-CONSUMED-SOURCE-MISMATCH",
+    jobId: "JOB-OLD",
+    planId: "PLAN-CONSUMED-SOURCE-MISMATCH",
+    status: "consumed",
+    createdAt: now,
+    releasedAt: null,
+    consumedAt: now
+  });
+  await storage.add("plans", {
+    id: "PLAN-CONSUMED-SOURCE-MISMATCH",
+    jobId: "JOB-OLD",
+    plan: { inventoryUsage: [{ remainderId: "REC-REM-CONSUMED-SOURCE-MISMATCH" }] },
+    reservationIds: ["RSV-CONSUMED-SOURCE-MISMATCH"],
+    status: "completed",
+    legacy: false,
+    createdAt: now,
+    completedAt: now,
+    cancelledAt: null,
+    schemaVersion: 1
+  });
+  const consumedSourceMismatchReport = await storage.getRecoveryReport();
+  assert.ok(consumedSourceMismatchReport.inconsistentReservations.some(item =>
+    item.id === "RSV-CONSUMED-SOURCE-MISMATCH"
+  ), "Reservasi consumed harus ditandai jika sumbernya tidak berstatus consumed.");
+  assert.ok(consumedSourceMismatchReport.inconsistentPlans.some(item =>
+    item.id === "PLAN-CONSUMED-SOURCE-MISMATCH"
+  ));
+  await storage.remove("plans", "PLAN-CONSUMED-SOURCE-MISMATCH");
+  await storage.remove("reservations", "RSV-CONSUMED-SOURCE-MISMATCH");
+  await storage.remove("remainders", "REC-REM-CONSUMED-SOURCE-MISMATCH");
+
   // Movement yang merujuk pekerjaan yang sudah hilang harus masuk audit orphan.
   await storage.add("remainders", remainder("REC-REM-MISSING-MOVEMENT-JOB"));
   await storage.add("movements", {

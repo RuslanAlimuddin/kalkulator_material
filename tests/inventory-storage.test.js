@@ -746,6 +746,28 @@ async function main() {
     assert.equal(await storage.get("remainders", "REM-C"), null);
   });
 
+  await test("impor merge dengan benturan ID pada store terakhir membatalkan seluruh data sebelumnya", async () => {
+    const planId = "PLAN-MERGE-LATE-COLLISION";
+    const localPlan = {
+      id: planId, jobId: "JOB-A", plan: null, reservationIds: [],
+      status: "legacy_recovery", legacy: true, createdAt: now,
+      completedAt: null, cancelledAt: null, schemaVersion: 1
+    };
+    await storage.put("plans", localPlan);
+
+    const incoming = bundle("MERGE-LATE-COLLISION");
+    incoming.plans = {
+      schemaVersion: 1,
+      plans: [{ ...localPlan, jobId: "JOB-MERGE-LATE-COLLISION" }]
+    };
+
+    await assert.rejects(storage.importJSON(incoming, "merge"));
+    assert.equal(await storage.get("materials", "MAT-MERGE-LATE-COLLISION"), null);
+    assert.equal(await storage.get("jobs", "JOB-MERGE-LATE-COLLISION"), null);
+    assert.equal(await storage.get("remainders", "REM-MERGE-LATE-COLLISION"), null);
+    assert.deepEqual(await storage.get("plans", planId), localPlan);
+  });
+
   await test("impor paket tidak valid ditolak sebelum transaksi", async () => {
     const invalid = bundle("D");
     invalid.remainders.remainders[0].widthCm = 0;

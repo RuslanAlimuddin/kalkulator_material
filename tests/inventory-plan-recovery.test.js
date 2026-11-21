@@ -579,7 +579,9 @@ async function main() {
   ));
   console.log("LULUS: laporan audit mendeteksi riwayat terputus tanpa mengubah stok.");
 
-  await recoveredEngine.cancelPlan({ reservedPlan: recovered, timestamp: now });
+  await recoveredEngine.cancelPlan({
+    reservedPlan: recovered, timestamp: "2026-11-18T12:00:00.001Z"
+  });
   assert.equal((await storage.get("plans", reserved.planId)).status, "cancelled");
   assert.equal((await storage.get("remainders", "REC-REM-1")).status, "available");
   assert.equal((await storage.get("remainders", "REC-REM-2")).status, "available");

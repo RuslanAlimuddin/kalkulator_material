@@ -335,8 +335,12 @@
           item.thicknessMm !== material.thicknessMm) {
         error(p + ".thicknessMm", "Ketebalan sisa harus sama dengan katalog material.");
       }
-      if (!jobById.has(item.originJobId)) {
+      const originJob = jobById.get(item.originJobId);
+      if (!originJob) {
         error(p + ".originJobId", "Pekerjaan asal dengan ID " + item.originJobId + " tidak ditemukan.");
+      } else if (isIsoDate(item.createdAt) && isIsoDate(originJob.createdAt) &&
+          Date.parse(item.createdAt) < Date.parse(originJob.createdAt)) {
+        error(p + ".createdAt", "Waktu pembuatan sisa material tidak boleh mendahului waktu pembuatan pekerjaan asal.");
       }
       if (item.status === "available" && item.condition === "damaged") {
         warnings.push({ path: p, message: "Sisa rusak berstatus available; matcher tetap harus mengecualikannya." });
@@ -364,8 +368,14 @@
       const reservationJob = jobById.get(item.jobId);
       if (!reservationJob) {
         error(p + ".jobId", "Pekerjaan reservasi yang dirujuk tidak ditemukan.");
-      } else if (item.status === "active" && reservationJob.status !== "open") {
-        error(p + ".jobId", "Reservasi aktif hanya boleh terhubung ke pekerjaan yang masih open.");
+      } else {
+        if (item.status === "active" && reservationJob.status !== "open") {
+          error(p + ".jobId", "Reservasi aktif hanya boleh terhubung ke pekerjaan yang masih open.");
+        }
+        if (isIsoDate(item.createdAt) && isIsoDate(reservationJob.createdAt) &&
+            Date.parse(item.createdAt) < Date.parse(reservationJob.createdAt)) {
+          error(p + ".createdAt", "Waktu pembuatan reservasi tidak boleh mendahului waktu pembuatan pekerjaan.");
+        }
       }
       if (item.planId != null && !planById.has(item.planId)) {
         error(p + ".planId", "Snapshot rencana yang dirujuk tidak ditemukan.");

@@ -1215,26 +1215,47 @@
               tx.abort();
               return;
             }
-            updated = {
-              ...current,
-              ...allowed,
-              updatedAt: timestamp,
-              version: Number(current.version || 0) + 1
+            // Jangan izinkan catatan baru mundur melewati waktu record atau
+            // movement terakhir. Pemeriksaan berada dalam transaksi yang sama
+            // agar dua perubahan bersamaan tidak dapat menyisipkan urutan palsu.
+            const historyRequest = movements.index("remainderId").getAll(current.id);
+            historyRequest.onsuccess = () => {
+              const timestampMs = Date.parse(timestamp);
+              const updatedAtMs = Date.parse(current.updatedAt || "");
+              const movementTimes = historyRequest.result
+                .map(item => Date.parse(item.timestamp || ""))
+                .filter(Number.isFinite);
+              const latestMovementMs = movementTimes.length
+                ? Math.max(...movementTimes) : null;
+              const latestKnownMs = Math.max(
+                Number.isFinite(updatedAtMs) ? updatedAtMs : -Infinity,
+                latestMovementMs === null ? -Infinity : latestMovementMs
+              );
+              if (timestampMs < latestKnownMs) {
+                tx.abort();
+                return;
+              }
+              updated = {
+                ...current,
+                ...allowed,
+                updatedAt: timestamp,
+                version: Number(current.version || 0) + 1
+              };
+              remainders.put(updated);
+              const discarded = allowed.status === "discarded";
+              movements.add({
+                id: makeId("MOV"),
+                remainderId: current.id,
+                type: discarded ? "discarded" : "condition_changed",
+                jobId: input.jobId || current.originJobId,
+                timestamp,
+                fromStatus: current.status,
+                toStatus: updated.status,
+                fromCondition: current.condition,
+                toCondition: updated.condition,
+                referenceId: input.referenceId || null
+              });
             };
-            remainders.put(updated);
-            const discarded = allowed.status === "discarded";
-            movements.add({
-              id: makeId("MOV"),
-              remainderId: current.id,
-              type: discarded ? "discarded" : "condition_changed",
-              jobId: input.jobId || current.originJobId,
-              timestamp,
-              fromStatus: current.status,
-              toStatus: updated.status,
-              fromCondition: current.condition,
-              toCondition: updated.condition,
-              referenceId: input.referenceId || null
-            });
           };
         };
       });

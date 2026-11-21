@@ -284,6 +284,18 @@ async function main() {
       expectedIssue: "reservation_status_mismatch"
     },
     {
+      remainderId: "REC-REM-RESV-MISSING-TIMESTAMP",
+      reservationId: "RSV-AUDIT-MISSING-TIMESTAMP",
+      reservationRemainderId: "REC-REM-RESV-MISSING-TIMESTAMP",
+      movementType: "reserved",
+      movementJobId: "JOB-OLD",
+      reservationJobId: "JOB-OLD",
+      reservationStatus: "active",
+      createdAt: null,
+      movementTimestamp: now,
+      expectedIssue: "reservation_timestamp_invalid"
+    },
+    {
       remainderId: "REC-REM-RESV-TIMESTAMP",
       reservationId: "RSV-AUDIT-TIMESTAMP",
       reservationRemainderId: "REC-REM-RESV-TIMESTAMP",

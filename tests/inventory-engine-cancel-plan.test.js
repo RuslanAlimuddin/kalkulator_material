@@ -53,7 +53,9 @@ async function main() {
     jobId: "JOB-NEW",
     timestamp: now
   });
-  const result = await engine.cancelPlan({ reservedPlan, timestamp: now });
+  const result = await engine.cancelPlan({
+    reservedPlan, timestamp: "2026-11-18T14:10:00.001Z"
+  });
   assert.equal(result.releasedReservations.length, 2);
   for (const id of ["CANCEL-1", "CANCEL-2"]) {
     assert.equal((await storage.get("remainders", id)).status, "available");

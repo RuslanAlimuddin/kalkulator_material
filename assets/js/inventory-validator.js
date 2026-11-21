@@ -695,6 +695,16 @@
               message: "Beberapa movement memiliki timestamp terakhir yang sama dan status tujuan berbeda; urutan akhirnya tidak dapat dipastikan."
             });
           }
+          const finalConditions = new Set(latestAtSameTime
+            .map(item => item.toCondition).filter(value => value != null));
+          if (finalConditions.size === 1 && !finalConditions.has(remainder.condition)) {
+            error(p, "Kondisi akhir sisa material tidak cocok dengan movement terakhir.");
+          } else if (finalConditions.size > 1) {
+            warnings.push({
+              path: p,
+              message: "Beberapa movement memiliki timestamp terakhir yang sama dan kondisi tujuan berbeda; urutan kondisi akhirnya tidak dapat dipastikan."
+            });
+          }
         } else if (updatedTime !== null && latestTime < updatedTime) {
           warnings.push({
             path: p,

@@ -361,8 +361,11 @@
       if (!remainderById.has(item.remainderId)) {
         error(p + ".remainderId", "Sisa material yang dirujuk tidak ditemukan.");
       }
-      if (!jobById.has(item.jobId)) {
+      const reservationJob = jobById.get(item.jobId);
+      if (!reservationJob) {
         error(p + ".jobId", "Pekerjaan reservasi yang dirujuk tidak ditemukan.");
+      } else if (item.status === "active" && reservationJob.status !== "open") {
+        error(p + ".jobId", "Reservasi aktif hanya boleh terhubung ke pekerjaan yang masih open.");
       }
       if (item.planId != null && !planById.has(item.planId)) {
         error(p + ".planId", "Snapshot rencana yang dirujuk tidak ditemukan.");

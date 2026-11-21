@@ -1001,12 +1001,15 @@
                   item.reservation.jobId !== savedPlan.jobId ||
                   (input.jobId && item.reservation.jobId !== input.jobId)
                 );
+                const newSheetJobMismatch = newSheetDrafts.some(item =>
+                  item.originJobId !== savedPlan.jobId
+                );
                 const sourceMismatch = usageIds.some(id => typeof id !== "string" || !id.trim()) ||
                   new Set(usageIds).size !== usageIds.length ||
                   usageIds.length !== checked.length ||
                   checked.some(item => !usageIds.includes(item.reservation.remainderId));
                 if (JSON.stringify(expectedIds) !== JSON.stringify(consumedIds) ||
-                    reservationJobMismatch || sourceMismatch) {
+                    reservationJobMismatch || newSheetJobMismatch || sourceMismatch) {
                   tx.abort();
                   return;
                 }

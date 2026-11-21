@@ -1334,7 +1334,7 @@ async function main() {
       id: "REM-BACKDATED-CONDITION",
       changes: { condition: "good" },
       timestamp: "2026-11-18T12:04:00.000Z"
-    }), /Timestamp perubahan tidak boleh mendahului riwayat terakhir/);
+    }));
 
     const after = await storage.get("remainders", "REM-BACKDATED-CONDITION");
     const movementsAfter = await storage.getByIndex(

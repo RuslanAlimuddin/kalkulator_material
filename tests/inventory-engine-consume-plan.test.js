@@ -99,12 +99,12 @@ async function main() {
   const reservationForC = await storage.reserveRemainder({
     remainderId: childForC.id,
     jobId: "JOB-C",
-    timestamp: now
+    timestamp: "2026-11-18T13:30:00.002Z"
   });
   const consumedForC = await engine.consumeReservation({
     reservationId: reservationForC.id,
     sourceSheetId: "JOB-C-SHEET-1",
-    timestamp: now,
+    timestamp: "2026-11-18T13:30:00.003Z",
     remainders: [{ widthCm: 8, heightCm: 6 }]
   });
   assert.equal((await storage.get("remainders", childForC.id)).status, "consumed");

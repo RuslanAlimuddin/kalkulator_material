@@ -1473,12 +1473,23 @@
             message: "Timestamp riwayat pergerakan tidak valid."
           });
         }
-        if (movement.type === "reserved" &&
-            (movement.fromStatus !== "available" || movement.toStatus !== "reserved")) {
+        const expectedMovementTransitions = {
+          created: [null, "available"],
+          remainder_created: [null, "available"],
+          reserved: ["available", "reserved"],
+          reservation_released: ["reserved", "available"],
+          consumed: ["reserved", "consumed"],
+          discarded: ["available", "discarded"],
+          condition_changed: ["available", "available"]
+        };
+        const expectedTransition = expectedMovementTransitions[movement.type];
+        if (expectedTransition &&
+            (movement.fromStatus !== expectedTransition[0] ||
+             movement.toStatus !== expectedTransition[1])) {
           movementHistoryIssues.push({
             severity: "error", type: "movement_transition_mismatch",
             remainderId: movement.remainderId || null, movementId: movement.id || null,
-            message: "Riwayat reservasi harus mengubah status available menjadi reserved."
+            message: "Perubahan status tidak sesuai dengan jenis riwayat pergerakan " + movement.type + "."
           });
         }
         if (["reserved", "reservation_released", "consumed"].includes(movement.type)) {

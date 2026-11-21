@@ -1693,6 +1693,12 @@
               "Urutan riwayat terputus: status tujuan catatan sebelumnya tidak cocok dengan status asal catatan berikutnya.",
               [previous.id, current.id]);
           }
+          if (previous.toCondition != null && current.fromCondition != null &&
+              previous.toCondition !== current.fromCondition) {
+            addMovementIssue("error", "condition_transition_mismatch", remainder.id,
+              "Urutan riwayat kondisi terputus: kondisi akhir catatan sebelumnya tidak cocok dengan kondisi awal catatan berikutnya.",
+              [previous.id, current.id]);
+          }
         }
         if (ordered.length) {
           const latestTime = Date.parse(ordered[ordered.length - 1].timestamp);

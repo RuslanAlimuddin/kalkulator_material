@@ -98,7 +98,7 @@ async function main() {
 
   const completed = await workflow.complete(reservedPlan, {
     sourceSheetIdPrefix: "JOB-B-SHEET",
-    timestamp: now
+    timestamp: "2026-11-18T15:00:00.001Z"
   });
   assert.equal(completed.consumedReservations.length, 2);
   assert.ok(completed.createdRemainders.some(item => item.sourceType === "new"));
@@ -122,12 +122,12 @@ async function main() {
 
   const nextStock = newSheetRemainders[0];
   const reservedC = await storage.reserveRemainder({
-    remainderId: nextStock.id, jobId: "JOB-C", timestamp: now
+    remainderId: nextStock.id, jobId: "JOB-C", timestamp: "2026-11-18T15:00:00.002Z"
   });
   const consumedC = await inventoryEngine.consumeReservation({
     reservationId: reservedC.id,
     sourceSheetId: "JOB-C-SHEET-1",
-    timestamp: now,
+    timestamp: "2026-11-18T15:00:00.003Z",
     remainders: [{ widthCm: 8, heightCm: 6 }]
   });
   assert.equal((await storage.get("remainders", nextStock.id)).status, "consumed");

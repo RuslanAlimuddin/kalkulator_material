@@ -1243,6 +1243,22 @@ async function main() {
     );
   });
 
+  await test("audit pemulihan mendeteksi kondisi akhir yang berbeda dari movement terakhir", async () => {
+    await storage.importJSON(bundle("FINAL-CONDITION-AUDIT"), "merge");
+    await storage.updateRemainderState({
+      id: "REM-FINAL-CONDITION-AUDIT",
+      changes: { condition: "damaged" },
+      timestamp: "2026-11-18T12:01:00.000Z"
+    });
+    // Simulasikan perubahan record yang melewati jalur bisnis tanpa movement.
+    await storage.update("remainders", "REM-FINAL-CONDITION-AUDIT", { condition: "good" });
+    const report = await storage.getRecoveryReport();
+    assert.ok(report.movementHistoryIssues.some(issue =>
+      issue.type === "final_condition_mismatch" &&
+      issue.remainderId === "REM-FINAL-CONDITION-AUDIT"
+    ), "Audit harus mendeteksi kondisi akhir yang tidak cocok dengan riwayat");
+  });
+
   await storage.close();
   console.log("Semua pengujian storage inventaris selesai.");
   await deleteDatabase();

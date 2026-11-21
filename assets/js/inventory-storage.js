@@ -185,6 +185,13 @@
     }
   }
 
+  function isRemainderCompatibleWithMaterial(remainder, material) {
+    return Number(remainder.thicknessMm) === Number(material.thicknessMm) &&
+      remainder.motif === material.motif &&
+      !(material.rotationPolicy === "fixed" && remainder.rotationAllowed === true) &&
+      !(material.grainRequired === true && remainder.rotationAllowed === true);
+  }
+
   function withTransaction(db, storeNames, mode, work) {
     return new Promise((resolve, reject) => {
       let tx;
@@ -291,7 +298,7 @@
         return withTransaction(database, ["materials", "remainders"], "readwrite", tx => {
           const references = tx.objectStore("remainders").index("materialId").getAll(record.id);
           references.onsuccess = () => {
-            if (references.result.some(item => Number(item.thicknessMm) !== Number(record.thicknessMm))) {
+            if (references.result.some(item => !isRemainderCompatibleWithMaterial(item, record))) {
               tx.abort();
               return;
             }
@@ -332,7 +339,7 @@
           }
           const references = tx.objectStore("remainders").index("materialId").getAll(id);
           references.onsuccess = () => {
-            if (references.result.some(item => Number(item.thicknessMm) !== Number(updated.thicknessMm))) {
+            if (references.result.some(item => !isRemainderCompatibleWithMaterial(item, updated))) {
               tx.abort();
               return;
             }

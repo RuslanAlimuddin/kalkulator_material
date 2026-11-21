@@ -1323,7 +1323,7 @@
 
     async function getRecoveryReport() {
       const database = await db();
-      const tx = database.transaction(["plans", "reservations", "remainders", "jobs", "movements"], "readonly");
+      const tx = database.transaction(["plans", "reservations", "remainders", "jobs", "movements", "materials"], "readonly");
       const done = transactionDone(tx);
       done.catch(() => {});
       const results = await Promise.all([
@@ -1331,7 +1331,8 @@
         requestResult(tx.objectStore("reservations").getAll()),
         requestResult(tx.objectStore("remainders").getAll()),
         requestResult(tx.objectStore("jobs").getAll()),
-        requestResult(tx.objectStore("movements").getAll())
+        requestResult(tx.objectStore("movements").getAll()),
+        requestResult(tx.objectStore("materials").getAll())
       ]);
       await done;
       const plans = results[0];
@@ -1339,9 +1340,28 @@
       const remainders = results[2];
       const jobs = results[3];
       const movements = results[4];
+      const materials = results[5];
       const jobIds = new Set(jobs.map(item => item.id));
+      const materialIds = new Set(materials.map(item => item.id));
       const plansWithoutJob = plans.filter(item => !jobIds.has(item.jobId));
       const movementHistoryIssues = [];
+      const remainderReferenceIssues = [];
+      remainders.forEach(item => {
+        if (!materialIds.has(item.materialId)) {
+          remainderReferenceIssues.push({
+            severity: "error", type: "missing_material", remainderId: item.id,
+            materialId: item.materialId || null,
+            message: "Sisa material merujuk katalog material yang tidak ditemukan."
+          });
+        }
+        if (item.originJobId != null && !jobIds.has(item.originJobId)) {
+          remainderReferenceIssues.push({
+            severity: "error", type: "missing_origin_job", remainderId: item.id,
+            originJobId: item.originJobId,
+            message: "Sisa material merujuk pekerjaan asal yang tidak ditemukan."
+          });
+        }
+      });
       const movementByRemainder = new Map();
       const movementRemainderById = new Map(remainders.map(item => [item.id, item]));
       const reservationById = new Map(reservations.map(item => [item.id, item]));
@@ -1699,6 +1719,7 @@
         reservationsWithoutSource,
         inconsistentPlans,
         inconsistentReservations,
+        remainderReferenceIssues,
         remainderLineageIssues,
         movementHistoryIssues
       };

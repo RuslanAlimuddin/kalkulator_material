@@ -530,7 +530,7 @@ test("movement reserved tidak boleh merujuk reservasi yang sudah terminal", () =
   const result = validate(data);
   assert.ok(result.errors.some(e =>
     e.path === "movements.movements[0].referenceId" &&
-    /movement reserved harus merujuk reservasi berstatus active/.test(e.message)
+    /Movement reserved harus merujuk reservasi berstatus active/.test(e.message)
   ));
 });
 

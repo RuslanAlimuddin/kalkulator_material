@@ -229,6 +229,36 @@ async function main() {
   ));
   assert.equal((await storage.get("remainders", "REC-REM-MOVEMENT-AUDIT")).status, "available");
 
+  // Riwayat kondisi harus membentuk rantai yang konsisten, terpisah dari status stok.
+  const conditionHistoryRemainder = {
+    ...remainder("REC-REM-CONDITION-CHAIN"),
+    condition: "good",
+    updatedAt: "2026-11-18T14:22:00.000Z"
+  };
+  await storage.add("remainders", conditionHistoryRemainder);
+  await storage.add("movements", {
+    id: "MOV-CONDITION-CHAIN-1", remainderId: conditionHistoryRemainder.id,
+    type: "condition_changed", jobId: "JOB-OLD",
+    timestamp: "2026-11-18T14:21:00.000Z",
+    fromStatus: "available", toStatus: "available",
+    fromCondition: "good", toCondition: "damaged"
+  });
+  await storage.add("movements", {
+    id: "MOV-CONDITION-CHAIN-2", remainderId: conditionHistoryRemainder.id,
+    type: "condition_changed", jobId: "JOB-OLD",
+    timestamp: "2026-11-18T14:22:00.000Z",
+    fromStatus: "available", toStatus: "available",
+    fromCondition: "unknown", toCondition: "good"
+  });
+  const conditionChainReport = await storage.getRecoveryReport();
+  assert.ok(conditionChainReport.movementHistoryIssues.some(item =>
+    item.remainderId === conditionHistoryRemainder.id &&
+    item.type === "condition_transition_mismatch" && item.severity === "error"
+  ), "Laporan pemulihan harus mendeteksi rantai kondisi yang terputus");
+  await storage.remove("movements", "MOV-CONDITION-CHAIN-1");
+  await storage.remove("movements", "MOV-CONDITION-CHAIN-2");
+  await storage.remove("remainders", conditionHistoryRemainder.id);
+
   // Reservasi legacy tanpa planId tetap harus diaudit terhadap pekerjaan sumber.
   await storage.add("remainders", remainder("REC-REM-RESERVATION-MISSING-JOB"));
   await storage.add("reservations", {

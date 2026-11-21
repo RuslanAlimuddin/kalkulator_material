@@ -198,6 +198,56 @@ async function main() {
     assert.ok(await storage.get("remainders", "REM-A"));
   });
 
+  await test("reservasi hanya menerima pekerjaan open dan pekerjaan dengan reservasi aktif tidak dapat ditutup", async () => {
+    const single = bundle("JOB-CLOSED-RESERVE-SINGLE");
+    await storage.importJSON(single, "merge");
+    await storage.update("jobs", "JOB-JOB-CLOSED-RESERVE-SINGLE", {
+      status: "completed", closedAt: now
+    });
+    await assert.rejects(storage.reserveRemainder({
+      remainderId: "REM-JOB-CLOSED-RESERVE-SINGLE",
+      jobId: "JOB-JOB-CLOSED-RESERVE-SINGLE",
+      timestamp: now
+    }));
+    assert.equal((await storage.get("remainders", "REM-JOB-CLOSED-RESERVE-SINGLE")).status, "available");
+    assert.equal(
+      (await storage.getByIndex("reservations", "remainderId", "REM-JOB-CLOSED-RESERVE-SINGLE")).length,
+      0
+    );
+
+    const bulk = bundle("JOB-CLOSED-RESERVE-BULK");
+    await storage.importJSON(bulk, "merge");
+    await storage.update("jobs", "JOB-JOB-CLOSED-RESERVE-BULK", {
+      status: "archived", closedAt: now
+    });
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-JOB-CLOSED-RESERVE-BULK"],
+      jobId: "JOB-JOB-CLOSED-RESERVE-BULK",
+      timestamp: now
+    }));
+    assert.equal((await storage.get("remainders", "REM-JOB-CLOSED-RESERVE-BULK")).status, "available");
+    assert.equal(
+      (await storage.getByIndex("reservations", "remainderId", "REM-JOB-CLOSED-RESERVE-BULK")).length,
+      0
+    );
+
+    await storage.importJSON(bundle("JOB-ACTIVE-RESERVATION-CLOSE"), "merge");
+    const active = await storage.reserveRemainder({
+      remainderId: "REM-JOB-ACTIVE-RESERVATION-CLOSE",
+      jobId: "JOB-JOB-ACTIVE-RESERVATION-CLOSE",
+      timestamp: now
+    });
+    const originalJob = await storage.get("jobs", "JOB-JOB-ACTIVE-RESERVATION-CLOSE");
+    const closedJob = { ...originalJob, status: "completed", closedAt: now };
+    await assert.rejects(storage.update("jobs", originalJob.id, {
+      status: "completed", closedAt: now
+    }));
+    await assert.rejects(storage.put("jobs", closedJob));
+    assert.deepEqual(await storage.get("jobs", originalJob.id), originalJob);
+    assert.equal((await storage.get("reservations", active.id)).status, "active");
+    assert.equal((await storage.get("remainders", "REM-JOB-ACTIVE-RESERVATION-CLOSE")).status, "reserved");
+  });
+
   await test("reservasi menolak pekerjaan yang tidak terdaftar tanpa mengubah stok", async () => {
     await assert.rejects(storage.reserveRemainder({
       remainderId: "REM-A", jobId: "JOB-TIDAK-ADA"

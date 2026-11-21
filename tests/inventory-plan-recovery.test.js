@@ -534,6 +534,28 @@ async function main() {
   const restoredParentReport = await storage.getRecoveryReport();
   assert.deepEqual(restoredParentReport.inconsistentPlans, []);
   assert.deepEqual(restoredParentReport.inconsistentReservations, []);
+  // Referensi reservasi pada sisa turunan juga harus diaudit secara lokal.
+  const lineageParent = {
+    ...remainder("REC-LINEAGE-PARENT"),
+    status: "consumed",
+    sourceType: "new"
+  };
+  const lineageChild = {
+    ...remainder("REC-LINEAGE-CHILD"),
+    sourceType: "inventory",
+    sourceRemainderId: lineageParent.id,
+    reservationId: "RSV-LINEAGE-MISSING"
+  };
+  await storage.put("remainders", lineageParent);
+  await storage.put("remainders", lineageChild);
+  const missingLineageReservationReport = await storage.getRecoveryReport();
+  assert.ok(missingLineageReservationReport.remainderLineageIssues.some(item =>
+    item.remainderId === lineageChild.id &&
+    item.type === "missing_reservation"
+  ));
+  await storage.remove("remainders", lineageChild.id);
+  await storage.remove("remainders", lineageParent.id);
+
   // Laporan pemulihan harus menemukan siklus asal-usul yang sudah berada
   // di database lokal, bukan hanya menolak siklus saat impor.
   const cycleA = {

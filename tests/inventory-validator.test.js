@@ -215,6 +215,34 @@ test("reservasi aktif mengubah konsistensi status sisa menjadi reserved", () => 
   assert.equal(validate(data).valid, true);
 });
 
+test("sisa material tidak boleh dibuat sebelum pekerjaan asalnya", () => {
+  const data = validBundle();
+  data.jobs.jobs[0].createdAt = "2026-11-18T05:00:00.000Z";
+  data.remainders.remainders[0].createdAt = "2026-11-18T04:00:00.000Z";
+  data.remainders.remainders[0].updatedAt = "2026-11-18T05:00:00.000Z";
+  const result = validate(data);
+  assert.ok(result.errors.some(e =>
+    e.path === "remainders.remainders[0].createdAt" &&
+    /tidak boleh mendahului waktu pembuatan pekerjaan asal/.test(e.message)
+  ));
+});
+
+test("reservasi tidak boleh dibuat sebelum pekerjaan pemesannya", () => {
+  const data = validBundle();
+  data.jobs.jobs[0].createdAt = "2026-11-18T05:00:00.000Z";
+  data.remainders.remainders[0].status = "reserved";
+  data.reservations.reservations.push({
+    id: "RSV-BEFORE-JOB", remainderId: "REM-001", jobId: "JOB-A",
+    status: "active", createdAt: "2026-11-18T04:00:00.000Z",
+    releasedAt: null, consumedAt: null
+  });
+  const result = validate(data);
+  assert.ok(result.errors.some(e =>
+    e.path === "reservations.reservations[0].createdAt" &&
+    /tidak boleh mendahului waktu pembuatan pekerjaan/.test(e.message)
+  ));
+});
+
 test("reservasi aktif tidak boleh terhubung ke pekerjaan completed atau archived", () => {
   for (const status of ["completed", "archived"]) {
     const data = validBundle();

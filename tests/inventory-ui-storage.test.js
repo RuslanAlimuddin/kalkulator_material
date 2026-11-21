@@ -63,8 +63,12 @@ async function main() {
   assert.ok(movements.some(item => item.type === "condition_changed"));
   console.log("LULUS: perubahan kondisi tercatat bersama perubahan stok.");
 
-  await storage.updateRemainderState({id:"REM-UI-1",changes:{condition:"good"},timestamp:now});
-  await storage.updateRemainderState({id:"REM-UI-1",changes:{status:"discarded"},timestamp:now});
+  await storage.updateRemainderState({
+    id:"REM-UI-1",changes:{condition:"good"},timestamp:"2026-11-18T12:00:00.001Z"
+  });
+  await storage.updateRemainderState({
+    id:"REM-UI-1",changes:{status:"discarded"},timestamp:"2026-11-18T12:00:00.002Z"
+  });
   remainder = await storage.get("remainders","REM-UI-1");
   assert.equal(remainder.status,"discarded");
   movements = await storage.getByIndex("movements","remainderId","REM-UI-1");

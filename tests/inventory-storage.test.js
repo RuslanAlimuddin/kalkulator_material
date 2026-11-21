@@ -712,6 +712,21 @@ async function main() {
     assert.equal(movements.some(item => item.type === "discarded"), false);
   });
 
+  await test("movement pembuangan merekam perubahan kondisi yang terjadi bersamaan", async () => {
+    await storage.importJSON(bundle("DISCARD-CONDITION-HISTORY"), "merge");
+    await storage.updateRemainderState({
+      id: "REM-DISCARD-CONDITION-HISTORY",
+      changes: { condition: "damaged", status: "discarded" },
+      timestamp: now
+    });
+    const movement = (await storage.getByIndex(
+      "movements", "remainderId", "REM-DISCARD-CONDITION-HISTORY"
+    )).find(item => item.type === "discarded");
+    assert.ok(movement, "Movement pembuangan harus tercatat");
+    assert.equal(movement.fromCondition, "good");
+    assert.equal(movement.toCondition, "damaged");
+  });
+
   await test("sisa yang dibuang tidak dapat direservasi secara tunggal maupun massal", async () => {
     await storage.importJSON(bundle("DISCARD"), "merge");
     await storage.updateRemainderState({

@@ -1362,6 +1362,24 @@
       const plansWithoutJob = plans.filter(item => !jobIds.has(item.jobId));
       const movementHistoryIssues = [];
       const remainderReferenceIssues = [];
+      const reservationReferenceIssues = [];
+      const remainderIds = new Set(remainders.map(item => item.id));
+      reservations.forEach(item => {
+        if (!jobIds.has(item.jobId)) {
+          reservationReferenceIssues.push({
+            severity: "error", type: "missing_job", reservationId: item.id,
+            jobId: item.jobId || null,
+            message: "Reservasi merujuk pekerjaan yang tidak ditemukan."
+          });
+        }
+        if (!remainderIds.has(item.remainderId)) {
+          reservationReferenceIssues.push({
+            severity: "error", type: "missing_remainder", reservationId: item.id,
+            remainderId: item.remainderId || null,
+            message: "Reservasi merujuk sisa material yang tidak ditemukan."
+          });
+        }
+      });
       remainders.forEach(item => {
         if (!materialIds.has(item.materialId)) {
           remainderReferenceIssues.push({
@@ -1736,6 +1754,7 @@
         inconsistentPlans,
         inconsistentReservations,
         remainderReferenceIssues,
+        reservationReferenceIssues,
         remainderLineageIssues,
         movementHistoryIssues
       };

@@ -251,6 +251,23 @@ async function main() {
   await storage.remove("reservations", "RSV-RESERVATION-MISSING-JOB");
   await storage.remove("remainders", "REC-REM-RESERVATION-MISSING-JOB");
 
+  // Referensi reservasi ke sisa material yang hilang harus dilaporkan juga.
+  await storage.add("reservations", {
+    id: "RSV-RESERVATION-MISSING-REMAINDER",
+    remainderId: "REC-REM-NOT-FOUND",
+    jobId: "JOB-OLD",
+    status: "active",
+    createdAt: now,
+    releasedAt: null,
+    consumedAt: null
+  });
+  const missingReservationRemainderReport = await storage.getRecoveryReport();
+  assert.ok(missingReservationRemainderReport.reservationReferenceIssues?.some(item =>
+    item.reservationId === "RSV-RESERVATION-MISSING-REMAINDER" &&
+    item.type === "missing_remainder" && item.severity === "error"
+  ));
+  await storage.remove("reservations", "RSV-RESERVATION-MISSING-REMAINDER");
+
   // Movement yang merujuk pekerjaan yang sudah hilang harus masuk audit orphan.
   await storage.add("remainders", remainder("REC-REM-MISSING-MOVEMENT-JOB"));
   await storage.add("movements", {

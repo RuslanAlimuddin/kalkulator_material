@@ -376,6 +376,17 @@
             Date.parse(item.createdAt) < Date.parse(reservationJob.createdAt)) {
           error(p + ".createdAt", "Waktu pembuatan reservasi tidak boleh mendahului waktu pembuatan pekerjaan.");
         }
+        if (isIsoDate(item.createdAt) && isIsoDate(reservationJob.closedAt) &&
+            Date.parse(item.createdAt) > Date.parse(reservationJob.closedAt)) {
+          error(p + ".createdAt", "Waktu pembuatan reservasi tidak boleh setelah pekerjaan ditutup.");
+        }
+        const reservationTerminalTime = item.status === "released" ? item.releasedAt
+          : item.status === "consumed" ? item.consumedAt : null;
+        if (isIsoDate(reservationTerminalTime) && isIsoDate(reservationJob.closedAt) &&
+            Date.parse(reservationTerminalTime) > Date.parse(reservationJob.closedAt)) {
+          error(p + (item.status === "released" ? ".releasedAt" : ".consumedAt"),
+            "Waktu akhir reservasi tidak boleh setelah pekerjaan ditutup.");
+        }
       }
       if (item.planId != null && !planById.has(item.planId)) {
         error(p + ".planId", "Snapshot rencana yang dirujuk tidak ditemukan.");

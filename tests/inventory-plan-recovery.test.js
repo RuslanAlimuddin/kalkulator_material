@@ -229,6 +229,26 @@ async function main() {
   ));
   assert.equal((await storage.get("remainders", "REC-REM-MOVEMENT-AUDIT")).status, "available");
 
+  // Reservasi legacy tanpa planId tetap harus diaudit terhadap pekerjaan sumber.
+  await storage.add("remainders", remainder("REC-REM-RESERVATION-MISSING-JOB"));
+  await storage.add("reservations", {
+    id: "RSV-RESERVATION-MISSING-JOB",
+    remainderId: "REC-REM-RESERVATION-MISSING-JOB",
+    jobId: "JOB-RESERVATION-MISSING",
+    status: "active",
+    createdAt: now,
+    releasedAt: null,
+    consumedAt: null
+  });
+  const missingReservationJobReport = await storage.getRecoveryReport();
+  assert.ok(
+    missingReservationJobReport.reservationReferenceIssues?.some(item =>
+      item.reservationId === "RSV-RESERVATION-MISSING-JOB" &&
+      item.type === "missing_job" && item.severity === "error"
+    ),
+    "Laporan pemulihan harus mendeteksi pekerjaan sumber reservasi yang hilang."
+  );
+
   // Movement yang merujuk pekerjaan yang sudah hilang harus masuk audit orphan.
   await storage.add("remainders", remainder("REC-REM-MISSING-MOVEMENT-JOB"));
   await storage.add("movements", {

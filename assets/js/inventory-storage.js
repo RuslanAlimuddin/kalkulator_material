@@ -195,14 +195,18 @@
   function isTimestampAtOrAfterMovementHistory(movements, remainder, timestamp, callback) {
     const request = movements.index("remainderId").getAll(remainder.id);
     request.onsuccess = () => {
-      const knownTimes = [remainder.updatedAt]
-        .concat(request.result.map(item => item.timestamp))
-        .map(value => Date.parse(value || ""))
+      const updatedAtMs = Date.parse(remainder.updatedAt || "");
+      const movementTimes = request.result
+        .map(item => Date.parse(item.timestamp || ""))
         .filter(Number.isFinite);
-      const latestKnownTime = knownTimes.length ? Math.max(...knownTimes) : -Infinity;
-      // Setiap movement pada remainder yang sama harus memiliki waktu unik
-      // dan lebih baru; timestamp sama membuat urutan transisi tidak terbukti.
-      callback(Date.parse(timestamp) > latestKnownTime);
+      const latestMovementMs = movementTimes.length
+        ? Math.max(...movementTimes) : null;
+      const timestampMs = Date.parse(timestamp);
+      // Timestamp boleh sama dengan updatedAt pada data awal tanpa movement,
+      // tetapi setiap movement baru wajib lebih maju dari movement sebelumnya.
+      const notBeforeRecord = !Number.isFinite(updatedAtMs) || timestampMs >= updatedAtMs;
+      const afterMovement = latestMovementMs === null || timestampMs > latestMovementMs;
+      callback(notBeforeRecord && afterMovement);
     };
   }
 

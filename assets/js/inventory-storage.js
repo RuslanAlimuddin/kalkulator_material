@@ -1473,6 +1473,14 @@
             message: "Timestamp riwayat pergerakan tidak valid."
           });
         }
+        if (movement.type === "reserved" &&
+            (movement.fromStatus !== "available" || movement.toStatus !== "reserved")) {
+          movementHistoryIssues.push({
+            severity: "error", type: "movement_transition_mismatch",
+            remainderId: movement.remainderId || null, movementId: movement.id || null,
+            message: "Riwayat reservasi harus mengubah status available menjadi reserved."
+          });
+        }
         if (["reserved", "reservation_released", "consumed"].includes(movement.type)) {
           const reservation = reservationById.get(movement.referenceId);
           if (!reservation) {

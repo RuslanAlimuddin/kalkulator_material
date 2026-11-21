@@ -621,6 +621,13 @@ async function main() {
     item.id === consumedReservation.id && item.status === "consumed"
   ));
   assert.deepEqual(terminalLegacyReport.orphanedReservations, []);
+  // Reservasi legacy tanpa planId tetap harus diaudit terhadap status sumber.
+  await storage.update("remainders", "REC-REM-COMPLETE", { status: "available" });
+  const planlessConsumedMismatch = await storage.getRecoveryReport();
+  assert.ok(planlessConsumedMismatch.reservationReferenceIssues.some(item =>
+    item.reservationId === consumedReservation.id && item.type === "source_status_mismatch"
+  ), "Reservasi consumed tanpa planId harus ditandai jika sumbernya belum consumed");
+  await storage.update("remainders", "REC-REM-COMPLETE", { status: "consumed" });
   await storage.put("reservations", consumedReservation);
   const restoredParentReport = await storage.getRecoveryReport();
   assert.deepEqual(restoredParentReport.inconsistentPlans, []);

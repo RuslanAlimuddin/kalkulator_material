@@ -1331,6 +1331,7 @@
       const movementHistoryIssues = [];
       const movementByRemainder = new Map();
       const movementRemainderById = new Map(remainders.map(item => [item.id, item]));
+      const reservationById = new Map(reservations.map(item => [item.id, item]));
       movements.forEach((movement, index) => {
         if (!movementRemainderById.has(movement.remainderId)) {
           movementHistoryIssues.push({
@@ -1348,6 +1349,52 @@
             remainderId: movement.remainderId || null, movementId: movement.id || null,
             message: "Timestamp riwayat pergerakan tidak valid."
           });
+        }
+        if (["reserved", "reservation_released", "consumed"].includes(movement.type)) {
+          const reservation = reservationById.get(movement.referenceId);
+          if (!reservation) {
+            movementHistoryIssues.push({
+              severity: "error", type: "missing_reservation",
+              remainderId: movement.remainderId || null, movementId: movement.id || null,
+              message: "Riwayat reservasi merujuk ID reservasi yang tidak ditemukan."
+            });
+          } else {
+            if (reservation.remainderId !== movement.remainderId) {
+              movementHistoryIssues.push({
+                severity: "error", type: "reservation_source_mismatch",
+                remainderId: movement.remainderId || null, movementId: movement.id || null,
+                message: "Sisa material pada riwayat tidak cocok dengan reservasi."
+              });
+            }
+            if (reservation.jobId !== movement.jobId) {
+              movementHistoryIssues.push({
+                severity: "error", type: "reservation_job_mismatch",
+                remainderId: movement.remainderId || null, movementId: movement.id || null,
+                message: "Pekerjaan pada riwayat tidak cocok dengan reservasi."
+              });
+            }
+            const expectedStatus = movement.type === "reservation_released" ? "released"
+              : movement.type === "consumed" ? "consumed" : null;
+            if (expectedStatus && reservation.status !== expectedStatus) {
+              movementHistoryIssues.push({
+                severity: "error", type: "reservation_status_mismatch",
+                remainderId: movement.remainderId || null, movementId: movement.id || null,
+                message: "Status reservasi tidak cocok dengan jenis movement terminal."
+              });
+            }
+            const expectedTimestamp = movement.type === "reserved" ? reservation.createdAt
+              : movement.type === "reservation_released" ? reservation.releasedAt
+              : reservation.consumedAt;
+            if (Number.isFinite(Date.parse(movement.timestamp || "")) &&
+                Number.isFinite(Date.parse(expectedTimestamp || "")) &&
+                Date.parse(movement.timestamp) !== Date.parse(expectedTimestamp)) {
+              movementHistoryIssues.push({
+                severity: "error", type: "reservation_timestamp_mismatch",
+                remainderId: movement.remainderId || null, movementId: movement.id || null,
+                message: "Waktu movement tidak cocok dengan waktu siklus hidup reservasi."
+              });
+            }
+          }
         }
       });
       const addMovementIssue = (severity, type, remainderId, message, movementIds) => {

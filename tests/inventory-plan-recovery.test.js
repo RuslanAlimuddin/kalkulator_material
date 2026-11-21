@@ -229,6 +229,23 @@ async function main() {
   ));
   assert.equal((await storage.get("remainders", "REC-REM-MOVEMENT-AUDIT")).status, "available");
 
+  // Movement yang merujuk pekerjaan yang sudah hilang harus masuk audit orphan.
+  await storage.add("remainders", remainder("REC-REM-MISSING-MOVEMENT-JOB"));
+  await storage.add("movements", {
+    id: "MOV-MISSING-JOB",
+    remainderId: "REC-REM-MISSING-MOVEMENT-JOB",
+    type: "condition_changed",
+    jobId: "JOB-MISSING-MOVEMENT",
+    timestamp: now,
+    fromStatus: "available",
+    toStatus: "available"
+  });
+  const missingMovementJobReport = await storage.getRecoveryReport();
+  assert.ok(missingMovementJobReport.movementHistoryIssues.some(item =>
+    item.movementId === "MOV-MISSING-JOB" &&
+    item.type === "missing_job" && item.severity === "error"
+  ));
+
   // Riwayat reservasi yang menunjuk ID reservasi yang tidak ada harus
   // terdeteksi oleh laporan pemulihan database lokal.
   await storage.add("remainders", remainder("REC-REM-MISSING-RESERVATION"));

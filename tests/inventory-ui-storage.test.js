@@ -66,7 +66,7 @@ async function main() {
   console.log("LULUS: perubahan kondisi tercatat bersama perubahan stok.");
 
   await storage.updateRemainderState({
-    id:"REM-UI-1",changes:{condition:"good"},timestamp:"2026-11-18T12:00:00.003Z"
+    id:"REM-UI-1",changes:{condition:"good"},timestamp:"2026-11-18T12:00:00.002Z"
   });
   await storage.updateRemainderState({
     id:"REM-UI-1",changes:{status:"discarded"},timestamp:"2026-11-18T12:00:00.003Z"

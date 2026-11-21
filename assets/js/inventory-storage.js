@@ -1492,6 +1492,19 @@
             message: "Perubahan status tidak sesuai dengan jenis riwayat pergerakan " + movement.type + "."
           });
         }
+        const originRemainder = movementRemainderById.get(movement.remainderId);
+        if (originRemainder && ["created", "remainder_created"].includes(movement.type)) {
+          const expectedReferenceId = originRemainder.sourceType === "inventory"
+            ? originRemainder.sourceRemainderId : originRemainder.sourceSheetId;
+          if (expectedReferenceId != null && movement.referenceId !== expectedReferenceId) {
+            movementHistoryIssues.push({
+              severity: "error", type: "origin_reference_mismatch",
+              remainderId: movement.remainderId || null, movementId: movement.id || null,
+              expectedReferenceId, actualReferenceId: movement.referenceId || null,
+              message: "Referensi movement pembuatan tidak cocok dengan sumber sisa material."
+            });
+          }
+        }
         if (["reserved", "reservation_released", "consumed"].includes(movement.type)) {
           const reservation = reservationById.get(movement.referenceId);
           if (!reservation) {

@@ -447,6 +447,20 @@ async function main() {
       fromStatus: "reserved",
       toStatus: "available",
       expectedIssue: "movement_transition_mismatch"
+    },
+    {
+      remainderId: "REC-REM-DISCARD-TRANSITION",
+      reservationId: "RSV-AUDIT-DISCARD-TRANSITION",
+      reservationRemainderId: "REC-REM-DISCARD-TRANSITION",
+      movementType: "discarded",
+      movementJobId: "JOB-OLD",
+      reservationJobId: "JOB-OLD",
+      reservationStatus: "released",
+      createdAt: now,
+      movementTimestamp: now,
+      fromStatus: "reserved",
+      toStatus: "discarded",
+      expectedIssue: "movement_transition_mismatch"
     }
   ];
   for (const item of reservationMovementCases) {

@@ -664,6 +664,29 @@ test("rantai status movement yang terputus ditolak", () => {
   assert.ok(result.errors.some(e => /Urutan movement terputus/.test(e.message)));
 });
 
+test("dua movement operasional pada timestamp sama ditandai ambigu", () => {
+  const data = validBundle();
+  data.remainders.remainders[0].status = "discarded";
+  data.remainders.remainders[0].updatedAt = "2026-11-18T04:01:00.000Z";
+  data.movements.movements.push({
+    id: "MOV-ORIGIN-TIE", remainderId: "REM-001", type: "created",
+    timestamp: "2026-11-18T04:00:00.000Z",
+    fromStatus: null, toStatus: "available"
+  }, {
+    id: "MOV-CONDITION-TIE", remainderId: "REM-001", type: "condition_changed",
+    timestamp: "2026-11-18T04:01:00.000Z",
+    fromStatus: "available", toStatus: "available",
+    fromCondition: "good", toCondition: "damaged"
+  }, {
+    id: "MOV-DISCARDED-TIE", remainderId: "REM-001", type: "discarded",
+    timestamp: "2026-11-18T04:01:00.000Z",
+    fromStatus: "available", toStatus: "discarded",
+    fromCondition: "damaged", toCondition: "damaged"
+  });
+  const result = validate(data);
+  assert.ok(result.errors.some(e => /timestamp yang sama.*movement operasional|movement operasional.*timestamp yang sama/i.test(e.message)));
+});
+
 test("status akhir harus cocok dengan movement terakhir pada timestamp pembaruan", () => {
   const data = validBundle();
   data.remainders.remainders[0].status = "discarded";

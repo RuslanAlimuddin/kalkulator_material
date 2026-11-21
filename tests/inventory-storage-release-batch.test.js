@@ -43,14 +43,14 @@ async function main() {
 
   const released = await storage.releaseReservations({
     reservationIds: ids,
-    timestamp: "2026-11-18T13:00:00.001Z"
+    timestamp: "2026-11-18T14:00:00.001Z"
   });
   assert.deepEqual(released, ids);
   for (const sourceId of ["RELEASE-1", "RELEASE-2"]) {
     assert.equal((await storage.get("remainders", sourceId)).status, "available");
     const reservation = (await storage.getByIndex("reservations", "remainderId", sourceId))[0];
     assert.equal(reservation.status, "released");
-    assert.equal(reservation.releasedAt, "2026-11-18T13:00:00.001Z");
+    assert.equal(reservation.releasedAt, "2026-11-18T14:00:00.001Z");
     const movements = await storage.getByIndex("movements", "remainderId", sourceId);
     assert.equal(movements.filter(move => move.type === "reservation_released").length, 1);
   }
@@ -65,7 +65,7 @@ async function main() {
   });
   const first = rollbackReservations[0];
   const second = rollbackReservations[1];
-  await storage.releaseReservation(second.id, { timestamp: "2026-11-18T13:00:00.001Z" });
+  await storage.releaseReservation(second.id, { timestamp: "2026-11-18T14:00:00.001Z" });
 
   await assert.rejects(storage.releaseReservations({
     reservationIds: [first.id, second.id],

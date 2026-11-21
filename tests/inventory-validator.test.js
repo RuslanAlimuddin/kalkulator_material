@@ -116,6 +116,20 @@ test("kondisi akhir sisa harus cocok dengan movement terakhir", () => {
   ), "Kondisi sisa harus sama dengan kondisi tujuan movement terakhir");
 });
 
+test("reservasi aktif hanya boleh memakai sisa berkondisi baik", () => {
+  const data = validBundle();
+  data.remainders.remainders[0].status = "reserved";
+  data.remainders.remainders[0].condition = "damaged";
+  data.reservations.reservations.push({
+    id: "RSV-DAMAGED-SOURCE", remainderId: "REM-001", jobId: "JOB-A",
+    status: "active", createdAt: now, releasedAt: null, consumedAt: null
+  });
+  const result = validate(data);
+  assert.ok(result.errors.some(item =>
+    /Reservasi aktif hanya boleh memakai sisa material berkondisi good/.test(item.message)
+  ));
+});
+
 test("paket null ditolak dengan laporan kesalahan", () => {
   const result = validate(null);
   assert.equal(result.valid, false);

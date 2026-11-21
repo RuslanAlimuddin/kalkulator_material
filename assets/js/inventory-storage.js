@@ -1753,6 +1753,9 @@
         const source = remainderById.get(item.remainderId);
         if (!source) return false;
         if (item.status === "active") return source.status === "reserved";
+        if (item.status === "consumed") return source.status === "consumed";
+        // Reservasi released dapat menunjuk sumber yang kemudian dipesan
+        // atau dikonsumsi lagi pada siklus inventaris berikutnya.
         return true;
       };
       const inconsistentReservations = reservations.filter(item => {

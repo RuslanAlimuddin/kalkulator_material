@@ -529,6 +529,22 @@
       const snapshotCreatedAt = snapshot
         ? resolveTimestamp(snapshot.createdAt === undefined || snapshot.createdAt === null ? timestamp : snapshot.createdAt)
         : null;
+      if (input.planId && !snapshot) {
+        throw new Error("Snapshot rencana wajib disediakan jika planId ditentukan.");
+      }
+      if (snapshot) {
+        const usage = snapshot.plan && snapshot.plan.inventoryUsage;
+        if (!Array.isArray(usage)) {
+          throw new Error("Snapshot rencana harus memiliki daftar inventoryUsage.");
+        }
+        const usageIds = usage.map(item => item && item.remainderId);
+        if (usageIds.some(id => typeof id !== "string" || !id.trim()) ||
+            new Set(usageIds).size !== usageIds.length ||
+            usageIds.length !== remainderIds.length ||
+            remainderIds.some(id => !usageIds.includes(id))) {
+          throw new Error("Sumber inventoryUsage snapshot harus sama persis dengan remainderIds yang direservasi.");
+        }
+      }
       const planId = input.planId || (snapshot ? makeId("PLAN") : null);
       const out = remainderIds.map(remainderId => ({ id: makeId("RSV"), movementId: makeId("MOV"), remainderId, jobId: input.jobId, planId }));
       const database = await db();

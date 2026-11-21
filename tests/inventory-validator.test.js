@@ -293,6 +293,34 @@ test("reservasi tidak boleh diselesaikan setelah pekerjaan ditutup", () => {
     /tidak boleh setelah pekerjaan ditutup/.test(e.message)
   ));
 });
+
+test("sisa turunan tidak boleh dibuat sebelum sumbernya dikonsumsi", () => {
+  const data = validBundle();
+  const source = data.remainders.remainders[0];
+  source.status = "consumed";
+  const childCreatedAt = "2026-11-18T05:00:00.000Z";
+  const consumedAt = "2026-11-18T06:00:00.000Z";
+  data.remainders.remainders.push({
+    ...source, id: "REM-CHILD-EARLY", status: "available",
+    sourceType: "inventory", sourceRemainderId: source.id,
+    reservationId: "RSV-SOURCE", createdAt: childCreatedAt,
+    updatedAt: childCreatedAt, version: 1
+  });
+  data.reservations.reservations.push({
+    id: "RSV-SOURCE", remainderId: source.id, jobId: "JOB-A",
+    status: "consumed", createdAt: now, releasedAt: null, consumedAt
+  });
+  data.movements.movements.push({
+    id: "MOV-CHILD-CREATE", remainderId: "REM-CHILD-EARLY",
+    type: "remainder_created", jobId: "JOB-A", timestamp: childCreatedAt,
+    fromStatus: null, toStatus: "available", referenceId: source.id
+  });
+  const result = validate(data);
+  assert.ok(result.errors.some(e =>
+    e.path === "remainders.remainders[1].createdAt" &&
+    /tidak boleh mendahului waktu konsumsi sumber/.test(e.message)
+  ));
+});
 test("snapshot rencana dan reservasi dengan sumber serta pekerjaan cocok diterima", () => {
   assert.equal(validate(validPlanBundle()).valid, true);
 });

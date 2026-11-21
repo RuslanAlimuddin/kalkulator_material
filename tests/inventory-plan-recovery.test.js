@@ -433,6 +433,20 @@ async function main() {
       createdAt: now,
       movementTimestamp: "2026-11-18T12:01:00.000Z",
       expectedIssue: "reservation_timestamp_mismatch"
+    },
+    {
+      remainderId: "REC-REM-RESV-TRANSITION",
+      reservationId: "RSV-AUDIT-TRANSITION",
+      reservationRemainderId: "REC-REM-RESV-TRANSITION",
+      movementType: "reserved",
+      movementJobId: "JOB-OLD",
+      reservationJobId: "JOB-OLD",
+      reservationStatus: "active",
+      createdAt: now,
+      movementTimestamp: now,
+      fromStatus: "reserved",
+      toStatus: "available",
+      expectedIssue: "movement_transition_mismatch"
     }
   ];
   for (const item of reservationMovementCases) {
@@ -455,8 +469,8 @@ async function main() {
       type: item.movementType,
       jobId: item.movementJobId,
       timestamp: item.movementTimestamp,
-      fromStatus: item.movementType === "reserved" ? "available" : "reserved",
-      toStatus: item.movementType === "reserved" ? "reserved" : "available",
+      fromStatus: item.fromStatus || (item.movementType === "reserved" ? "available" : "reserved"),
+      toStatus: item.toStatus || (item.movementType === "reserved" ? "reserved" : "available"),
       referenceId: item.reservationId
     });
   }

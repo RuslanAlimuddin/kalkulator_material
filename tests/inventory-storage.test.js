@@ -1373,6 +1373,88 @@ async function main() {
     );
   });
 
+  await test("reservasi massal membatalkan seluruh batch jika timestamp satu sumber mundur", async () => {
+    await storage.importJSON(bundle("BACKDATED-BATCH-RESERVE-A"), "merge");
+    await storage.importJSON(bundle("BACKDATED-BATCH-RESERVE-B"), "merge");
+    await storage.updateRemainderState({
+      id: "REM-BACKDATED-BATCH-RESERVE-B",
+      changes: { condition: "good" },
+      timestamp: "2026-11-18T12:05:00.000Z"
+    });
+
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: [
+        "REM-BACKDATED-BATCH-RESERVE-A",
+        "REM-BACKDATED-BATCH-RESERVE-B"
+      ],
+      jobId: "JOB-BACKDATED-BATCH-RESERVE-A",
+      timestamp: "2026-11-18T12:04:00.000Z"
+    }));
+
+    for (const id of [
+      "REM-BACKDATED-BATCH-RESERVE-A",
+      "REM-BACKDATED-BATCH-RESERVE-B"
+    ]) {
+      assert.equal((await storage.get("remainders", id)).status, "available");
+      assert.equal(
+        (await storage.getByIndex("reservations", "remainderId", id))
+          .filter(item => item.status === "active").length,
+        0
+      );
+    }
+  });
+
+  await test("pelepasan massal rollback jika timestamp mendahului salah satu movement reservasi", async () => {
+    await storage.importJSON(bundle("BACKDATED-BATCH-RELEASE-A"), "merge");
+    await storage.importJSON(bundle("BACKDATED-BATCH-RELEASE-B"), "merge");
+    const first = await storage.reserveRemainder({
+      remainderId: "REM-BACKDATED-BATCH-RELEASE-A",
+      jobId: "JOB-BACKDATED-BATCH-RELEASE-A",
+      timestamp: "2026-11-18T12:03:00.000Z"
+    });
+    const second = await storage.reserveRemainder({
+      remainderId: "REM-BACKDATED-BATCH-RELEASE-B",
+      jobId: "JOB-BACKDATED-BATCH-RELEASE-B",
+      timestamp: "2026-11-18T12:05:00.000Z"
+    });
+
+    await assert.rejects(storage.releaseReservations({
+      reservationIds: [first.id, second.id],
+      timestamp: "2026-11-18T12:04:00.000Z"
+    }));
+
+    for (const reservation of [first, second]) {
+      assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+      assert.equal((await storage.get("remainders", reservation.remainderId)).status, "reserved");
+      assert.equal(
+        (await storage.getByIndex("movements", "remainderId", reservation.remainderId))
+          .some(item => item.type === "reservation_released"),
+        false
+      );
+    }
+  });
+
+  await test("konsumsi reservasi menolak timestamp yang mendahului movement reservasi", async () => {
+    await storage.importJSON(bundle("BACKDATED-CONSUME"), "merge");
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-BACKDATED-CONSUME",
+      jobId: "JOB-BACKDATED-CONSUME",
+      timestamp: "2026-11-18T12:05:00.000Z"
+    });
+    await assert.rejects(storage.consumeReservation({
+      reservationId: reservation.id,
+      remainders: [],
+      timestamp: "2026-11-18T12:04:00.000Z"
+    }));
+    assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+    assert.equal((await storage.get("remainders", "REM-BACKDATED-CONSUME")).status, "reserved");
+    assert.equal(
+      (await storage.getByIndex("movements", "remainderId", "REM-BACKDATED-CONSUME"))
+        .some(item => item.type === "consumed"),
+      false
+    );
+  });
+
   await storage.close();
   console.log("Semua pengujian storage inventaris selesai.");
   await deleteDatabase();

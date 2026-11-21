@@ -1346,6 +1346,13 @@
       const movementRemainderById = new Map(remainders.map(item => [item.id, item]));
       const reservationById = new Map(reservations.map(item => [item.id, item]));
       movements.forEach((movement, index) => {
+        if (movement.jobId != null && !jobIds.has(movement.jobId)) {
+          movementHistoryIssues.push({
+            severity: "error", type: "missing_job",
+            remainderId: movement.remainderId || null, movementId: movement.id || null,
+            message: "Riwayat pergerakan merujuk pekerjaan yang tidak ditemukan."
+          });
+        }
         if (!movementRemainderById.has(movement.remainderId)) {
           movementHistoryIssues.push({
             severity: "error", type: "missing_remainder",

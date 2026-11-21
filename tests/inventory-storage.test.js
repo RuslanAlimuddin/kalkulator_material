@@ -167,6 +167,27 @@ async function main() {
     assert.equal((await storage.get("remainders", "REM-A")).thicknessMm, 8);
   });
 
+  await test("perubahan motif dan kebijakan material ditolak jika tidak cocok dengan sisa inventaris", async () => {
+    const original = await storage.get("materials", "MAT-A");
+
+    await assert.rejects(storage.update("materials", "MAT-A", {
+      motif: "motif-baru"
+    }));
+    await assert.rejects(storage.put("materials", {
+      ...original, motif: "motif-baru"
+    }));
+    await assert.rejects(storage.update("materials", "MAT-A", {
+      rotationPolicy: "fixed"
+    }));
+    await assert.rejects(storage.put("materials", {
+      ...original, grainRequired: true
+    }));
+
+    assert.deepEqual(await storage.get("materials", "MAT-A"), original);
+    assert.equal((await storage.get("remainders", "REM-A")).motif, original.motif);
+    assert.equal((await storage.get("remainders", "REM-A")).rotationAllowed, true);
+  });
+
   await test("penghapusan material dan pekerjaan ditolak jika masih dirujuk inventaris/riwayat", async () => {
     await assert.rejects(storage.remove("materials", "MAT-A"));
     await assert.rejects(storage.remove("jobs", "JOB-A"));

@@ -330,6 +330,14 @@ async function main() {
     ), "Harus mendeteksi " + item.expectedIssue);
   }
   console.log("LULUS: audit movement memeriksa kecocokan sumber, pekerjaan, status, dan timestamp reservasi.");
+  for (const item of reservationMovementCases) {
+    await storage.remove("movements", "MOV-" + item.reservationId);
+    await storage.remove("reservations", item.reservationId);
+    await storage.remove("remainders", item.remainderId);
+    if (item.reservationRemainderId !== item.remainderId) {
+      await storage.remove("remainders", item.reservationRemainderId);
+    }
+  }
 
   // Riwayat aktivitas tanpa catatan awal harus terlihat, tetapi record legacy
   // tidak boleh langsung dianggap rusak fatal.

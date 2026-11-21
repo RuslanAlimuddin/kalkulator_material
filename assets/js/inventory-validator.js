@@ -599,6 +599,9 @@
           if (linkedReservation.jobId !== item.jobId) {
             error(p + ".jobId", "Pekerjaan pada riwayat tidak cocok dengan reservasi.");
           }
+          if (item.type === "reserved" && linkedReservation.status !== "active") {
+            error(p + ".referenceId", "Movement reserved harus merujuk reservasi berstatus active.");
+          }
           if (item.type === "reservation_released" && linkedReservation.status !== "released") {
             error(p + ".referenceId", "Riwayat pelepasan harus merujuk reservasi berstatus released.");
           }

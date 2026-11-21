@@ -509,6 +509,10 @@
         if (reservation.jobId !== item.originJobId) {
           error(p + ".originJobId", "Pekerjaan asal sisa turunan tidak cocok dengan pekerjaan reservasi.");
         }
+        if (isIsoDate(item.createdAt) && isIsoDate(reservation.consumedAt) &&
+            Date.parse(item.createdAt) < Date.parse(reservation.consumedAt)) {
+          error(p + ".createdAt", "Waktu pembuatan sisa turunan tidak boleh mendahului waktu konsumsi sumber.");
+        }
       }
     });
 

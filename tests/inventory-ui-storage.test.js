@@ -55,7 +55,9 @@ async function main() {
   assert.equal((await storage.getAll("movements")).length,1);
   console.log("LULUS: ketebalan sisa yang berbeda dari katalog material ditolak secara atomik.");
 
-  await storage.updateRemainderState({id:"REM-UI-1",changes:{condition:"damaged"},timestamp:now});
+  await storage.updateRemainderState({
+    id:"REM-UI-1",changes:{condition:"damaged"},timestamp:"2026-11-18T12:00:00.001Z"
+  });
   let remainder = await storage.get("remainders","REM-UI-1");
   assert.equal(remainder.condition,"damaged");
   assert.equal(remainder.status,"available");
@@ -64,10 +66,10 @@ async function main() {
   console.log("LULUS: perubahan kondisi tercatat bersama perubahan stok.");
 
   await storage.updateRemainderState({
-    id:"REM-UI-1",changes:{condition:"good"},timestamp:"2026-11-18T12:00:00.001Z"
+    id:"REM-UI-1",changes:{condition:"good"},timestamp:"2026-11-18T12:00:00.003Z"
   });
   await storage.updateRemainderState({
-    id:"REM-UI-1",changes:{status:"discarded"},timestamp:"2026-11-18T12:00:00.002Z"
+    id:"REM-UI-1",changes:{status:"discarded"},timestamp:"2026-11-18T12:00:00.003Z"
   });
   remainder = await storage.get("remainders","REM-UI-1");
   assert.equal(remainder.status,"discarded");

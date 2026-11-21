@@ -637,7 +637,9 @@ async function main() {
   assert.equal((await storage.get("plans", guardedPlan.planId)).status, "reserved");
   assert.equal((await storage.get("reservations", guardedPlan.reservations[0].id)).status, "active");
   assert.equal((await storage.get("remainders", "REC-REM-STATUS-GUARD")).status, "reserved");
-  await afterReloadEngine.cancelPlan({ reservedPlan: guardedPlan, timestamp: now });
+  await afterReloadEngine.cancelPlan({
+    reservedPlan: guardedPlan, timestamp: "2026-11-18T14:20:00.001Z"
+  });
   assert.equal((await storage.get("plans", guardedPlan.planId)).status, "cancelled");
   assert.equal((await storage.get("reservations", guardedPlan.reservations[0].id)).status, "released");
   assert.equal((await storage.get("remainders", "REC-REM-STATUS-GUARD")).status, "available");
@@ -658,7 +660,9 @@ async function main() {
   await storage.open();
   const completionEngine = Engine.createInventoryEngine({ storage });
   const restoredForCompletion = await completionEngine.restorePlan(inventoryPlan.planId);
-  await completionEngine.consumePlan({ reservedPlan: restoredForCompletion, timestamp: now });
+  await completionEngine.consumePlan({
+    reservedPlan: restoredForCompletion, timestamp: "2026-11-18T14:20:00.001Z"
+  });
   assert.equal((await storage.get("plans", inventoryPlan.planId)).status, "completed");
   assert.equal((await storage.get("remainders", "REC-REM-COMPLETE")).status, "consumed");
 

@@ -1344,6 +1344,35 @@ async function main() {
     assert.deepEqual(movementsAfter, movementsBefore);
   });
 
+  await test("pelepasan reservasi menolak timestamp yang mendahului reservasi", async () => {
+    await storage.importJSON(bundle("BACKDATED-RELEASE"), "merge");
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-BACKDATED-RELEASE",
+      jobId: "JOB-BACKDATED-RELEASE",
+      timestamp: "2026-11-18T12:05:00.000Z"
+    });
+    const sourceBefore = await storage.get("remainders", "REM-BACKDATED-RELEASE");
+    const reservationBefore = await storage.get("reservations", reservation.id);
+    const movementsBefore = await storage.getByIndex(
+      "movements", "remainderId", "REM-BACKDATED-RELEASE"
+    );
+
+    await assert.rejects(storage.releaseReservation(reservation.id, {
+      timestamp: "2026-11-18T12:04:00.000Z"
+    }));
+
+    assert.deepEqual(
+      await storage.get("remainders", "REM-BACKDATED-RELEASE"), sourceBefore
+    );
+    assert.deepEqual(
+      await storage.get("reservations", reservation.id), reservationBefore
+    );
+    assert.deepEqual(
+      await storage.getByIndex("movements", "remainderId", "REM-BACKDATED-RELEASE"),
+      movementsBefore
+    );
+  });
+
   await storage.close();
   console.log("Semua pengujian storage inventaris selesai.");
   await deleteDatabase();

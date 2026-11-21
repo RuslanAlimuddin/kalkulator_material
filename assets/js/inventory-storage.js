@@ -1526,7 +1526,7 @@
       // Referensi sumber harus tetap ada untuk seluruh siklus reservasi,
       // termasuk reservasi terminal yang masih menjadi bagian dari riwayat.
       const reservationsWithoutSource = reservations.filter(item =>
-        !remainderById.has(item.remainderId)
+        !remainders.some(remainder => remainder.id === item.remainderId)
       );
 
       // Periksa seluruh siklus hidup, bukan hanya rencana yang masih aktif.

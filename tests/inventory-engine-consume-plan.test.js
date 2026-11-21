@@ -69,7 +69,7 @@ async function main() {
   const consumed = await engine.consumePlan({
     reservedPlan,
     sourceSheetIdPrefix: "JOB-TARGET-SHEET",
-    timestamp: "2026-11-18T12:00:00.001Z"
+    timestamp: "2026-11-18T13:30:00.001Z"
   });
   assert.equal(consumed.consumedReservations.length, 2);
   assert.equal(consumed.createdRemainders.length, 3);

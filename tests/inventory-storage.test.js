@@ -436,7 +436,7 @@ async function main() {
     });
     await storage.consumeReservation({
       reservationId: reservation.id,
-      timestamp: now,
+      timestamp: "2026-11-18T12:00:00.001Z",
       remainders: [{ widthCm: 20, heightCm: 10 }]
     });
 
@@ -650,7 +650,7 @@ async function main() {
     assert.equal(await storage.get("remainders", "REM-CONSUME-DUP-SINGLE-SECOND"), null);
     await storage.remove("reservations", "RSV-CONSUME-DUP-SINGLE-SECOND");
     await storage.consumeReservation({
-      reservationId: reservation.id, timestamp: now,
+      reservationId: reservation.id, timestamp: "2026-11-18T12:00:00.001Z",
       remainders: [{ widthCm: 20, heightCm: 10 }]
     });
     assert.equal((await storage.get("remainders", "REM-CONSUME-DUP-SINGLE")).status, "consumed");
@@ -687,7 +687,7 @@ async function main() {
         remainders: [{ widthCm: 20, heightCm: 10 }]
       }],
       newSheetRemainders: [],
-      timestamp: now
+      timestamp: "2026-11-18T12:00:00.001Z"
     });
     assert.equal((await storage.get("remainders", "REM-CONSUME-DUP-BULK")).status, "consumed");
   });

@@ -307,6 +307,19 @@
           return record.id;
         });
       }
+      if (storeName === "jobs") {
+        return withTransaction(database, ["jobs", "reservations"], "readwrite", tx => {
+          const active = tx.objectStore("reservations").index("jobId").getAll(record.id);
+          active.onsuccess = () => {
+            if (record.status !== "open" && active.result.some(item => item.status === "active")) {
+              tx.abort();
+              return;
+            }
+            tx.objectStore("jobs").put(record);
+          };
+          return record.id;
+        });
+      }
       return withTransaction(database, [storeName], "readwrite", tx =>
         requestResult(tx.objectStore(storeName).put(record))
       );
@@ -323,7 +336,8 @@
       }
       const database = await db();
       const transactionStores = storeName === "materials"
-        ? ["materials", "remainders"] : [storeName];
+        ? ["materials", "remainders"]
+        : storeName === "jobs" ? ["jobs", "reservations"] : [storeName];
       return withTransaction(database, transactionStores, "readwrite", tx => {
         const store = tx.objectStore(storeName);
         const request = store.get(id);
@@ -333,6 +347,18 @@
             return;
           }
           const updated = { ...request.result, ...changes, id };
+          if (storeName === "jobs") {
+            const active = tx.objectStore("reservations").index("jobId").getAll(id);
+            active.onsuccess = () => {
+              if (updated.status !== "open" &&
+                  active.result.some(item => item.status === "active")) {
+                tx.abort();
+                return;
+              }
+              store.put(updated);
+            };
+            return;
+          }
           if (storeName !== "materials") {
             store.put(updated);
             return;
@@ -464,7 +490,7 @@
           const movements = tx.objectStore("movements");
           const jobRequest = jobs.get(input.jobId);
           jobRequest.onsuccess = () => {
-            if (!jobRequest.result) { tx.abort(); return; }
+            if (!jobRequest.result || jobRequest.result.status !== "open") { tx.abort(); return; }
             const remainderRequest = remainders.get(input.remainderId);
             remainderRequest.onsuccess = () => {
             const remainder = remainderRequest.result;
@@ -582,7 +608,7 @@
         };
         const jobRequest = js.get(input.jobId);
         jobRequest.onsuccess = () => {
-          if (!jobRequest.result) { tx.abort(); return; }
+          if (!jobRequest.result || jobRequest.result.status !== "open") { tx.abort(); return; }
           checkNext();
         };
       });

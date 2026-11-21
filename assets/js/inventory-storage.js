@@ -1769,7 +1769,18 @@
         for (let i = 1; i < ordered.length; i += 1) {
           const previous = ordered[i - 1], current = ordered[i];
           const previousTime = Date.parse(previous.timestamp), currentTime = Date.parse(current.timestamp);
-          if (previousTime === currentTime || previous.type === "imported" || current.type === "imported") continue;
+          if (previous.type === "imported" || current.type === "imported") continue;
+          if (previousTime === currentTime) {
+            const previousIsOrigin = ["created", "remainder_created"].includes(previous.type);
+            const currentIsOrigin = ["created", "remainder_created"].includes(current.type);
+            if (!previousIsOrigin && !currentIsOrigin) {
+              addMovementIssue("error", "ambiguous_movement_timestamp", remainder.id,
+                "Dua movement operasional memiliki timestamp yang sama; urutan pergerakannya tidak dapat dipastikan.",
+                [previous.id, current.id]);
+              continue;
+            }
+            if (previousIsOrigin && currentIsOrigin) continue;
+          }
           if (previous.toStatus !== current.fromStatus) {
             addMovementIssue("error", "broken_transition", remainder.id,
               "Urutan riwayat terputus: status tujuan catatan sebelumnya tidak cocok dengan status asal catatan berikutnya.",

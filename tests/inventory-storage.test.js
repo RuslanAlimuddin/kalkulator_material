@@ -768,6 +768,44 @@ async function main() {
     assert.equal(await storage.get("materials", "MAT-DUP-MOVEMENT"), null);
   });
 
+  await test("impor legacy menolak benturan ID snapshot sintetis sebelum mengubah database", async () => {
+    const collision = bundle("LEGACY-PLAN-COLLISION");
+    const reservationId = "RSV-LEGACY-PLAN-COLLISION";
+    const syntheticPlanId = "LEGACY-" + reservationId;
+    collision.remainders.remainders[0].status = "reserved";
+    collision.reservations.reservations.push({
+      id: reservationId,
+      remainderId: collision.remainders.remainders[0].id,
+      jobId: collision.jobs.jobs[0].id,
+      status: "active",
+      createdAt: now,
+      releasedAt: null,
+      consumedAt: null
+    });
+    collision.plans = {
+      schemaVersion: 1,
+      plans: [{
+        id: syntheticPlanId,
+        jobId: collision.jobs.jobs[0].id,
+        plan: null,
+        reservationIds: [],
+        status: "legacy_recovery",
+        legacy: true,
+        createdAt: now,
+        completedAt: null,
+        cancelledAt: null,
+        schemaVersion: 1
+      }]
+    };
+
+    await assert.rejects(
+      storage.importJSON(collision, "replace"),
+      /bentrok dengan snapshot dalam paket/
+    );
+    assert.notEqual(await storage.get("remainders", "REM-A"), null);
+    assert.equal(await storage.get("remainders", collision.remainders.remainders[0].id), null);
+  });
+
   await test("ID fallback menghasilkan identitas yang berbeda", async () => {
     const { makeId } = require("../assets/js/inventory-storage.js");
     const first = makeId("TEST");

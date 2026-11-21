@@ -1717,6 +1717,17 @@
                 "Beberapa riwayat terakhir memiliki waktu sama dan status tujuan berbeda; urutan akhirnya tidak dapat dipastikan.",
                 latestAtSameTime.map(item => item.id));
             }
+            const conditions = new Set(latestAtSameTime
+              .map(item => item.toCondition).filter(value => value != null));
+            if (conditions.size === 1 && !conditions.has(remainder.condition)) {
+              addMovementIssue("error", "final_condition_mismatch", remainder.id,
+                "Kondisi sisa material tidak cocok dengan kondisi riwayat terakhir.",
+                latestAtSameTime.map(item => item.id));
+            } else if (conditions.size > 1) {
+              addMovementIssue("warning", "ambiguous_latest_condition_timestamp", remainder.id,
+                "Beberapa riwayat terakhir memiliki waktu sama dan kondisi tujuan berbeda; urutan kondisi akhirnya tidak dapat dipastikan.",
+                latestAtSameTime.map(item => item.id));
+            }
           } else if (updatedTime !== null && latestTime < updatedTime) {
             addMovementIssue("warning", "history_behind_update", remainder.id,
               "Riwayat terakhir lebih lama daripada pembaruan sisa material; riwayat mungkin tidak lengkap atau berasal dari data lama.",

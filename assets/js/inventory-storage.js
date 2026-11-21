@@ -1221,6 +1221,8 @@
               timestamp,
               fromStatus: current.status,
               toStatus: updated.status,
+              fromCondition: current.condition,
+              toCondition: updated.condition,
               referenceId: input.referenceId || null
             });
           };

@@ -214,6 +214,24 @@ test("reservasi aktif mengubah konsistensi status sisa menjadi reserved", () => 
   });
   assert.equal(validate(data).valid, true);
 });
+
+test("reservasi aktif tidak boleh terhubung ke pekerjaan completed atau archived", () => {
+  for (const status of ["completed", "archived"]) {
+    const data = validBundle();
+    data.jobs.jobs[0].status = status;
+    data.jobs.jobs[0].closedAt = now;
+    data.remainders.remainders[0].status = "reserved";
+    data.reservations.reservations.push({
+      id: "RSV-CLOSED-JOB-" + status, remainderId: "REM-001", jobId: "JOB-A",
+      status: "active", createdAt: now, releasedAt: null, consumedAt: null
+    });
+    const result = validate(data);
+    assert.ok(result.errors.some(e =>
+      e.path === "reservations.reservations[0].jobId" &&
+      /pekerjaan yang masih open/.test(e.message)
+    ), "Reservasi aktif pada pekerjaan " + status + " harus ditolak");
+  }
+});
 test("snapshot rencana dan reservasi dengan sumber serta pekerjaan cocok diterima", () => {
   assert.equal(validate(validPlanBundle()).valid, true);
 });

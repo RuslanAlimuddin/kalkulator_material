@@ -579,6 +579,12 @@
       if (item.toStatus != null && !STATUSES.includes(item.toStatus)) {
         error(p + ".toStatus", "Status tujuan tidak dikenal.");
       }
+      if (item.fromCondition != null && !CONDITIONS.includes(item.fromCondition)) {
+        error(p + ".fromCondition", "Kondisi asal tidak dikenal.");
+      }
+      if (item.toCondition != null && !CONDITIONS.includes(item.toCondition)) {
+        error(p + ".toCondition", "Kondisi tujuan tidak dikenal.");
+      }
       if (item.referenceId != null && !isNonEmptyString(item.referenceId)) {
         error(p + ".referenceId", "Referensi jika diisi harus berupa teks.");
       }

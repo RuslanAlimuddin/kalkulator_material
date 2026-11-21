@@ -673,7 +673,18 @@
         const current = ordered[i];
         const previousTime = Date.parse(previous.timestamp);
         const currentTime = Date.parse(current.timestamp);
-        if (previousTime === currentTime || previous.type === "imported" || current.type === "imported") continue;
+        if (previous.type === "imported" || current.type === "imported") continue;
+        if (previousTime === currentTime) {
+          const previousIsOrigin = ["created", "remainder_created"].includes(previous.type);
+          const currentIsOrigin = ["created", "remainder_created"].includes(current.type);
+          if (!previousIsOrigin && !currentIsOrigin) {
+            error(p, "Dua movement operasional memiliki timestamp yang sama; urutan pergerakannya tidak dapat dipastikan.");
+            continue;
+          }
+          if (previousIsOrigin && currentIsOrigin) continue;
+          // Movement asal boleh berbagi timestamp dengan pergerakan pertama:
+          // tipe peristiwa memastikan bahwa pencatatan asal terjadi lebih dahulu.
+        }
         if (previous.toStatus !== current.fromStatus) {
           error(p, "Urutan movement terputus: status tujuan riwayat sebelumnya tidak cocok dengan status asal riwayat berikutnya.");
         }

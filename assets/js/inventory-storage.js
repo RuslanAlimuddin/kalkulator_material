@@ -1568,6 +1568,51 @@
                 message: "Sumber sisa turunan harus berstatus consumed."
               });
             }
+            const sourceReservation = reservationById.get(current.reservationId);
+            if (!sourceReservation) {
+              remainderLineageIssues.push({
+                severity: "error", type: "missing_reservation", remainderId,
+                reservationId: current.reservationId || null,
+                sourceRemainderId: sourceId,
+                message: "Sisa turunan merujuk reservasi sumber yang tidak ditemukan."
+              });
+            } else {
+              if (sourceReservation.remainderId !== sourceId) {
+                remainderLineageIssues.push({
+                  severity: "error", type: "reservation_source_mismatch", remainderId,
+                  reservationId: sourceReservation.id, sourceRemainderId: sourceId,
+                  message: "Reservasi asal sisa turunan tidak merujuk sisa material induknya."
+                });
+              }
+              if (sourceReservation.status !== "consumed") {
+                remainderLineageIssues.push({
+                  severity: "error", type: "reservation_status_mismatch", remainderId,
+                  reservationId: sourceReservation.id,
+                  message: "Reservasi asal sisa turunan harus berstatus consumed."
+                });
+              }
+              if (sourceReservation.jobId !== current.originJobId) {
+                remainderLineageIssues.push({
+                  severity: "error", type: "reservation_job_mismatch", remainderId,
+                  reservationId: sourceReservation.id,
+                  message: "Pekerjaan reservasi sumber tidak cocok dengan pekerjaan asal sisa turunan."
+                });
+              }
+              if (!Number.isFinite(Date.parse(sourceReservation.consumedAt || ""))) {
+                remainderLineageIssues.push({
+                  severity: "error", type: "reservation_timestamp_invalid", remainderId,
+                  reservationId: sourceReservation.id,
+                  message: "Waktu konsumsi reservasi sumber tidak tersedia atau tidak valid."
+                });
+              } else if (Number.isFinite(Date.parse(current.createdAt || "")) &&
+                  Date.parse(current.createdAt) < Date.parse(sourceReservation.consumedAt)) {
+                remainderLineageIssues.push({
+                  severity: "error", type: "child_created_before_consumption", remainderId,
+                  reservationId: sourceReservation.id,
+                  message: "Sisa turunan tercatat dibuat sebelum reservasi sumber dikonsumsi."
+                });
+              }
+            }
             if (current.materialId !== source.materialId ||
                 current.thicknessMm !== source.thicknessMm ||
                 current.grainDirection !== source.grainDirection ||

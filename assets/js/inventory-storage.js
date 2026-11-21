@@ -200,7 +200,9 @@
         .map(value => Date.parse(value || ""))
         .filter(Number.isFinite);
       const latestKnownTime = knownTimes.length ? Math.max(...knownTimes) : -Infinity;
-      callback(Date.parse(timestamp) >= latestKnownTime);
+      // Setiap movement pada remainder yang sama harus memiliki waktu unik
+      // dan lebih baru; timestamp sama membuat urutan transisi tidak terbukti.
+      callback(Date.parse(timestamp) > latestKnownTime);
     };
   }
 

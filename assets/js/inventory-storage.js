@@ -1605,6 +1605,15 @@
               "Satu reservasi tidak boleh memiliki lebih dari satu movement terminal.");
           }
         }
+        if (reservedEvents.length === 1 && expectedTerminal.length === 1) {
+          const reservedTime = Date.parse(reservedEvents[0].timestamp || "");
+          const terminalTime = Date.parse(expectedTerminal[0].timestamp || "");
+          if (Number.isFinite(reservedTime) && Number.isFinite(terminalTime) && reservedTime > terminalTime) {
+            addReservationMovementIssue("error", "reservation_movement_order_mismatch",
+              [reservedEvents[0], expectedTerminal[0]],
+              "Movement terminal tidak boleh mendahului movement reserved.");
+          }
+        }
       });
 
       const addMovementIssue = (severity, type, remainderId, message, movementIds) => {

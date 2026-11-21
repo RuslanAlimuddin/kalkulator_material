@@ -1259,6 +1259,46 @@ async function main() {
     ), "Audit harus mendeteksi kondisi akhir yang tidak cocok dengan riwayat");
   });
 
+  await test("movement reservasi, pelepasan, dan konsumsi mempertahankan kondisi fisik", async () => {
+    await storage.importJSON(bundle("MOVEMENT-CONDITION-PROPAGATION"), "merge");
+    const first = await storage.reserveRemainder({
+      remainderId: "REM-MOVEMENT-CONDITION-PROPAGATION",
+      jobId: "JOB-MOVEMENT-CONDITION-PROPAGATION",
+      timestamp: "2026-11-18T12:01:00.000Z"
+    });
+    let movement = (await storage.getByIndex(
+      "movements", "remainderId", "REM-MOVEMENT-CONDITION-PROPAGATION"
+    )).find(item => item.type === "reserved");
+    assert.equal(movement.fromCondition, "good");
+    assert.equal(movement.toCondition, "good");
+
+    await storage.releaseReservation({
+      reservationId: first.id, timestamp: "2026-11-18T12:02:00.000Z"
+    });
+    movement = (await storage.getByIndex(
+      "movements", "remainderId", "REM-MOVEMENT-CONDITION-PROPAGATION"
+    )).find(item => item.type === "reservation_released");
+    assert.equal(movement.fromCondition, "good");
+    assert.equal(movement.toCondition, "good");
+
+    const second = await storage.reserveRemainder({
+      remainderId: "REM-MOVEMENT-CONDITION-PROPAGATION",
+      jobId: "JOB-MOVEMENT-CONDITION-PROPAGATION",
+      timestamp: "2026-11-18T12:03:00.000Z"
+    });
+    await storage.consumeReservation({
+      reservationId: second.id,
+      timestamp: "2026-11-18T12:04:00.000Z",
+      sourceSheetId: "SHEET-CONSUMED-CONDITION",
+      remainders: [{ widthCm: 12, heightCm: 8 }]
+    });
+    movement = (await storage.getByIndex(
+      "movements", "remainderId", "REM-MOVEMENT-CONDITION-PROPAGATION"
+    )).find(item => item.type === "consumed");
+    assert.equal(movement.fromCondition, "good");
+    assert.equal(movement.toCondition, "good");
+  });
+
   await storage.close();
   console.log("Semua pengujian storage inventaris selesai.");
   await deleteDatabase();

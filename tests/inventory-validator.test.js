@@ -514,6 +514,26 @@ test("movement reservasi yang terhubung benar diterima", () => {
   assert.equal(validate(data).valid, true);
 });
 
+test("movement reserved tidak boleh merujuk reservasi yang sudah terminal", () => {
+  const data = validPlanBundle();
+  const terminalAt = "2026-11-18T06:00:00.000Z";
+  data.remainders.remainders[0].status = "consumed";
+  data.remainders.remainders[0].updatedAt = terminalAt;
+  data.reservations.reservations[0].status = "consumed";
+  data.reservations.reservations[0].consumedAt = terminalAt;
+  data.movements.movements.push({
+    id: "MOV-RESERVED-AFTER-CONSUME", remainderId: "REM-001",
+    type: "reserved", jobId: "JOB-A", timestamp: now,
+    fromStatus: "available", toStatus: "reserved",
+    referenceId: "RSV-PLAN-001"
+  });
+  const result = validate(data);
+  assert.ok(result.errors.some(e =>
+    e.path === "movements.movements[0].referenceId" &&
+    /movement reserved harus merujuk reservasi berstatus active/.test(e.message)
+  ));
+});
+
 test("reservasi lama tanpa riwayat lengkap diberi peringatan, bukan langsung ditolak", () => {
   const data = validBundle();
   data.reservations.reservations.push({

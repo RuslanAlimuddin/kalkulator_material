@@ -901,6 +901,40 @@ async function main() {
     }
   });
 
+  await test("reservasi massal menolak snapshot inventoryUsage yang tidak cocok dengan sumber yang dikunci", async () => {
+    await storage.importJSON(bundle("RESERVE-SNAPSHOT-SOURCE-MISMATCH"), "merge");
+
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-RESERVE-SNAPSHOT-SOURCE-MISMATCH"],
+      jobId: "JOB-RESERVE-SNAPSHOT-SOURCE-MISMATCH",
+      timestamp: now,
+      planSnapshot: {
+        plan: {
+          inventoryUsage: [
+            { remainderId: "REM-SUMBER-LAIN-RESERVE-SNAPSHOT" }
+          ]
+        }
+      }
+    }));
+
+    assert.equal(
+      (await storage.get("remainders", "REM-RESERVE-SNAPSHOT-SOURCE-MISMATCH")).status,
+      "available"
+    );
+    assert.equal(
+      (await storage.getByIndex("reservations", "remainderId", "REM-RESERVE-SNAPSHOT-SOURCE-MISMATCH")).length,
+      0
+    );
+    assert.equal(
+      (await storage.getByIndex("movements", "remainderId", "REM-RESERVE-SNAPSHOT-SOURCE-MISMATCH")).length,
+      0
+    );
+    assert.equal(
+      (await storage.getAll("plans")).some(item => item.id === "PLAN-RESERVE-SNAPSHOT-SOURCE-MISMATCH"),
+      false
+    );
+  });
+
   await test("reservasi massal menolak createdAt snapshot kosong tanpa mengunci stok", async () => {
     await storage.importJSON(bundle("EMPTY-SNAPSHOT-TIMESTAMP"), "merge");
 

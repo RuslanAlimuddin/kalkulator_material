@@ -490,6 +490,19 @@ test("jenis movement harus memiliki transisi status yang sesuai", () => {
   ));
 });
 
+test("movement kondisi memvalidasi kondisi asal dan tujuan jika disediakan", () => {
+  const data = validBundle();
+  data.movements.movements = [{
+    id: "MOV-CONDITION-METADATA", remainderId: "REM-001",
+    type: "discarded", jobId: "JOB-A", timestamp: now,
+    fromStatus: "available", toStatus: "discarded",
+    fromCondition: "good", toCondition: "not-a-condition"
+  }];
+  const result = validate(data);
+  assert.ok(result.errors.some(item => /toCondition/.test(item.path)),
+    "Nilai kondisi tujuan yang tidak dikenal harus ditolak");
+});
+
 test("movement reservasi harus merujuk reservasi dengan sumber yang sama", () => {
   const data = validPlanBundle();
   data.movements.movements.push({

@@ -556,6 +556,48 @@ async function main() {
   await storage.remove("remainders", lineageChild.id);
   await storage.remove("remainders", lineageParent.id);
 
+  const lineageReservationCases = [
+    { suffix: "SOURCE", remainderId: "REC-LINEAGE-SOURCE-PARENT",
+      reservationRemainderId: "REC-LINEAGE-WRONG-SOURCE",
+      reservationStatus: "consumed", reservationJobId: "JOB-OLD",
+      expectedIssue: "reservation_source_mismatch" },
+    { suffix: "STATUS", remainderId: "REC-LINEAGE-STATUS-PARENT",
+      reservationStatus: "released", reservationJobId: "JOB-OLD",
+      expectedIssue: "reservation_status_mismatch" },
+    { suffix: "JOB", remainderId: "REC-LINEAGE-JOB-PARENT",
+      reservationStatus: "consumed", reservationJobId: "JOB-WRONG",
+      expectedIssue: "reservation_job_mismatch" }
+  ];
+  for (const item of lineageReservationCases) {
+    const parent = {
+      ...remainder(item.remainderId), status: "consumed", sourceType: "new"
+    };
+    const child = {
+      ...remainder("REC-LINEAGE-CHILD-" + item.suffix),
+      sourceType: "inventory",
+      sourceRemainderId: parent.id,
+      reservationId: "RSV-LINEAGE-" + item.suffix
+    };
+    await storage.put("remainders", parent);
+    await storage.put("remainders", child);
+    await storage.put("reservations", {
+      id: child.reservationId,
+      remainderId: item.reservationRemainderId || parent.id,
+      jobId: item.reservationJobId,
+      status: item.reservationStatus,
+      createdAt: now,
+      releasedAt: item.reservationStatus === "released" ? now : null,
+      consumedAt: item.reservationStatus === "consumed" ? now : null
+    });
+    const report = await storage.getRecoveryReport();
+    assert.ok(report.remainderLineageIssues.some(issue =>
+      issue.remainderId === child.id && issue.type === item.expectedIssue
+    ), "Harus mendeteksi " + item.expectedIssue);
+    await storage.remove("reservations", child.reservationId);
+    await storage.remove("remainders", child.id);
+    await storage.remove("remainders", parent.id);
+  }
+
   // Laporan pemulihan harus menemukan siklus asal-usul yang sudah berada
   // di database lokal, bukan hanya menolak siklus saat impor.
   const cycleA = {

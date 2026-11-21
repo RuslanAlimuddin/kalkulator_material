@@ -722,6 +722,34 @@ async function main() {
   await storage.remove("remainders", movementLineageChild.id);
   await storage.remove("remainders", movementLineageParent.id);
 
+  // Laporan pemulihan harus mendeteksi movement reserved duplikat,
+  // bukan hanya memeriksa referensi dan timestamp setiap movement.
+  const duplicateMovementRemainder = {
+    ...remainder("REC-DUPLICATE-RESERVED"), status: "reserved"
+  };
+  await storage.put("remainders", duplicateMovementRemainder);
+  await storage.put("reservations", {
+    id: "RSV-DUPLICATE-RESERVED", remainderId: duplicateMovementRemainder.id,
+    jobId: "JOB-OLD", status: "active", createdAt: now,
+    releasedAt: null, consumedAt: null
+  });
+  for (const id of ["MOV-DUPLICATE-RESERVED-1", "MOV-DUPLICATE-RESERVED-2"]) {
+    await storage.put("movements", {
+      id, remainderId: duplicateMovementRemainder.id, type: "reserved",
+      jobId: "JOB-OLD", timestamp: now, fromStatus: "available",
+      toStatus: "reserved", referenceId: "RSV-DUPLICATE-RESERVED"
+    });
+  }
+  const duplicateReservationMovementReport = await storage.getRecoveryReport();
+  assert.ok(duplicateReservationMovementReport.movementHistoryIssues.some(item =>
+    item.type === "duplicate_reservation_movement" &&
+    item.reservationId === "RSV-DUPLICATE-RESERVED"
+  ), "Laporan pemulihan harus mendeteksi movement reserved duplikat");
+  await storage.remove("movements", "MOV-DUPLICATE-RESERVED-1");
+  await storage.remove("movements", "MOV-DUPLICATE-RESERVED-2");
+  await storage.remove("reservations", "RSV-DUPLICATE-RESERVED");
+  await storage.remove("remainders", duplicateMovementRemainder.id);
+
   // Referensi reservasi pada sisa turunan juga harus diaudit secara lokal.
   const lineageParent = {
     ...remainder("REC-LINEAGE-PARENT"),

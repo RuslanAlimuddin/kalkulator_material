@@ -244,6 +244,93 @@ async function main() {
     item.remainderId === "REC-REM-MISSING-RESERVATION" &&
     item.type === "missing_reservation" && item.severity === "error"
   ));
+  // Setiap tautan movement ke reservasi diperiksa untuk sumber, pekerjaan,
+  // status terminal, dan timestamp; bukan hanya keberadaan ID reservasi.
+  const reservationMovementCases = [
+    {
+      remainderId: "REC-REM-RESV-SOURCE",
+      reservationId: "RSV-AUDIT-SOURCE",
+      reservationRemainderId: "REC-REM-RESV-SOURCE-OTHER",
+      movementType: "reserved",
+      movementJobId: "JOB-OLD",
+      reservationJobId: "JOB-OLD",
+      reservationStatus: "active",
+      createdAt: now,
+      movementTimestamp: now,
+      expectedIssue: "reservation_source_mismatch"
+    },
+    {
+      remainderId: "REC-REM-RESV-JOB",
+      reservationId: "RSV-AUDIT-JOB",
+      reservationRemainderId: "REC-REM-RESV-JOB",
+      movementType: "reserved",
+      movementJobId: "JOB-WRONG",
+      reservationJobId: "JOB-OLD",
+      reservationStatus: "active",
+      createdAt: now,
+      movementTimestamp: now,
+      expectedIssue: "reservation_job_mismatch"
+    },
+    {
+      remainderId: "REC-REM-RESV-STATUS",
+      reservationId: "RSV-AUDIT-STATUS",
+      reservationRemainderId: "REC-REM-RESV-STATUS",
+      movementType: "reservation_released",
+      movementJobId: "JOB-OLD",
+      reservationJobId: "JOB-OLD",
+      reservationStatus: "active",
+      createdAt: now,
+      movementTimestamp: now,
+      expectedIssue: "reservation_status_mismatch"
+    },
+    {
+      remainderId: "REC-REM-RESV-TIMESTAMP",
+      reservationId: "RSV-AUDIT-TIMESTAMP",
+      reservationRemainderId: "REC-REM-RESV-TIMESTAMP",
+      movementType: "reserved",
+      movementJobId: "JOB-OLD",
+      reservationJobId: "JOB-OLD",
+      reservationStatus: "active",
+      createdAt: now,
+      movementTimestamp: "2026-11-18T12:01:00.000Z",
+      expectedIssue: "reservation_timestamp_mismatch"
+    }
+  ];
+  for (const item of reservationMovementCases) {
+    await storage.add("remainders", remainder(item.remainderId));
+    if (item.reservationRemainderId !== item.remainderId) {
+      await storage.add("remainders", remainder(item.reservationRemainderId));
+    }
+    await storage.add("reservations", {
+      id: item.reservationId,
+      remainderId: item.reservationRemainderId,
+      jobId: item.reservationJobId,
+      status: item.reservationStatus,
+      createdAt: item.createdAt,
+      releasedAt: null,
+      consumedAt: null
+    });
+    await storage.add("movements", {
+      id: "MOV-" + item.reservationId,
+      remainderId: item.remainderId,
+      type: item.movementType,
+      jobId: item.movementJobId,
+      timestamp: item.movementTimestamp,
+      fromStatus: item.movementType === "reserved" ? "available" : "reserved",
+      toStatus: item.movementType === "reserved" ? "reserved" : "available",
+      referenceId: item.reservationId
+    });
+  }
+  const reservationMovementAudit = await storage.getRecoveryReport();
+  for (const item of reservationMovementCases) {
+    assert.ok(reservationMovementAudit.movementHistoryIssues.some(issue =>
+      issue.movementId === "MOV-" + item.reservationId &&
+      issue.type === item.expectedIssue &&
+      issue.severity === "error"
+    ), "Harus mendeteksi " + item.expectedIssue);
+  }
+  console.log("LULUS: audit movement memeriksa kecocokan sumber, pekerjaan, status, dan timestamp reservasi.");
+
   // Riwayat aktivitas tanpa catatan awal harus terlihat, tetapi record legacy
   // tidak boleh langsung dianggap rusak fatal.
   await storage.add("remainders", remainder("REC-REM-MISSING-ORIGIN-LEGACY"));

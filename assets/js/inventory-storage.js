@@ -1223,6 +1223,24 @@
         throw error;
       }
 
+      // Reservasi legacy tanpa planId memperoleh ID snapshot sintetis.
+      // Jangan biarkan ID tersebut diam-diam menunjuk snapshot lain yang
+      // kebetulan memakai ID sama di dalam paket impor.
+      const bundledPlanIds = new Set(
+        bundle.plans && Array.isArray(bundle.plans.plans)
+          ? bundle.plans.plans.map(plan => plan.id) : []
+      );
+      const legacyPlanCollisions = bundle.reservations.reservations
+        .filter(record => record && record.status === "active" && !record.planId)
+        .map(record => "LEGACY-" + record.id)
+        .filter(planId => bundledPlanIds.has(planId));
+      if (legacyPlanCollisions.length) {
+        throw new Error(
+          "ID snapshot legacy hasil impor bentrok dengan snapshot dalam paket: " +
+          legacyPlanCollisions.join(", ")
+        );
+      }
+
       const database = await db();
       const storeNames = BUNDLE_STORES.concat(["meta"]);
       return withTransaction(database, storeNames, "readwrite", tx => {
@@ -1232,11 +1250,6 @@
         if (importMode === "replace") {
           storeNames.forEach(name => stores[name].clear());
         }
-
-        const bundledPlanIds = new Set(
-          bundle.plans && Array.isArray(bundle.plans.plans)
-            ? bundle.plans.plans.map(plan => plan.id) : []
-        );
         BUNDLE_STORES.forEach(name => {
           const records = bundle[name] && Array.isArray(bundle[name][name])
             ? bundle[name][name] : [];

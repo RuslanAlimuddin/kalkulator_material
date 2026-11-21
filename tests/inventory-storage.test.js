@@ -1259,6 +1259,43 @@ async function main() {
     ), "Audit harus mendeteksi kondisi akhir yang tidak cocok dengan riwayat");
   });
 
+  await test("audit pemulihan menandai movement operasional dengan timestamp sama", async () => {
+    await storage.importJSON(bundle("SAME-TIME-MOVEMENT-AUDIT"), "merge");
+    await storage.update("remainders", "REM-SAME-TIME-MOVEMENT-AUDIT", {
+      status: "discarded", condition: "damaged",
+      updatedAt: "2026-11-18T12:05:00.000Z"
+    });
+    for (const movement of [
+      {
+        id: "MOV-SAME-TIME-ORIGIN", type: "created",
+        timestamp: "2026-11-18T12:00:00.000Z",
+        fromStatus: null, toStatus: "available"
+      },
+      {
+        id: "MOV-SAME-TIME-CONDITION", type: "condition_changed",
+        timestamp: "2026-11-18T12:05:00.000Z",
+        fromStatus: "available", toStatus: "available",
+        fromCondition: "good", toCondition: "damaged"
+      },
+      {
+        id: "MOV-SAME-TIME-DISCARDED", type: "discarded",
+        timestamp: "2026-11-18T12:05:00.000Z",
+        fromStatus: "available", toStatus: "discarded",
+        fromCondition: "damaged", toCondition: "damaged"
+      }
+    ]) {
+      await storage.add("movements", {
+        ...movement, remainderId: "REM-SAME-TIME-MOVEMENT-AUDIT",
+        jobId: "JOB-SAME-TIME-MOVEMENT-AUDIT"
+      });
+    }
+    const report = await storage.getRecoveryReport();
+    assert.ok(report.movementHistoryIssues.some(issue =>
+      issue.type === "ambiguous_movement_timestamp" &&
+      issue.remainderId === "REM-SAME-TIME-MOVEMENT-AUDIT"
+    ));
+  });
+
   await test("movement reservasi, pelepasan, dan konsumsi mempertahankan kondisi fisik", async () => {
     await storage.importJSON(bundle("MOVEMENT-CONDITION-PROPAGATION"), "merge");
     const first = await storage.reserveRemainder({

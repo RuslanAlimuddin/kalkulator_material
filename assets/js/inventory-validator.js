@@ -444,6 +444,9 @@
       if (item.status === "reserved" && !activeReservation) {
         error(p + ".status", "Status reserved harus memiliki satu reservasi aktif.");
       }
+      if (activeReservation && item.condition !== "good") {
+        error(p + ".condition", "Reservasi aktif hanya boleh memakai sisa material berkondisi good.");
+      }
       if (item.status !== "reserved" && activeReservation) {
         error(p + ".status", "Reservasi aktif mengharuskan status sisa reserved.");
       }

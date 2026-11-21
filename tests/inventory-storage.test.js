@@ -1318,6 +1318,32 @@ async function main() {
     ));
   });
 
+  await test("perubahan kondisi menolak timestamp yang mundur dari movement terakhir", async () => {
+    await storage.importJSON(bundle("BACKDATED-CONDITION"), "merge");
+    await storage.updateRemainderState({
+      id: "REM-BACKDATED-CONDITION",
+      changes: { condition: "damaged" },
+      timestamp: "2026-11-18T12:05:00.000Z"
+    });
+    const before = await storage.get("remainders", "REM-BACKDATED-CONDITION");
+    const movementsBefore = await storage.getByIndex(
+      "movements", "remainderId", "REM-BACKDATED-CONDITION"
+    );
+
+    await assert.rejects(storage.updateRemainderState({
+      id: "REM-BACKDATED-CONDITION",
+      changes: { condition: "good" },
+      timestamp: "2026-11-18T12:04:00.000Z"
+    }), /Timestamp perubahan tidak boleh mendahului riwayat terakhir/);
+
+    const after = await storage.get("remainders", "REM-BACKDATED-CONDITION");
+    const movementsAfter = await storage.getByIndex(
+      "movements", "remainderId", "REM-BACKDATED-CONDITION"
+    );
+    assert.deepEqual(after, before);
+    assert.deepEqual(movementsAfter, movementsBefore);
+  });
+
   await storage.close();
   console.log("Semua pengujian storage inventaris selesai.");
   await deleteDatabase();

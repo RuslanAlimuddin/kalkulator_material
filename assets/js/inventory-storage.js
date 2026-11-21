@@ -539,6 +539,8 @@
                 timestamp,
                 fromStatus: "available",
                 toStatus: "reserved",
+                fromCondition: remainder.condition,
+                toCondition: remainder.condition,
                 referenceId: reservationId
               });
             };
@@ -589,7 +591,7 @@
             const source = checked[index];
             rs.put({ ...source, status: "reserved", updatedAt: timestamp, version: Number(source.version || 0) + 1 });
             ss.add({ id: item.id, remainderId: item.remainderId, jobId: item.jobId, planId: item.planId || null, status: "active", createdAt: timestamp, releasedAt: null, consumedAt: null });
-            ms.add({ id: item.movementId, remainderId: item.remainderId, type: "reserved", jobId: item.jobId, timestamp, fromStatus: "available", toStatus: "reserved", referenceId: item.id });
+            ms.add({ id: item.movementId, remainderId: item.remainderId, type: "reserved", jobId: item.jobId, timestamp, fromStatus: "available", toStatus: "reserved", fromCondition: source.condition, toCondition: source.condition, referenceId: item.id });
           });
           if (snapshot) ps.add({ ...snapshot, id: planId, jobId: input.jobId, reservationIds: out.map(item => item.id), status: "reserved", legacy: false, createdAt: snapshotCreatedAt, completedAt: null, cancelledAt: null, schemaVersion: 1 });
         };
@@ -663,6 +665,8 @@
                   timestamp,
                   fromStatus: "reserved",
                   toStatus: "available",
+                  fromCondition: remainder.condition,
+                  toCondition: remainder.condition,
                   referenceId: reservationId
                 });
               };
@@ -708,7 +712,7 @@
               checked.forEach(({ reservation, remainder }) => {
                 reservations.put({ ...reservation, status: "released", releasedAt: timestamp });
                 remainders.put({ ...remainder, status: "available", updatedAt: timestamp, version: Number(remainder.version || 0) + 1 });
-                movements.add({ id: makeId("MOV"), remainderId: remainder.id, type: "reservation_released", jobId: reservation.jobId, timestamp, fromStatus: "reserved", toStatus: "available", referenceId: reservation.id });
+                movements.add({ id: makeId("MOV"), remainderId: remainder.id, type: "reservation_released", jobId: reservation.jobId, timestamp, fromStatus: "reserved", toStatus: "available", fromCondition: remainder.condition, toCondition: remainder.condition, referenceId: reservation.id });
               });
               const planIds = Array.from(new Set(checked.map(item => item.reservation.planId).filter(Boolean).concat(input.planId ? [input.planId] : [])));
               planIds.forEach(planId => {
@@ -824,7 +828,8 @@
             ms.add({
               id: makeId("MOV"), remainderId: source.id, type: "consumed",
               jobId: reservation.jobId, timestamp, fromStatus: "reserved",
-              toStatus: "consumed", referenceId: reservation.id
+              toStatus: "consumed", fromCondition: source.condition,
+              toCondition: source.condition, referenceId: reservation.id
             });
             drafts.forEach(draft => {
               const record = {
@@ -842,7 +847,8 @@
               ms.add({
                 id: makeId("MOV"), remainderId: record.id, type: "remainder_created",
                 jobId: reservation.jobId, timestamp, fromStatus: null,
-                toStatus: "available", referenceId: source.id
+                toStatus: "available", toCondition: record.condition,
+                referenceId: source.id
               });
             });
             };
@@ -943,7 +949,8 @@
               movements.add({
                 id: makeId("MOV"), remainderId: source.id, type: "consumed",
                 jobId: reservation.jobId, timestamp, fromStatus: "reserved",
-                toStatus: "consumed", referenceId: reservation.id
+                toStatus: "consumed", fromCondition: source.condition,
+                toCondition: source.condition, referenceId: reservation.id
               });
               batch.drafts.forEach(draft => {
                 const record = {
@@ -965,7 +972,8 @@
                 movements.add({
                   id: makeId("MOV"), remainderId: record.id, type: "remainder_created",
                   jobId: reservation.jobId, timestamp, fromStatus: null,
-                  toStatus: "available", referenceId: source.id
+                  toStatus: "available", toCondition: record.condition,
+                  referenceId: source.id
                 });
               });
             });
@@ -984,7 +992,8 @@
               movements.add({
                 id: makeId("MOV"), remainderId: record.id, type: "remainder_created",
                 jobId: draft.originJobId, timestamp, fromStatus: null,
-                toStatus: "available", referenceId: draft.sourceSheetId
+                toStatus: "available", toCondition: record.condition,
+                referenceId: draft.sourceSheetId
               });
             });
             if (input.planId) {
@@ -1159,6 +1168,7 @@
               timestamp,
               fromStatus: null,
               toStatus: "available",
+              toCondition: remainder.condition,
               referenceId: remainder.sourceSheetId
             });
           };

@@ -99,6 +99,23 @@ test("rantai kondisi movement yang terputus ditolak", () => {
   ), "Kondisi awal movement kedua harus cocok dengan kondisi akhir movement pertama");
 });
 
+test("kondisi akhir sisa harus cocok dengan movement terakhir", () => {
+  const data = validBundle();
+  const changedAt = "2026-11-18T04:03:00.000Z";
+  data.remainders.remainders[0].condition = "good";
+  data.remainders.remainders[0].updatedAt = changedAt;
+  data.movements.movements.push({
+    id: "MOV-CONDITION-FINAL", remainderId: "REM-001",
+    type: "condition_changed", timestamp: changedAt,
+    fromStatus: "available", toStatus: "available",
+    fromCondition: "good", toCondition: "damaged"
+  });
+  const result = validate(data);
+  assert.ok(result.errors.some(item =>
+    /Kondisi akhir sisa material tidak cocok/.test(item.message)
+  ), "Kondisi sisa harus sama dengan kondisi tujuan movement terakhir");
+});
+
 test("paket null ditolak dengan laporan kesalahan", () => {
   const result = validate(null);
   assert.equal(result.valid, false);

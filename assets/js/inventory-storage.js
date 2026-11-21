@@ -1440,6 +1440,14 @@
             message: "Status sisa material sumber tidak sesuai dengan status reservasi."
           });
         }
+        if (source && item.status === "active" && source.condition !== "good") {
+          reservationReferenceIssues.push({
+            severity: "error", type: "active_reservation_condition_mismatch",
+            reservationId: item.id, remainderId: item.remainderId,
+            sourceCondition: source.condition,
+            message: "Reservasi aktif hanya boleh memakai sisa material berkondisi good."
+          });
+        }
       });
       remainders.forEach(item => {
         if (!materialIds.has(item.materialId)) {
@@ -1909,7 +1917,7 @@
       const reservationHasConsistentSource = item => {
         const source = remainderById.get(item.remainderId);
         if (!source) return false;
-        if (item.status === "active") return source.status === "reserved";
+        if (item.status === "active") return source.status === "reserved" && source.condition === "good";
         if (item.status === "consumed") return source.status === "consumed";
         // Reservasi released dapat menunjuk sumber yang kemudian dipesan
         // atau dikonsumsi lagi pada siklus inventaris berikutnya.

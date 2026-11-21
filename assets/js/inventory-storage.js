@@ -1523,8 +1523,10 @@
       const multiplyReservedRemainders = Array.from(activeByRemainder.entries())
         .filter(([, items]) => items.length > 1)
         .map(([remainderId, items]) => ({ remainderId, reservationIds: items.map(item => item.id) }));
-      const reservationsWithoutSource = activeReservations.filter(item =>
-        !remainders.some(remainder => remainder.id === item.remainderId)
+      // Referensi sumber harus tetap ada untuk seluruh siklus reservasi,
+      // termasuk reservasi terminal yang masih menjadi bagian dari riwayat.
+      const reservationsWithoutSource = reservations.filter(item =>
+        !remainderById.has(item.remainderId)
       );
 
       // Periksa seluruh siklus hidup, bukan hanya rencana yang masih aktif.
@@ -1661,9 +1663,10 @@
           JSON.stringify(actualSources.slice().sort());
       };
       const reservationHasConsistentSource = item => {
-        if (item.status !== "active") return true;
         const source = remainderById.get(item.remainderId);
-        return !!source && source.status === "reserved";
+        if (!source) return false;
+        if (item.status === "active") return source.status === "reserved";
+        return true;
       };
       const inconsistentReservations = reservations.filter(item => {
         if (!item.planId) return false; // Reservasi legacy tanpa tautan ditangani terpisah.

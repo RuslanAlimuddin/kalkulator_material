@@ -228,6 +228,22 @@ async function main() {
     item.type === "broken_transition" && item.severity === "error"
   ));
   assert.equal((await storage.get("remainders", "REC-REM-MOVEMENT-AUDIT")).status, "available");
+
+  // Riwayat reservasi yang menunjuk ID reservasi yang tidak ada harus
+  // terdeteksi oleh laporan pemulihan database lokal.
+  await storage.add("remainders", remainder("REC-REM-MISSING-RESERVATION"));
+  await storage.add("movements", {
+    id: "MOV-MISSING-RESERVATION",
+    remainderId: "REC-REM-MISSING-RESERVATION",
+    type: "reserved", jobId: "JOB-OLD", timestamp: now,
+    fromStatus: "available", toStatus: "reserved",
+    referenceId: "RSV-DOES-NOT-EXIST"
+  });
+  const missingReservationMovementReport = await storage.getRecoveryReport();
+  assert.ok(missingReservationMovementReport.movementHistoryIssues.some(item =>
+    item.remainderId === "REC-REM-MISSING-RESERVATION" &&
+    item.type === "missing_reservation" && item.severity === "error"
+  ));
   // Riwayat aktivitas tanpa catatan awal harus terlihat, tetapi record legacy
   // tidak boleh langsung dianggap rusak fatal.
   await storage.add("remainders", remainder("REC-REM-MISSING-ORIGIN-LEGACY"));

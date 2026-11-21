@@ -73,6 +73,32 @@ test("paket inventaris valid diterima", () => {
   assert.deepEqual(result.errors, []);
 });
 
+test("rantai kondisi movement yang terputus ditolak", () => {
+  const data = validBundle();
+  const firstAt = "2026-11-18T04:01:00.000Z";
+  const secondAt = "2026-11-18T04:02:00.000Z";
+  data.remainders.remainders[0].condition = "unknown";
+  data.remainders.remainders[0].updatedAt = secondAt;
+  data.movements.movements.push(
+    {
+      id: "MOV-CONDITION-1", remainderId: "REM-001",
+      type: "condition_changed", timestamp: firstAt,
+      fromStatus: "available", toStatus: "available",
+      fromCondition: "good", toCondition: "damaged"
+    },
+    {
+      id: "MOV-CONDITION-2", remainderId: "REM-001",
+      type: "condition_changed", timestamp: secondAt,
+      fromStatus: "available", toStatus: "available",
+      fromCondition: "good", toCondition: "unknown"
+    }
+  );
+  const result = validate(data);
+  assert.ok(result.errors.some(item =>
+    /Urutan movement kondisi terputus/.test(item.message)
+  ), "Kondisi awal movement kedua harus cocok dengan kondisi akhir movement pertama");
+});
+
 test("paket null ditolak dengan laporan kesalahan", () => {
   const result = validate(null);
   assert.equal(result.valid, false);

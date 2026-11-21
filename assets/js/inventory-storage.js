@@ -1398,8 +1398,13 @@
             const expectedTimestamp = movement.type === "reserved" ? reservation.createdAt
               : movement.type === "reservation_released" ? reservation.releasedAt
               : reservation.consumedAt;
-            if (Number.isFinite(Date.parse(movement.timestamp || "")) &&
-                Number.isFinite(Date.parse(expectedTimestamp || "")) &&
+            if (!Number.isFinite(Date.parse(expectedTimestamp || ""))) {
+              movementHistoryIssues.push({
+                severity: "error", type: "reservation_timestamp_invalid",
+                remainderId: movement.remainderId || null, movementId: movement.id || null,
+                message: "Timestamp siklus hidup reservasi tidak tersedia atau tidak valid."
+              });
+            } else if (Number.isFinite(Date.parse(movement.timestamp || "")) &&
                 Date.parse(movement.timestamp) !== Date.parse(expectedTimestamp)) {
               movementHistoryIssues.push({
                 severity: "error", type: "reservation_timestamp_mismatch",

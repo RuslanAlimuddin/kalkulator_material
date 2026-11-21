@@ -568,6 +568,21 @@ async function main() {
   ), "Reservasi terminal yang kehilangan material sumber harus terdeteksi");
   await storage.remove("reservations", "RSV-TERMINAL-MISSING-SOURCE");
 
+  // Remainder harus merujuk katalog material dan pekerjaan yang masih ada.
+  await storage.put("remainders", {
+    ...remainder("REC-ORPHAN-MATERIAL-JOB"),
+    materialId: "MAT-MISSING-REFERENCE",
+    originJobId: "JOB-MISSING-REFERENCE"
+  });
+  const orphanRemainderReferenceReport = await storage.getRecoveryReport();
+  assert.ok(orphanRemainderReferenceReport.remainderReferenceIssues.some(item =>
+    item.remainderId === "REC-ORPHAN-MATERIAL-JOB" && item.type === "missing_material"
+  ), "Remainder dengan material yang hilang harus terdeteksi");
+  assert.ok(orphanRemainderReferenceReport.remainderReferenceIssues.some(item =>
+    item.remainderId === "REC-ORPHAN-MATERIAL-JOB" && item.type === "missing_origin_job"
+  ), "Remainder dengan pekerjaan asal yang hilang harus terdeteksi");
+  await storage.remove("remainders", "REC-ORPHAN-MATERIAL-JOB");
+
   // Referensi reservasi pada sisa turunan juga harus diaudit secara lokal.
   const lineageParent = {
     ...remainder("REC-LINEAGE-PARENT"),

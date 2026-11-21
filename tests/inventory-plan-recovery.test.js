@@ -551,6 +551,23 @@ async function main() {
   const restoredParentReport = await storage.getRecoveryReport();
   assert.deepEqual(restoredParentReport.inconsistentPlans, []);
   assert.deepEqual(restoredParentReport.inconsistentReservations, []);
+  // Reservasi terminal tetap harus melaporkan sumber material yang hilang.
+  await storage.put("reservations", {
+    id: "RSV-TERMINAL-MISSING-SOURCE",
+    remainderId: "REM-TERMINAL-SOURCE-MISSING",
+    jobId: "JOB-RECOVERY",
+    planId: null,
+    status: "consumed",
+    createdAt: now,
+    consumedAt: now,
+    releasedAt: null
+  });
+  const terminalMissingSourceReport = await storage.getRecoveryReport();
+  assert.ok(terminalMissingSourceReport.reservationsWithoutSource.some(item =>
+    item.id === "RSV-TERMINAL-MISSING-SOURCE"
+  ), "Reservasi terminal yang kehilangan material sumber harus terdeteksi");
+  await storage.remove("reservations", "RSV-TERMINAL-MISSING-SOURCE");
+
   // Referensi reservasi pada sisa turunan juga harus diaudit secara lokal.
   const lineageParent = {
     ...remainder("REC-LINEAGE-PARENT"),

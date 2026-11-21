@@ -1397,6 +1397,7 @@
       const remainderReferenceIssues = [];
       const reservationReferenceIssues = [];
       const remainderIds = new Set(remainders.map(item => item.id));
+      const reservationRemainderById = new Map(remainders.map(item => [item.id, item]));
       reservations.forEach(item => {
         if (!jobIds.has(item.jobId)) {
           reservationReferenceIssues.push({
@@ -1410,6 +1411,18 @@
             severity: "error", type: "missing_remainder", reservationId: item.id,
             remainderId: item.remainderId || null,
             message: "Reservasi merujuk sisa material yang tidak ditemukan."
+          });
+        }
+        const source = reservationRemainderById.get(item.remainderId);
+        const expectedSourceStatus = item.status === "active" ? "reserved"
+          : item.status === "consumed" ? "consumed" : null;
+        if (source && expectedSourceStatus && source.status !== expectedSourceStatus) {
+          reservationReferenceIssues.push({
+            severity: "error", type: "source_status_mismatch",
+            reservationId: item.id, remainderId: item.remainderId,
+            reservationStatus: item.status, sourceStatus: source.status,
+            expectedSourceStatus,
+            message: "Status sisa material sumber tidak sesuai dengan status reservasi."
           });
         }
       });

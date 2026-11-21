@@ -260,6 +260,39 @@ test("reservasi aktif tidak boleh terhubung ke pekerjaan completed atau archived
     ), "Reservasi aktif pada pekerjaan " + status + " harus ditolak");
   }
 });
+
+test("reservasi tidak boleh dibuat setelah pekerjaan ditutup", () => {
+  const data = validBundle();
+  data.jobs.jobs[0].status = "completed";
+  data.jobs.jobs[0].closedAt = "2026-11-18T06:00:00.000Z";
+  data.reservations.reservations.push({
+    id: "RSV-AFTER-CLOSE", remainderId: "REM-001", jobId: "JOB-A",
+    status: "released", createdAt: "2026-11-18T07:00:00.000Z",
+    releasedAt: "2026-11-18T08:00:00.000Z", consumedAt: null
+  });
+  const result = validate(data);
+  assert.ok(result.errors.some(e =>
+    e.path === "reservations.reservations[0].createdAt" &&
+    /tidak boleh setelah pekerjaan ditutup/.test(e.message)
+  ));
+});
+
+test("reservasi tidak boleh diselesaikan setelah pekerjaan ditutup", () => {
+  const data = validBundle();
+  data.jobs.jobs[0].status = "completed";
+  data.jobs.jobs[0].closedAt = "2026-11-18T06:00:00.000Z";
+  data.remainders.remainders[0].status = "consumed";
+  data.reservations.reservations.push({
+    id: "RSV-TERMINAL-AFTER-CLOSE", remainderId: "REM-001", jobId: "JOB-A",
+    status: "consumed", createdAt: "2026-11-18T05:00:00.000Z",
+    releasedAt: null, consumedAt: "2026-11-18T07:00:00.000Z"
+  });
+  const result = validate(data);
+  assert.ok(result.errors.some(e =>
+    e.path === "reservations.reservations[0].consumedAt" &&
+    /tidak boleh setelah pekerjaan ditutup/.test(e.message)
+  ));
+});
 test("snapshot rencana dan reservasi dengan sumber serta pekerjaan cocok diterima", () => {
   assert.equal(validate(validPlanBundle()).valid, true);
 });

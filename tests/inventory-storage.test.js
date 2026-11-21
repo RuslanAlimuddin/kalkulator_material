@@ -772,7 +772,7 @@ async function main() {
   await test("reservasi dapat dilepas dan stok kembali tersedia", async () => {
     const active = (await storage.getAll("reservations"))
       .find(item => item.remainderId === "REM-A" && item.status === "active");
-    await storage.releaseReservation(active.id, { timestamp: now });
+    await storage.releaseReservation(active.id, { timestamp: "2026-11-18T12:00:00.001Z" });
     assert.equal((await storage.get("remainders", "REM-A")).status, "available");
     assert.equal((await storage.get("reservations", active.id)).status, "released");
     const movements = await storage.getByIndex("movements", "remainderId", "REM-A");

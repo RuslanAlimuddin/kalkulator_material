@@ -783,6 +783,36 @@ async function main() {
   await storage.remove("reservations", "RSV-REVERSED-MOVEMENT");
   await storage.remove("remainders", reversedMovementRemainder.id);
 
+  // Movement pembuatan sisa modern harus cocok dengan pekerjaan dan waktu
+  // yang tercatat pada metadata remainder.
+  const originMetadataCases = [
+    { suffix: "JOB", jobId: "JOB-WRONG", timestamp: now, expectedIssue: "origin_job_mismatch" },
+    { suffix: "TIME", jobId: "JOB-OLD", timestamp: "2026-11-18T14:21:00.000Z", expectedIssue: "origin_timestamp_mismatch" }
+  ];
+  for (const item of originMetadataCases) {
+    const modernOrigin = {
+      ...remainder("REC-ORIGIN-METADATA-" + item.suffix),
+      sourceType: "new"
+    };
+    await storage.put("remainders", modernOrigin);
+    await storage.put("movements", {
+      id: "MOV-ORIGIN-METADATA-" + item.suffix,
+      remainderId: modernOrigin.id,
+      type: "remainder_created",
+      jobId: item.jobId,
+      timestamp: item.timestamp,
+      fromStatus: null,
+      toStatus: "available",
+      referenceId: modernOrigin.sourceSheetId
+    });
+    const report = await storage.getRecoveryReport();
+    assert.ok(report.movementHistoryIssues.some(issue =>
+      issue.remainderId === modernOrigin.id && issue.type === item.expectedIssue
+    ), "Laporan pemulihan harus mendeteksi " + item.expectedIssue);
+    await storage.remove("movements", "MOV-ORIGIN-METADATA-" + item.suffix);
+    await storage.remove("remainders", modernOrigin.id);
+  }
+
   // Referensi reservasi pada sisa turunan juga harus diaudit secara lokal.
   const lineageParent = {
     ...remainder("REC-LINEAGE-PARENT"),

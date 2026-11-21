@@ -907,6 +907,13 @@ async function main() {
     await assert.rejects(storage.reserveRemainders({
       remainderIds: ["REM-RESERVE-SNAPSHOT-SOURCE-MISMATCH"],
       jobId: "JOB-RESERVE-SNAPSHOT-SOURCE-MISMATCH",
+      planId: "PLAN-WITHOUT-SNAPSHOT",
+      timestamp: now
+    }));
+
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-RESERVE-SNAPSHOT-SOURCE-MISMATCH"],
+      jobId: "JOB-RESERVE-SNAPSHOT-SOURCE-MISMATCH",
       timestamp: now,
       planSnapshot: {
         plan: {

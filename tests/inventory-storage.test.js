@@ -1373,6 +1373,24 @@ async function main() {
     );
   });
 
+  await test("pelepasan reservasi menolak timestamp sama agar urutan movement tidak ambigu", async () => {
+    await storage.importJSON(bundle("SAME-TIME-RELEASE"), "merge");
+    const timestamp = "2026-11-18T12:05:00.000Z";
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-SAME-TIME-RELEASE",
+      jobId: "JOB-SAME-TIME-RELEASE",
+      timestamp
+    });
+
+    await assert.rejects(storage.releaseReservation(reservation.id, { timestamp }));
+    assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+    assert.equal((await storage.get("remainders", "REM-SAME-TIME-RELEASE")).status, "reserved");
+    const movements = await storage.getByIndex(
+      "movements", "remainderId", "REM-SAME-TIME-RELEASE"
+    );
+    assert.equal(movements.filter(item => item.type === "reservation_released").length, 0);
+  });
+
   await test("reservasi massal membatalkan seluruh batch jika timestamp satu sumber mundur", async () => {
     await storage.importJSON(bundle("BACKDATED-BATCH-RESERVE-A"), "merge");
     await storage.importJSON(bundle("BACKDATED-BATCH-RESERVE-B"), "merge");

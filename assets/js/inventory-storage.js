@@ -1557,6 +1557,56 @@
           }
         }
       });
+      // Samakan audit pemulihan dengan validator paket: setiap reservasi
+      // modern hanya boleh memiliki satu movement reserved dan paling banyak
+      // satu movement terminal yang sesuai dengan status akhirnya.
+      const reservationMovementEvents = new Map();
+      movements.forEach(movement => {
+        if (!["reserved", "reservation_released", "consumed"].includes(movement.type)) return;
+        const reservation = reservationById.get(movement.referenceId);
+        if (!reservation) return;
+        const events = reservationMovementEvents.get(reservation.id) || [];
+        events.push(movement);
+        reservationMovementEvents.set(reservation.id, events);
+      });
+      reservations.forEach(reservation => {
+        const events = reservationMovementEvents.get(reservation.id) || [];
+        const reservedEvents = events.filter(item => item.type === "reserved");
+        const releasedEvents = events.filter(item => item.type === "reservation_released");
+        const consumedEvents = events.filter(item => item.type === "consumed");
+        const terminalEvents = releasedEvents.concat(consumedEvents);
+        const addReservationMovementIssue = (severity, type, selectedEvents, message) => {
+          movementHistoryIssues.push({
+            severity, type, reservationId: reservation.id,
+            movementIds: selectedEvents.map(item => item.id).filter(Boolean), message
+          });
+        };
+        if (reservedEvents.length === 0) {
+          addReservationMovementIssue("warning", "missing_reservation_movement", [],
+            "Riwayat reservasi tidak memiliki movement reserved; mungkin berasal dari data lama.");
+        } else if (reservedEvents.length > 1) {
+          addReservationMovementIssue("error", "duplicate_reservation_movement", reservedEvents,
+            "Satu reservasi tidak boleh memiliki lebih dari satu movement reserved.");
+        }
+        const expectedTerminal = reservation.status === "released" ? releasedEvents
+          : reservation.status === "consumed" ? consumedEvents : [];
+        const unexpectedTerminal = reservation.status === "released" ? consumedEvents
+          : reservation.status === "consumed" ? releasedEvents : terminalEvents;
+        if (unexpectedTerminal.length) {
+          addReservationMovementIssue("error", "unexpected_reservation_terminal_movement", unexpectedTerminal,
+            "Jenis movement terminal tidak sesuai dengan status akhir reservasi.");
+        }
+        if (["released", "consumed"].includes(reservation.status)) {
+          if (expectedTerminal.length === 0) {
+            addReservationMovementIssue("warning", "missing_reservation_terminal_movement", [],
+              "Riwayat reservasi tidak memiliki movement terminal; mungkin berasal dari data lama.");
+          } else if (expectedTerminal.length > 1) {
+            addReservationMovementIssue("error", "duplicate_reservation_terminal_movement", expectedTerminal,
+              "Satu reservasi tidak boleh memiliki lebih dari satu movement terminal.");
+          }
+        }
+      });
+
       const addMovementIssue = (severity, type, remainderId, message, movementIds) => {
         movementHistoryIssues.push({
           severity, type, remainderId,

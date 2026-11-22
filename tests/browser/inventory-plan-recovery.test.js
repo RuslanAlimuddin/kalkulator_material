@@ -70,7 +70,12 @@ async function main() {
       const reserved = await engine.reservePlan({
         plan: {
           inventoryUsage: [{ remainderId: "BROWSER-RECOVERY-REM", placedCount: 1 }],
-          usableRemainders: [], sheets: []
+          usableRemainders: [],
+          sheets: [{
+            id: "INVENTORY-0-BROWSER-RECOVERY-REM",
+            source: "inventory", remainderId: "BROWSER-RECOVERY-REM",
+            width: 40, height: 30
+          }]
         },
         jobId: "JOB-BROWSER-RECOVERY",
         material: { id: "MAT-BROWSER", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },

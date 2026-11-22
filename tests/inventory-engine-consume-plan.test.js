@@ -32,6 +32,12 @@ async function main() {
     thicknessMm: 8, surface: "glossy", grainRequired: false,
     motif: "plain", rotationPolicy: "free", active: true
   });
+  await storage.add("materials", {
+    id: "MAT-NEW-ONLY", name: "Material lembar baru",
+    category: "uji", thicknessMm: 8, surface: "glossy",
+    grainRequired: false, motif: "plain",
+    rotationPolicy: "fixed", active: true
+  });
   for (const id of ["JOB-TARGET", "JOB-C", "JOB-NEW-ONLY"]) {
     await storage.add("jobs", {
       id, name: id, status: "open", createdAt: now, closedAt: null
@@ -122,7 +128,10 @@ async function main() {
       sheets: [{ id: 4, source: "new" }]
     },
     jobId: "JOB-NEW-ONLY",
-    material: { id: "MAT-CONSUME", thicknessMm: 8, motif: "plain", rotationPolicy: "fixed" },
+    material: {
+      id: "MAT-NEW-ONLY", thicknessMm: 8, motif: "plain",
+      rotationPolicy: "fixed", grainRequired: false
+    },
     grainDirection: "none",
     timestamp: now
   });

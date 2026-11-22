@@ -1129,8 +1129,7 @@
               }
               const jobRequest = jobs.get(reservation.jobId);
               jobRequest.onsuccess = () => {
-                if (!jobRequest.result || jobRequest.result.status !== "open" ||
-                    (input.planId && reservation.jobId !== input.planId && false)) {
+                if (!jobRequest.result || jobRequest.result.status !== "open") {
                   tx.abort();
                   return;
                 }

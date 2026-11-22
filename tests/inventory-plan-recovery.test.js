@@ -105,7 +105,13 @@ async function main() {
         { remainderId: "REC-REM-1", placedCount: 1 },
         { remainderId: "REC-REM-2", placedCount: 1 }
       ],
-      usableRemainders: [], sheets: []
+      usableRemainders: [],
+      sheets: [
+        { id: "INVENTORY-0-REC-REM-1", source: "inventory",
+          remainderId: "REC-REM-1", width: 40, height: 30 },
+        { id: "INVENTORY-1-REC-REM-2", source: "inventory",
+          remainderId: "REC-REM-2", width: 40, height: 30 }
+      ]
     },
     jobId: "JOB-RECOVERY",
     material: { id: "MAT-RECOVERY", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },
@@ -649,7 +655,11 @@ async function main() {
   const guardedPlan = await afterReloadEngine.reservePlan({
     plan: {
       inventoryUsage: [{ remainderId: "REC-REM-STATUS-GUARD", placedCount: 1 }],
-      usableRemainders: [], sheets: []
+      usableRemainders: [],
+      sheets: [{
+        id: "INVENTORY-0-REC-REM-STATUS-GUARD", source: "inventory",
+        remainderId: "REC-REM-STATUS-GUARD", width: 40, height: 30
+      }]
     },
     jobId: "JOB-STATUS-GUARD",
     material: { id: "MAT-RECOVERY", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },
@@ -684,7 +694,11 @@ async function main() {
   const inventoryPlan = await afterReloadEngine.reservePlan({
     plan: {
       inventoryUsage: [{ remainderId: "REC-REM-COMPLETE", placedCount: 1 }],
-      usableRemainders: [], sheets: []
+      usableRemainders: [],
+      sheets: [{
+        id: "INVENTORY-0-REC-REM-COMPLETE", source: "inventory",
+        remainderId: "REC-REM-COMPLETE", width: 40, height: 30
+      }]
     },
     jobId: "JOB-COMPLETE-RELOAD",
     material: { id: "MAT-RECOVERY", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },

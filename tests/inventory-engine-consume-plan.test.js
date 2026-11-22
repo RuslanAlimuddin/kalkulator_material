@@ -199,7 +199,8 @@ async function main() {
         { sourceRemainderId: "CONSUME-ROLLBACK-2", width: 10, height: 6, source: "inventory" },
         { width: 9, height: 7, source: "new", sheetId: 9 }
       ],
-      sheets: [{ id: 9, source: "new" }]    },
+      sheets: [{ id: 9, source: "new" }]
+    },
     jobId: "JOB-TARGET",
     material: { id: "MAT-CONSUME", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },
     grainDirection: "none",

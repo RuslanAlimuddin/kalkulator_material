@@ -756,6 +756,12 @@ test("asal-usul sisa turunan harus menunjuk sumber dan reservasi yang benar", ()
   });
   assert.equal(validate(data).valid, true, JSON.stringify(validate(data).errors));
 
+  data.remainders.remainders[1].widthCm = 50;
+  assert.ok(validate(data).errors.some(e => /Ukuran sisa turunan tidak boleh melebihi ukuran sumber/.test(e.message)));
+  data.remainders.remainders[1].widthCm = 31;
+  data.remainders.remainders[1].heightCm = 42.5;
+  assert.equal(validate(data).valid, true, "Ukuran yang pas setelah rotasi harus tetap diterima.");
+
   data.remainders.remainders[1].sourceRemainderId = "REM-MISSING";
   assert.ok(validate(data).errors.some(e => /Sisa material sumber tidak ditemukan/.test(e.message)));
 });

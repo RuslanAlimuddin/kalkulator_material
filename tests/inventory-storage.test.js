@@ -461,6 +461,46 @@ async function main() {
     );
   });
 
+  await test("konfirmasi rencana menolak ukuran sumber inventaris yang berubah setelah pratinjau", async () => {
+    const data = bundle("RESERVE-STALE-DIMENSIONS");
+    await storage.importJSON(data, "merge");
+
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-RESERVE-STALE-DIMENSIONS"],
+      jobId: "JOB-RESERVE-STALE-DIMENSIONS",
+      planId: "PLAN-RESERVE-STALE-DIMENSIONS",
+      timestamp: now,
+      planSnapshot: {
+        material: {
+          id: "MAT-RESERVE-STALE-DIMENSIONS",
+          thicknessMm: 8, motif: "plain",
+          rotationPolicy: "free", grainRequired: false
+        },
+        plan: {
+          inventoryUsage: [{ remainderId: "REM-RESERVE-STALE-DIMENSIONS" }],
+          sheets: [{
+            id: "INVENTORY-0-REM-RESERVE-STALE-DIMENSIONS",
+            source: "inventory",
+            remainderId: "REM-RESERVE-STALE-DIMENSIONS",
+            width: 44,
+            height: 32
+          }]
+        }
+      }
+    }));
+
+    assert.equal(
+      (await storage.get("remainders", "REM-RESERVE-STALE-DIMENSIONS")).status,
+      "available"
+    );
+    assert.equal(
+      (await storage.getByIndex("reservations", "remainderId", "REM-RESERVE-STALE-DIMENSIONS"))
+        .filter(item => item.status === "active").length,
+      0
+    );
+    assert.equal(await storage.get("plans", "PLAN-RESERVE-STALE-DIMENSIONS"), null);
+  });
+
   await test("konfirmasi rencana menolak spesifikasi material yang berubah setelah pratinjau", async () => {
     const material = {
       id: "MAT-STALE-SPEC-PREVIEW", name: "Material uji spesifikasi",

@@ -281,6 +281,34 @@ async function main() {
   await storage.remove("reservations", "RSV-RESERVATION-MISSING-JOB");
   await storage.remove("remainders", "REC-REM-RESERVATION-MISSING-JOB");
 
+  // Reservasi aktif pada pekerjaan yang sudah ditutup harus dilaporkan,
+  // meskipun reservasi tersebut merupakan data legacy tanpa planId.
+  await storage.add("jobs", {
+    id: "JOB-CLOSED-ACTIVE-RESERVATION", name: "Pekerjaan tertutup",
+    status: "archived", createdAt: now, closedAt: now
+  });
+  await storage.add("remainders", {
+    ...remainder("REC-REM-CLOSED-ACTIVE-RESERVATION"),
+    status: "reserved"
+  });
+  await storage.add("reservations", {
+    id: "RSV-CLOSED-ACTIVE-RESERVATION",
+    remainderId: "REC-REM-CLOSED-ACTIVE-RESERVATION",
+    jobId: "JOB-CLOSED-ACTIVE-RESERVATION",
+    status: "active", createdAt: now, releasedAt: null, consumedAt: null
+  });
+  const closedJobReservationReport = await storage.getRecoveryReport();
+  assert.ok(
+    closedJobReservationReport.reservationReferenceIssues.some(item =>
+      item.reservationId === "RSV-CLOSED-ACTIVE-RESERVATION" &&
+      item.type === "active_job_not_open" && item.severity === "error"
+    ),
+    "Laporan pemulihan harus mendeteksi reservasi aktif pada pekerjaan tertutup."
+  );
+  await storage.remove("reservations", "RSV-CLOSED-ACTIVE-RESERVATION");
+  await storage.remove("remainders", "REC-REM-CLOSED-ACTIVE-RESERVATION");
+  await storage.remove("jobs", "JOB-CLOSED-ACTIVE-RESERVATION");
+
   // Referensi reservasi ke sisa material yang hilang harus dilaporkan juga.
   await storage.add("reservations", {
     id: "RSV-RESERVATION-MISSING-REMAINDER",

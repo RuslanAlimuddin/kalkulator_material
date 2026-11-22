@@ -239,6 +239,36 @@ async function main() {
   }
   console.log("LULUS: penghapusan pekerjaan dan pembuatan stok tidak menghasilkan referensi yatim.");
 
+  // Perubahan spesifikasi material tidak boleh berlomba dengan pembuatan stok lama.
+  await storage.add("materials", {
+    id: "BATCH-MATERIAL-RACE", name: "Material spesifikasi race", category: "uji",
+    thicknessMm: 8, surface: "glossy", grainRequired: false, motif: "plain",
+    rotationPolicy: "free", active: true
+  });
+  await storage.add("jobs", {
+    id: "BATCH-MATERIAL-RACE-JOB", name: "Pekerjaan spesifikasi race", status: "open",
+    createdAt: now, closedAt: null
+  });
+  const materialRace = await Promise.allSettled([
+    storage.update("materials", "BATCH-MATERIAL-RACE", { thicknessMm: 10 }),
+    secondStorage.createRemainder({
+      id: "BATCH-MATERIAL-RACE-REM", materialId: "BATCH-MATERIAL-RACE",
+      originJobId: "BATCH-MATERIAL-RACE-JOB", sourceSheetId: "BATCH-MATERIAL-RACE-SHEET",
+      widthCm: 25, heightCm: 20, thicknessMm: 8, grainDirection: "none",
+      motif: "plain", rotationAllowed: true, createdAt: "2026-11-18T13:00:05.000Z"
+    })
+  ]);
+  assert.equal(materialRace.filter(item => item.status === "fulfilled").length, 1);
+  const racedMaterial = await storage.get("materials", "BATCH-MATERIAL-RACE");
+  const racedRemainder = await storage.get("remainders", "BATCH-MATERIAL-RACE-REM");
+  if (racedRemainder) {
+    assert.equal(racedMaterial.thicknessMm, 8, "Spesifikasi material tidak boleh berubah setelah stok dibuat.");
+    assert.equal(racedRemainder.thicknessMm, racedMaterial.thicknessMm);
+  } else {
+    assert.equal(racedMaterial.thicknessMm, 10, "Jika spesifikasi berubah lebih dulu, stok lama harus gagal dibuat.");
+  }
+  console.log("LULUS: perubahan spesifikasi material dan pembuatan stok tetap konsisten saat bersamaan.");
+
   await secondStorage.close();
   console.log("LULUS: reservasi bersamaan dari dua instance hanya mengizinkan satu transaksi.");
 

@@ -93,6 +93,42 @@ async function main() {
   );
   assert.equal(concurrentMovements.length, 1);
   assert.equal(concurrentMovements[0].type, "reserved");
+  // Dua instance tidak boleh mengonsumsi reservasi yang sama dua kali.
+  await storage.add("remainders", remainder("BATCH-CONSUME-CONCURRENT"));
+  const consumeReservation = await storage.reserveRemainders({
+    remainderIds: ["BATCH-CONSUME-CONCURRENT"], jobId: "JOB-BATCH", timestamp: now
+  });
+  const consumeTimestamp = "2026-11-18T13:00:01.000Z";
+  const consumeInput = {
+    timestamp: consumeTimestamp,
+    reservations: [{
+      reservationId: consumeReservation[0].id,
+      remainders: [{ id: "BATCH-CONSUME-CHILD", widthCm: 20, heightCm: 20 }]
+    }],
+    newSheetRemainders: []
+  };
+  const consumeResults = await Promise.allSettled([
+    storage.consumeReservations(consumeInput),
+    secondStorage.consumeReservations(consumeInput)
+  ]);
+  assert.equal(consumeResults.filter(item => item.status === "fulfilled").length, 1);
+  assert.equal(consumeResults.filter(item => item.status === "rejected").length, 1);
+  assert.equal((await storage.get("remainders", "BATCH-CONSUME-CONCURRENT")).status, "consumed");
+  assert.equal((await storage.get("reservations", consumeReservation[0].id)).status, "consumed");
+  assert.ok(await storage.get("remainders", "BATCH-CONSUME-CHILD"));
+  const sourceConsumeMovements = await storage.getByIndex(
+    "movements", "remainderId", "BATCH-CONSUME-CONCURRENT"
+  );
+  assert.equal(sourceConsumeMovements.filter(item => item.type === "consumed").length, 1);
+  const childCreateMovements = await storage.getByIndex(
+    "movements", "remainderId", "BATCH-CONSUME-CHILD"
+  );
+  assert.equal(childCreateMovements.filter(item => item.type === "remainder_created").length, 1);
+  assert.equal((await storage.getAll("remainders")).filter(item =>
+    item.sourceRemainderId === "BATCH-CONSUME-CONCURRENT"
+  ).length, 1);
+  console.log("LULUS: konsumsi reservasi bersamaan dari dua instance hanya membuat satu turunan.");
+
   await secondStorage.close();
   console.log("LULUS: reservasi bersamaan dari dua instance hanya mengizinkan satu transaksi.");
 

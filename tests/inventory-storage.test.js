@@ -384,7 +384,10 @@ async function main() {
       planId: "PLAN-INACTIVE-MATERIAL-PREVIEW",
       timestamp: now,
       planSnapshot: {
-        material: { id: "MAT-INACTIVE-MATERIAL-PREVIEW", active: true },
+        material: {
+          id: "MAT-INACTIVE-MATERIAL-PREVIEW", active: true,
+          thicknessMm: 8, motif: "plain", rotationPolicy: "free", grainRequired: false
+        },
         plan: {
           inventoryUsage: [
             { remainderId: "REM-INACTIVE-MATERIAL-PREVIEW" }
@@ -409,6 +412,44 @@ async function main() {
     assert.equal(
       (await storage.getByIndex("movements", "remainderId", "REM-INACTIVE-MATERIAL-PREVIEW"))
         .some(item => item.type === "reserved"),
+      false
+    );
+  });
+
+  await test("konfirmasi rencana menolak spesifikasi material yang berubah setelah pratinjau", async () => {
+    const material = {
+      id: "MAT-STALE-SPEC-PREVIEW", name: "Material uji spesifikasi",
+      thicknessMm: 8, surface: "glossy", grainRequired: false,
+      motif: "plain", rotationPolicy: "free", active: true
+    };
+    await storage.add("materials", material);
+    await storage.add("jobs", {
+      id: "JOB-STALE-SPEC-PREVIEW", name: "Pekerjaan uji spesifikasi",
+      status: "open", createdAt: now, closedAt: null
+    });
+    await storage.update("materials", material.id, { thicknessMm: 10 });
+
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: [],
+      jobId: "JOB-STALE-SPEC-PREVIEW",
+      planId: "PLAN-STALE-SPEC-PREVIEW",
+      timestamp: now,
+      planSnapshot: {
+        material,
+        plan: { inventoryUsage: [] }
+      }
+    }));
+
+    assert.equal(
+      (await storage.get("materials", material.id)).thicknessMm,
+      10
+    );
+    assert.equal(
+      (await storage.get("plans", "PLAN-STALE-SPEC-PREVIEW")),
+      null
+    );
+    assert.equal(
+      (await storage.getAll("reservations")).some(item => item.planId === "PLAN-STALE-SPEC-PREVIEW"),
       false
     );
   });

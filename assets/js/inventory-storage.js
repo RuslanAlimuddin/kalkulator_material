@@ -652,7 +652,13 @@
           if (snapshot && snapshot.material) {
             const materialRequest = mats.get(snapshot.material.id);
             materialRequest.onsuccess = () => {
-              if (!materialRequest.result || materialRequest.result.active === false) {
+              const currentMaterial = materialRequest.result;
+              const previewMaterial = snapshot.material;
+              if (!currentMaterial || currentMaterial.active === false ||
+                  Number(currentMaterial.thicknessMm) !== Number(previewMaterial.thicknessMm) ||
+                  currentMaterial.motif !== previewMaterial.motif ||
+                  currentMaterial.rotationPolicy !== previewMaterial.rotationPolicy ||
+                  (currentMaterial.grainRequired === true) !== (previewMaterial.grainRequired === true)) {
                 tx.abort();
                 return;
               }

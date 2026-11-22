@@ -1159,7 +1159,10 @@
               };
               const jobRequest = jobs.get(draft.originJobId);
               jobRequest.onsuccess = () => {
-                if (!jobRequest.result) {
+                // Rencana lembar baru tidak memiliki reservasi aktif yang
+                // otomatis menghalangi penutupan pekerjaan. Karena itu status
+                // pekerjaan harus divalidasi kembali saat konsumsi.
+                if (!jobRequest.result || jobRequest.result.status !== "open") {
                   tx.abort();
                   return;
                 }

@@ -136,6 +136,21 @@ async function main() {
     timestamp: now
   });
   assert.equal(newOnlyPlan.reservations.length, 0);
+  // Karena rencana lembar baru tidak memiliki reservasi inventaris, pekerjaan
+  // dapat ditutup setelah pratinjau. Konsumsi rencana lama harus ditolak.
+  await storage.update("jobs", "JOB-NEW-ONLY", { status: "closed" });
+  await assert.rejects(engine.consumePlan({
+    reservedPlan: newOnlyPlan,
+    sourceSheetIdPrefix: "JOB-NEW-ONLY-SHEET",
+    timestamp: now
+  }));
+  assert.equal(
+    (await storage.getByIndex("remainders", "originJobId", "JOB-NEW-ONLY")).length,
+    0
+  );
+  assert.equal((await storage.get("plans", newOnlyPlan.planId)).status, "reserved");
+  // Buka kembali pekerjaan untuk melanjutkan skenario konsumsi normal.
+  await storage.update("jobs", "JOB-NEW-ONLY", { status: "open" });
   const newOnlyResult = await engine.consumePlan({
     reservedPlan: newOnlyPlan,
     sourceSheetIdPrefix: "JOB-NEW-ONLY-SHEET",

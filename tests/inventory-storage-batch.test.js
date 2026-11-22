@@ -269,6 +269,37 @@ async function main() {
   }
   console.log("LULUS: perubahan spesifikasi material dan pembuatan stok tetap konsisten saat bersamaan.");
 
+  // Menutup pekerjaan dan mereservasi stoknya secara bersamaan harus terserialisasi.
+  await storage.add("jobs", {
+    id: "BATCH-CLOSE-RACE-JOB", name: "Pekerjaan tutup race", status: "open",
+    createdAt: now, closedAt: null
+  });
+  await storage.add("remainders", remainder("BATCH-CLOSE-RACE-REM"));
+  const closeRace = await Promise.allSettled([
+    storage.update("jobs", "BATCH-CLOSE-RACE-JOB", {
+      status: "closed", closedAt: "2026-11-18T13:00:06.000Z"
+    }),
+    secondStorage.reserveRemainders({
+      remainderIds: ["BATCH-CLOSE-RACE-REM"], jobId: "BATCH-CLOSE-RACE-JOB",
+      timestamp: "2026-11-18T13:00:06.000Z"
+    })
+  ]);
+  assert.equal(closeRace.filter(item => item.status === "fulfilled").length, 1);
+  const closeRaceJob = await storage.get("jobs", "BATCH-CLOSE-RACE-JOB");
+  const closeRaceRemainder = await storage.get("remainders", "BATCH-CLOSE-RACE-REM");
+  const closeRaceReservations = await storage.getByIndex(
+    "reservations", "remainderId", "BATCH-CLOSE-RACE-REM"
+  );
+  if (closeRaceJob.status === "closed") {
+    assert.equal(closeRaceRemainder.status, "available");
+    assert.equal(closeRaceReservations.filter(item => item.status === "active").length, 0);
+  } else {
+    assert.equal(closeRaceJob.status, "open");
+    assert.equal(closeRaceRemainder.status, "reserved");
+    assert.equal(closeRaceReservations.filter(item => item.status === "active").length, 1);
+  }
+  console.log("LULUS: penutupan pekerjaan dan reservasi stok tidak dapat saling mendahului secara tidak konsisten.");
+
   await secondStorage.close();
   console.log("LULUS: reservasi bersamaan dari dua instance hanya mengizinkan satu transaksi.");
 

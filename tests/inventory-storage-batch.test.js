@@ -67,6 +67,36 @@ async function main() {
   }), /unik/);
   console.log("LULUS: ID inventaris ganda ditolak.");
 
+  // Dua tab/browser context yang berbeda tidak boleh berhasil memesan
+  // sisa fisik yang sama secara bersamaan.
+  await storage.add("remainders", remainder("BATCH-CONCURRENT"));
+  const secondStorage = createStorage({ allowUnsafeInventoryWrites: true });
+  await secondStorage.open();
+  const concurrentResults = await Promise.allSettled([
+    storage.reserveRemainders({
+      remainderIds: ["BATCH-CONCURRENT"], jobId: "JOB-BATCH", timestamp: now
+    }),
+    secondStorage.reserveRemainders({
+      remainderIds: ["BATCH-CONCURRENT"], jobId: "JOB-BATCH", timestamp: now
+    })
+  ]);
+  assert.equal(concurrentResults.filter(item => item.status === "fulfilled").length, 1);
+  assert.equal(concurrentResults.filter(item => item.status === "rejected").length, 1);
+  assert.equal((await storage.get("remainders", "BATCH-CONCURRENT")).status, "reserved");
+  const concurrentReservations = await storage.getByIndex(
+    "reservations", "remainderId", "BATCH-CONCURRENT"
+  );
+  assert.equal(concurrentReservations.length, 1);
+  assert.equal(concurrentReservations.filter(item => item.status === "active").length, 1);
+  const concurrentMovements = await storage.getByIndex(
+    "movements", "remainderId", "BATCH-CONCURRENT"
+  );
+  assert.equal(concurrentMovements.length, 1);
+  assert.equal(concurrentMovements[0].type, "reserved");
+  await secondStorage.close();
+  console.log("LULUS: reservasi bersamaan dari dua instance hanya mengizinkan satu transaksi.");
+
+
   await storage.close();
   await deleteDatabase();
   console.log("Semua pengujian reservasi massal selesai.");

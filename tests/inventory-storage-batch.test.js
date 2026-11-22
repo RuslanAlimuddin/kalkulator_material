@@ -209,6 +209,36 @@ async function main() {
   assert.equal((await storage.getAll("remainders")).filter(item => item.id === "BATCH-IMPORT-REM").length, 1);
   console.log("LULUS: impor merge bersamaan dengan ID sama hanya menyimpan satu paket utuh.");
 
+  // Penghapusan pekerjaan tidak boleh berlomba dengan pembuatan stok yang merujuknya.
+  await storage.add("materials", {
+    id: "BATCH-DELETE-RACE-MAT", name: "Material race", category: "uji",
+    thicknessMm: 8, surface: "glossy", grainRequired: false, motif: "plain",
+    rotationPolicy: "free", active: true
+  });
+  await storage.add("jobs", {
+    id: "BATCH-DELETE-RACE-JOB", name: "Pekerjaan race", status: "open",
+    createdAt: now, closedAt: null
+  });
+  const catalogRace = await Promise.allSettled([
+    storage.remove("jobs", "BATCH-DELETE-RACE-JOB"),
+    secondStorage.createRemainder({
+      id: "BATCH-DELETE-RACE-REM", materialId: "BATCH-DELETE-RACE-MAT",
+      originJobId: "BATCH-DELETE-RACE-JOB", sourceSheetId: "BATCH-DELETE-RACE-SHEET",
+      widthCm: 25, heightCm: 20, thicknessMm: 8, grainDirection: "none",
+      motif: "plain", rotationAllowed: true, createdAt: "2026-11-18T13:00:04.000Z"
+    })
+  ]);
+  assert.equal(catalogRace.filter(item => item.status === "fulfilled").length, 1);
+  const raceJob = await storage.get("jobs", "BATCH-DELETE-RACE-JOB");
+  const raceRemainder = await storage.get("remainders", "BATCH-DELETE-RACE-REM");
+  if (raceRemainder) {
+    assert.ok(raceJob, "Pekerjaan tidak boleh terhapus jika sisa material berhasil dibuat.");
+    assert.equal(raceRemainder.originJobId, "BATCH-DELETE-RACE-JOB");
+  } else {
+    assert.equal(raceJob, null, "Jika pekerjaan terhapus lebih dulu, pembuatan sisa harus gagal.");
+  }
+  console.log("LULUS: penghapusan pekerjaan dan pembuatan stok tidak menghasilkan referensi yatim.");
+
   await secondStorage.close();
   console.log("LULUS: reservasi bersamaan dari dua instance hanya mengizinkan satu transaksi.");
 

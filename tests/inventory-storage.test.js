@@ -542,6 +542,41 @@ async function main() {
     assert.equal((await storage.getAll("remainders")).length, remainderCount);
   });
 
+  await test("total luas beberapa sisa turunan tidak boleh melampaui satu sumber", async () => {
+    for (const suffix of ["AREA-SINGLE", "AREA-BULK"]) {
+      await storage.importJSON(bundle(suffix), "merge");
+      const reservation = await storage.reserveRemainder({
+        remainderId: "REM-" + suffix,
+        jobId: "JOB-" + suffix,
+        timestamp: now
+      });
+      const duplicatedRemainders = [
+        { widthCm: 45, heightCm: 32 },
+        { widthCm: 45, heightCm: 32 }
+      ];
+      if (suffix === "AREA-SINGLE") {
+        await assert.rejects(storage.consumeReservation({
+          reservationId: reservation.id,
+          timestamp: "2026-11-18T12:01:00.000Z",
+          remainders: duplicatedRemainders
+        }));
+      } else {
+        await assert.rejects(storage.consumeReservations({
+          reservations: [{
+            reservationId: reservation.id,
+            remainders: duplicatedRemainders
+          }],
+          newSheetRemainders: [],
+          timestamp: "2026-11-18T12:01:00.000Z"
+        }));
+      }
+      assert.equal((await storage.get("remainders", "REM-" + suffix)).status, "reserved");
+      assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+      assert.equal((await storage.getAll("remainders")).filter(item =>
+        item.sourceRemainderId === "REM-" + suffix).length, 0);
+    }
+  });
+
   await test("sisa turunan tidak boleh melebihi ukuran sumber dan rotasi tetap diizinkan", async () => {
     await storage.importJSON(bundle("CHILD-TOO-LARGE-SINGLE"), "merge");
     const single = await storage.reserveRemainder({

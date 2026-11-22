@@ -2045,6 +2045,13 @@
                 });
               }
             }
+            if (!fitsWithinSourceRemainder(current, source)) {
+              remainderLineageIssues.push({
+                severity: "error", type: "child_dimensions_exceed_source", remainderId,
+                sourceRemainderId: sourceId,
+                message: "Ukuran sisa turunan melebihi ukuran sumber, termasuk setelah aturan rotasi diterapkan."
+              });
+            }
             if (current.materialId !== source.materialId ||
                 current.thicknessMm !== source.thicknessMm ||
                 current.grainDirection !== source.grainDirection ||

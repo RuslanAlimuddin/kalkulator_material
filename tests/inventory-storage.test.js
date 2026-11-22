@@ -542,6 +542,54 @@ async function main() {
     assert.equal((await storage.getAll("remainders")).length, remainderCount);
   });
 
+  await test("konsumsi tunggal dan massal menolak reservasi dari pekerjaan yang sudah ditutup", async () => {
+    const forceCloseJob = async jobId => {
+      const db = await storage.open();
+      const job = await storage.get("jobs", jobId);
+      const tx = db.transaction(["jobs"], "readwrite");
+      tx.objectStore("jobs").put({ ...job, status: "archived", closedAt: now });
+      await new Promise((resolve, reject) => {
+        tx.oncomplete = resolve;
+        tx.onabort = () => reject(tx.error || new Error("Transaksi penutupan uji dibatalkan."));
+        tx.onerror = () => reject(tx.error || new Error("Transaksi penutupan uji gagal."));
+      });
+    };
+
+    await storage.importJSON(bundle("CLOSED-JOB-CONSUME-SINGLE"), "merge");
+    const single = await storage.reserveRemainder({
+      remainderId: "REM-CLOSED-JOB-CONSUME-SINGLE",
+      jobId: "JOB-CLOSED-JOB-CONSUME-SINGLE",
+      timestamp: now
+    });
+    await forceCloseJob("JOB-CLOSED-JOB-CONSUME-SINGLE");
+    await assert.rejects(storage.consumeReservation({
+      reservationId: single.id,
+      timestamp: "2026-11-18T12:01:00.000Z",
+      remainders: [{ widthCm: 12, heightCm: 8 }]
+    }));
+    assert.equal((await storage.get("remainders", "REM-CLOSED-JOB-CONSUME-SINGLE")).status, "reserved");
+    assert.equal((await storage.get("reservations", single.id)).status, "active");
+    assert.equal((await storage.getAll("remainders")).some(item =>
+      item.sourceRemainderId === "REM-CLOSED-JOB-CONSUME-SINGLE"), false);
+
+    await storage.importJSON(bundle("CLOSED-JOB-CONSUME-BULK"), "merge");
+    const bulk = await storage.reserveRemainder({
+      remainderId: "REM-CLOSED-JOB-CONSUME-BULK",
+      jobId: "JOB-CLOSED-JOB-CONSUME-BULK",
+      timestamp: now
+    });
+    await forceCloseJob("JOB-CLOSED-JOB-CONSUME-BULK");
+    await assert.rejects(storage.consumeReservations({
+      reservations: [{ reservationId: bulk.id, remainders: [{ widthCm: 10, heightCm: 6 }] }],
+      newSheetRemainders: [],
+      timestamp: "2026-11-18T12:01:00.000Z"
+    }));
+    assert.equal((await storage.get("remainders", "REM-CLOSED-JOB-CONSUME-BULK")).status, "reserved");
+    assert.equal((await storage.get("reservations", bulk.id)).status, "active");
+    assert.equal((await storage.getAll("remainders")).some(item =>
+      item.sourceRemainderId === "REM-CLOSED-JOB-CONSUME-BULK"), false);
+  });
+
   await test("pelepasan tunggal menolak sumber dengan reservasi aktif ganda", async () => {
     await storage.importJSON(bundle("RELEASE-DUP-SINGLE"), "merge");
     const reservation = await storage.reserveRemainder({

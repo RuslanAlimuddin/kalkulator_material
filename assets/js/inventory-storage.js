@@ -668,10 +668,21 @@
           const id = remainderIds[cursor], request = rs.get(id);
           request.onsuccess = () => {
             const source = request.result;
+            const inventorySheet = snapshot && snapshot.plan &&
+              Array.isArray(snapshot.plan.sheets)
+              ? snapshot.plan.sheets.find(sheet =>
+                  sheet && sheet.source === "inventory" && sheet.remainderId === id
+                )
+              : null;
+            const hasInventorySheetSnapshot = Boolean(snapshot && snapshot.plan &&
+              Array.isArray(snapshot.plan.sheets));
             if (!source || source.status !== "available" || source.condition !== "good" ||
                 (snapshot && snapshot.material &&
                  (!previewMaterialRecord || source.materialId !== snapshot.material.id ||
-                  !isRemainderCompatibleWithMaterial(source, previewMaterialRecord)))) {
+                  !isRemainderCompatibleWithMaterial(source, previewMaterialRecord))) ||
+                (hasInventorySheetSnapshot && (!inventorySheet ||
+                 Number(inventorySheet.width) !== Number(source.widthCm) ||
+                 Number(inventorySheet.height) !== Number(source.heightCm)))) {
               tx.abort();
               return;
             }

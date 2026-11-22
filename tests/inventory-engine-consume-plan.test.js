@@ -38,7 +38,7 @@ async function main() {
     grainRequired: false, motif: "plain",
     rotationPolicy: "fixed", active: true
   });
-  for (const id of ["JOB-TARGET", "JOB-C", "JOB-NEW-ONLY"]) {
+  for (const id of ["JOB-TARGET", "JOB-C", "JOB-NEW-ONLY", "JOB-EMPTY-PLAN"]) {
     await storage.add("jobs", {
       id, name: id, status: "open", createdAt: now, closedAt: null
     });
@@ -164,6 +164,28 @@ async function main() {
   assert.equal(newOnlyRemainder.rotationAllowed, false);
   console.log("LULUS: pekerjaan yang hanya memakai lembar baru tetap menyimpan sisa tanpa reservasi inventaris.");
 
+  // Rencana tanpa stok dan tanpa sisa keluaran tetap tidak boleh diselesaikan
+  // setelah pekerjaan ditutup. Jalur ini sebelumnya melewati pemeriksaan job.
+  const emptyPlan = await engine.reservePlan({
+    plan: { inventoryUsage: [], usableRemainders: [], sheets: [] },
+    jobId: "JOB-EMPTY-PLAN",
+    timestamp: now
+  });
+  await storage.update("jobs", "JOB-EMPTY-PLAN", { status: "closed" });
+  await assert.rejects(engine.consumePlan({
+    reservedPlan: emptyPlan,
+    timestamp: "2026-11-18T13:30:00.001Z"
+  }));
+  assert.equal((await storage.get("plans", emptyPlan.planId)).status, "reserved");
+  await storage.update("jobs", "JOB-EMPTY-PLAN", { status: "open" });
+  const completedEmptyPlan = await engine.consumePlan({
+    reservedPlan: emptyPlan,
+    timestamp: "2026-11-18T13:30:00.002Z"
+  });
+  assert.equal(completedEmptyPlan.consumedReservations.length, 0);
+  assert.equal((await storage.get("plans", emptyPlan.planId)).status, "completed");
+  console.log("LULUS: rencana tanpa stok dan tanpa sisa keluaran hanya dapat diselesaikan saat pekerjaan masih open.");
+
   await storage.add("remainders", remainder("CONSUME-ROLLBACK-1"));
   await storage.add("remainders", remainder("CONSUME-ROLLBACK-2"));
   const rollbackPlan = await engine.reservePlan({
@@ -177,8 +199,7 @@ async function main() {
         { sourceRemainderId: "CONSUME-ROLLBACK-2", width: 10, height: 6, source: "inventory" },
         { width: 9, height: 7, source: "new", sheetId: 9 }
       ],
-      sheets: [{ id: 9, source: "new" }]
-    },
+      sheets: [{ id: 9, source: "new" }]    },
     jobId: "JOB-TARGET",
     material: { id: "MAT-CONSUME", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },
     grainDirection: "none",

@@ -1971,6 +1971,14 @@
         completed: "consumed"
       };
       const remainderById = new Map(remainders.map(item => [item.id, item]));
+      const childrenBySourceId = new Map();
+      remainders.forEach(item => {
+        if (item.sourceType !== "inventory" || typeof item.sourceRemainderId !== "string") return;
+        if (!childrenBySourceId.has(item.sourceRemainderId)) {
+          childrenBySourceId.set(item.sourceRemainderId, []);
+        }
+        childrenBySourceId.get(item.sourceRemainderId).push(item);
+      });
       // Audit rantai asal-usul sisa di database lokal, termasuk data yang
       // mungkin masuk melalui pemulihan lama atau penulisan di luar jalur aman.
       const remainderLineageIssues = [];
@@ -2055,9 +2063,7 @@
                 });
               }
             }
-            const sourceChildren = remainders.filter(item =>
-              item.sourceType === "inventory" && item.sourceRemainderId === sourceId
-            );
+            const sourceChildren = childrenBySourceId.get(sourceId) || [];
             if (!childRemaindersFitSourceArea(sourceChildren, source)) {
               remainderLineageIssues.push({
                 severity: "error", type: "child_area_exceeds_source", remainderId,

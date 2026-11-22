@@ -194,6 +194,19 @@
       !(material.grainRequired === true && remainder.rotationAllowed === true);
   }
 
+  // Sisa turunan tidak boleh melebihi ukuran sumber. Rotasi hanya
+  // diperbolehkan jika karakteristik sumber memang mengizinkannya.
+  function fitsWithinSourceRemainder(draft, source) {
+    const width = Number(source.widthCm);
+    const height = Number(source.heightCm);
+    if (!Number.isFinite(width) || width <= 0 ||
+        !Number.isFinite(height) || height <= 0) return false;
+    const fitsDirectly = draft.widthCm <= width && draft.heightCm <= height;
+    const fitsRotated = source.rotationAllowed === true &&
+      draft.widthCm <= height && draft.heightCm <= width;
+    return fitsDirectly || fitsRotated;
+  }
+
   function isTimestampAtOrAfterMovementHistory(movements, remainder, timestamp, callback) {
     const request = movements.index("remainderId").getAll(remainder.id);
     request.onsuccess = () => {
@@ -895,7 +908,11 @@
             const sr = rs.get(reservation.remainderId);
           sr.onsuccess = () => {
             const source = sr.result;
-            if (!source || source.status !== "reserved" || source.condition !== "good") { tx.abort(); return; }
+            if (!source || source.status !== "reserved" || source.condition !== "good" ||
+                drafts.some(draft => !fitsWithinSourceRemainder(draft, source))) {
+              tx.abort();
+              return;
+            }
             // Satu stok fisik hanya boleh memiliki satu reservasi aktif.
             // Tolak konsumsi jika data rusak menyisakan reservasi aktif lain.
             const activeRequest = ss.index("remainderId").getAll(source.id);
@@ -1136,7 +1153,8 @@
                 const sourceRequest = remainders.get(reservation.remainderId);
               sourceRequest.onsuccess = () => {
                 const source = sourceRequest.result;
-                if (!source || source.status !== "reserved" || source.condition !== "good") {
+                if (!source || source.status !== "reserved" || source.condition !== "good" ||
+                    batch.drafts.some(draft => !fitsWithinSourceRemainder(draft, source))) {
                   tx.abort();
                   return;
                 }

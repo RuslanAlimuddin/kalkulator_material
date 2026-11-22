@@ -196,9 +196,17 @@
     const request = movements.index("remainderId").getAll(remainder.id);
     request.onsuccess = () => {
       const updatedAtMs = Date.parse(remainder.updatedAt || "");
-      const movementEvents = request.result
-        .map(item => ({ item, time: Date.parse(item.timestamp || "") }))
-        .filter(entry => Number.isFinite(entry.time));
+      const rawMovementEvents = request.result;
+      // Jangan melanjutkan siklus stok di atas riwayat yang tidak dapat
+      // diurutkan. Catatan rusak tidak boleh diam-diam diabaikan.
+      if (rawMovementEvents.some(item =>
+        !Number.isFinite(Date.parse(item.timestamp || ""))
+      )) {
+        callback(false);
+        return;
+      }
+      const movementEvents = rawMovementEvents
+        .map(item => ({ item, time: Date.parse(item.timestamp || "") }));
       const latestMovementMs = movementEvents.length
         ? Math.max(...movementEvents.map(entry => entry.time)) : null;
       const latestEvents = latestMovementMs === null ? []

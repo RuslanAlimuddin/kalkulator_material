@@ -54,6 +54,11 @@ async function main() {
         id: "JOB-BROWSER-RECOVERY", name: "Pekerjaan pemulihan browser",
         status: "open", createdAt: now, closedAt: null
       });
+      await storage.add("materials", {
+        id: "MAT-BROWSER", name: "Material pemulihan browser",
+        thicknessMm: 8, motif: "plain", rotationPolicy: "free",
+        grainRequired: false, active: true
+      });
       await storage.add("remainders", {
         id: "BROWSER-RECOVERY-REM", materialId: "MAT-BROWSER",
         widthCm: 40, heightCm: 30, thicknessMm: 8,

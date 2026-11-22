@@ -949,12 +949,27 @@ async function main() {
   }
 
   // Timestamp movement yang rusak tidak boleh diam-diam disaring dari audit kronologi.
-  await storage.importJSON(bundle("INVALID-MOVEMENT-TIMESTAMP"), "merge");
-  await storage.put("movements", {
+  const invalidTimestampRemainderId = "REC-REM-INVALID-MOVEMENT-TIMESTAMP";
+  await storage.add("remainders", {
+    ...remainder(invalidTimestampRemainderId),
+    materialId: "MAT-RECOVERY",
+    originJobId: "JOB-OLD"
+  });
+  await storage.add("movements", {
+    id: "MOV-INVALID-TIMESTAMP-ORIGIN",
+    remainderId: invalidTimestampRemainderId,
+    type: "created",
+    jobId: "JOB-OLD",
+    timestamp: now,
+    fromStatus: null,
+    toStatus: "available",
+    toCondition: "good"
+  });
+  await storage.add("movements", {
     id: "MOV-INVALID-TIMESTAMP",
-    remainderId: "REC-REM-INVALID-MOVEMENT-TIMESTAMP",
+    remainderId: invalidTimestampRemainderId,
     type: "condition_changed",
-    jobId: "JOB-INVALID-MOVEMENT-TIMESTAMP",
+    jobId: "JOB-OLD",
     timestamp: "bukan-tanggal",
     fromStatus: "available",
     toStatus: "available",
@@ -964,13 +979,12 @@ async function main() {
   const invalidMovementTimestampReport = await storage.getRecoveryReport();
   assert.ok(invalidMovementTimestampReport.movementHistoryIssues.some(item =>
     item.type === "invalid_movement_timestamp" &&
-    item.remainderId === "REC-REM-INVALID-MOVEMENT-TIMESTAMP" &&
+    item.remainderId === invalidTimestampRemainderId &&
     item.movementIds.includes("MOV-INVALID-TIMESTAMP")
   ), "Audit harus melaporkan movement dengan timestamp tidak valid.");
   await storage.remove("movements", "MOV-INVALID-TIMESTAMP");
-  await storage.remove("remainders", "REC-REM-INVALID-MOVEMENT-TIMESTAMP");
-  await storage.remove("jobs", "JOB-INVALID-MOVEMENT-TIMESTAMP");
-  await storage.remove("materials", "MAT-INVALID-MOVEMENT-TIMESTAMP");
+  await storage.remove("movements", "MOV-INVALID-TIMESTAMP-ORIGIN");
+  await storage.remove("remainders", invalidTimestampRemainderId);
 
   // Laporan pemulihan harus menemukan siklus asal-usul yang sudah berada
   // di database lokal, bukan hanya menolak siklus saat impor.

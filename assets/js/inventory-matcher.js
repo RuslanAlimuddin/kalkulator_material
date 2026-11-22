@@ -32,6 +32,12 @@
       if (remainder.motif !== (input.motif == null ? material.motif : input.motif)) return false;
       if (input.grainDirection != null &&
           remainder.grainDirection !== input.grainDirection) return false;
+      // Harus sama dengan aturan kompatibilitas pada storage: material tetap
+      // tidak boleh memiliki sisa yang ditandai dapat diputar, begitu juga
+      // material berarah serat. Jika tidak, planner memilih stok yang nantinya
+      // pasti ditolak ketika reservasi dikonfirmasi.
+      if (material.rotationPolicy === "fixed" && remainder.rotationAllowed === true) return false;
+      if (material.grainRequired === true && remainder.rotationAllowed === true) return false;
       return true;
     }
 

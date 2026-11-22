@@ -1287,6 +1287,19 @@ async function main() {
     ), "Audit harus mendeteksi kondisi akhir yang tidak cocok dengan riwayat");
   });
 
+  await test("audit pemulihan mendeteksi originJobId yang kosong atau hilang", async () => {
+    await storage.importJSON(bundle("MISSING-ORIGIN-JOB-AUDIT"), "merge");
+    await storage.update("remainders", "REM-MISSING-ORIGIN-JOB-AUDIT", {
+      originJobId: null
+    });
+
+    const report = await storage.getRecoveryReport();
+    assert.ok(report.remainderReferenceIssues.some(issue =>
+      issue.type === "missing_origin_job" &&
+      issue.remainderId === "REM-MISSING-ORIGIN-JOB-AUDIT"
+    ), "Audit harus mendeteksi originJobId yang tidak tersedia.");
+  });
+
   await test("audit pemulihan menandai movement operasional dengan timestamp sama", async () => {
     await storage.importJSON(bundle("SAME-TIME-MOVEMENT-AUDIT"), "merge");
     await storage.update("remainders", "REM-SAME-TIME-MOVEMENT-AUDIT", {

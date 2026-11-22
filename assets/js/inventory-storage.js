@@ -1524,7 +1524,7 @@
             message: "Sisa material merujuk katalog material yang tidak ditemukan."
           });
         }
-        if (item.originJobId != null && !jobIds.has(item.originJobId)) {
+        if (!jobIds.has(item.originJobId)) {
           remainderReferenceIssues.push({
             severity: "error", type: "missing_origin_job", remainderId: item.id,
             originJobId: item.originJobId,

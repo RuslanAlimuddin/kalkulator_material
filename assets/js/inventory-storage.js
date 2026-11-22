@@ -653,6 +653,7 @@
       await withTransaction(database, ["jobs", "materials", "remainders", "reservations", "movements", "plans"], "readwrite", tx => {
         const js = tx.objectStore("jobs"), mats = tx.objectStore("materials"), rs = tx.objectStore("remainders"), ss = tx.objectStore("reservations"), ms = tx.objectStore("movements"), ps = tx.objectStore("plans");
         const checked = []; let cursor = 0;
+        let previewMaterialRecord = null;
         const commit = () => {
           out.forEach((item, index) => {
             const source = checked[index];
@@ -667,7 +668,13 @@
           const id = remainderIds[cursor], request = rs.get(id);
           request.onsuccess = () => {
             const source = request.result;
-            if (!source || source.status !== "available" || source.condition !== "good") { tx.abort(); return; }
+            if (!source || source.status !== "available" || source.condition !== "good" ||
+                (snapshot && snapshot.material &&
+                 (!previewMaterialRecord || source.materialId !== snapshot.material.id ||
+                  !isRemainderCompatibleWithMaterial(source, previewMaterialRecord)))) {
+              tx.abort();
+              return;
+            }
             const active = ss.index("remainderId").getAll(id);
             active.onsuccess = () => {
               if (active.result.some(item => item.status === "active")) { tx.abort(); return; }
@@ -697,6 +704,7 @@
                 tx.abort();
                 return;
               }
+              previewMaterialRecord = currentMaterial;
               checkNext();
             };
             return;

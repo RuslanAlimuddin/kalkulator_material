@@ -416,6 +416,51 @@ async function main() {
     );
   });
 
+  await test("konfirmasi rencana menolak sisa inventaris dari material yang berbeda", async () => {
+    const data = bundle("RESERVE-WRONG-MATERIAL");
+    await storage.importJSON(data, "merge");
+    await storage.add("materials", {
+      id: "MAT-EXPECTED-RESERVE-WRONG-MATERIAL",
+      name: "Material yang dipilih pada rencana",
+      category: "keramik", thicknessMm: 8, surface: "glossy",
+      grainRequired: false, motif: "plain",
+      rotationPolicy: "free", active: true
+    });
+
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-RESERVE-WRONG-MATERIAL"],
+      jobId: "JOB-RESERVE-WRONG-MATERIAL",
+      planId: "PLAN-RESERVE-WRONG-MATERIAL",
+      timestamp: now,
+      planSnapshot: {
+        material: {
+          id: "MAT-EXPECTED-RESERVE-WRONG-MATERIAL",
+          thicknessMm: 8, motif: "plain",
+          rotationPolicy: "free", grainRequired: false
+        },
+        plan: {
+          inventoryUsage: [{ remainderId: "REM-RESERVE-WRONG-MATERIAL" }]
+        }
+      }
+    }));
+
+    assert.equal(
+      (await storage.get("remainders", "REM-RESERVE-WRONG-MATERIAL")).status,
+      "available"
+    );
+    assert.equal(
+      (await storage.getByIndex("reservations", "remainderId", "REM-RESERVE-WRONG-MATERIAL"))
+        .filter(item => item.status === "active").length,
+      0
+    );
+    assert.equal(await storage.get("plans", "PLAN-RESERVE-WRONG-MATERIAL"), null);
+    assert.equal(
+      (await storage.getByIndex("movements", "remainderId", "REM-RESERVE-WRONG-MATERIAL"))
+        .some(item => item.type === "reserved"),
+      false
+    );
+  });
+
   await test("konfirmasi rencana menolak spesifikasi material yang berubah setelah pratinjau", async () => {
     const material = {
       id: "MAT-STALE-SPEC-PREVIEW", name: "Material uji spesifikasi",

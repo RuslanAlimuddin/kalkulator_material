@@ -159,6 +159,20 @@ async function main() {
     "BATCH-LINEAGE-CHILD");
   const lineageReport = await storage.getRecoveryReport();
   assert.deepEqual(lineageReport.remainderLineageIssues, []);
+  const beforeRepeatedRecovery = {
+    remainders: await storage.getAll("remainders"),
+    reservations: await storage.getAll("reservations"),
+    movements: await storage.getAll("movements")
+  };
+  const repeatedRecoveryReport = await storage.getRecoveryReport();
+  const afterRepeatedRecovery = {
+    remainders: await storage.getAll("remainders"),
+    reservations: await storage.getAll("reservations"),
+    movements: await storage.getAll("movements")
+  };
+  assert.deepEqual(repeatedRecoveryReport, lineageReport);
+  assert.deepEqual(afterRepeatedRecovery, beforeRepeatedRecovery);
+  console.log("LULUS: pemulihan berulang bersifat read-only dan tidak menggandakan data.");
   console.log("LULUS: rantai sumber-induk, anak, dan cucu konsisten setelah konsumsi berulang.");
 
   await secondStorage.close();

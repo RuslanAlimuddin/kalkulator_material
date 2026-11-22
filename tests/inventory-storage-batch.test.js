@@ -300,6 +300,64 @@ async function main() {
   }
   console.log("LULUS: penutupan pekerjaan dan reservasi stok tidak dapat saling mendahului secara tidak konsisten.");
 
+  // Impor replace dan reservasi bersamaan harus terserialisasi sebagai transaksi utuh.
+  await storage.add("materials", {
+    id: "BATCH-REPLACE-RACE-MAT", name: "Material sebelum replace", category: "uji",
+    thicknessMm: 8, surface: "glossy", grainRequired: false, motif: "plain",
+    rotationPolicy: "free", active: true
+  });
+  await storage.add("jobs", {
+    id: "BATCH-REPLACE-RACE-JOB", name: "Pekerjaan sebelum replace", status: "open",
+    createdAt: now, closedAt: null
+  });
+  await storage.add("remainders", {
+    id: "BATCH-REPLACE-RACE-REM", materialId: "BATCH-REPLACE-RACE-MAT",
+    widthCm: 30, heightCm: 20, thicknessMm: 8, grainDirection: "none",
+    motif: "plain", rotationAllowed: true, condition: "good", status: "available",
+    originJobId: "BATCH-REPLACE-RACE-JOB", sourceSheetId: "BATCH-REPLACE-RACE-SHEET",
+    createdAt: now, updatedAt: now, version: 1
+  });
+  const replacementBundle = {
+    schemaVersion: 1,
+    materials: { schemaVersion: 1, materials: [{
+      id: "BATCH-REPLACED-MAT", name: "Material hasil replace", category: "uji",
+      thicknessMm: 8, surface: "glossy", grainRequired: false, motif: "plain",
+      rotationPolicy: "free", active: true
+    }] },
+    jobs: { schemaVersion: 1, jobs: [{
+      id: "BATCH-REPLACED-JOB", name: "Pekerjaan hasil replace", status: "open",
+      createdAt: now, closedAt: null
+    }] },
+    remainders: { schemaVersion: 1, remainders: [{
+      id: "BATCH-REPLACED-REM", materialId: "BATCH-REPLACED-MAT",
+      widthCm: 35, heightCm: 25, thicknessMm: 8, grainDirection: "none",
+      motif: "plain", rotationAllowed: true, condition: "good", status: "available",
+      originJobId: "BATCH-REPLACED-JOB", sourceSheetId: "BATCH-REPLACED-SHEET",
+      createdAt: now, updatedAt: now, version: 1
+    }] },
+    reservations: { schemaVersion: 1, reservations: [] },
+    movements: { schemaVersion: 1, movements: [] },
+    plans: { schemaVersion: 1, plans: [] },
+    meta: []
+  };
+  const replaceRace = await Promise.allSettled([
+    storage.importJSON(replacementBundle, "replace"),
+    secondStorage.reserveRemainders({
+      remainderIds: ["BATCH-REPLACE-RACE-REM"],
+      jobId: "BATCH-REPLACE-RACE-JOB", timestamp: "2026-11-18T13:00:07.000Z"
+    })
+  ]);
+  assert.equal(replaceRace[0].status, "fulfilled", "Impor replace harus selesai secara utuh.");
+  const afterReplace = await storage.exportJSON();
+  assert.deepEqual(afterReplace.materials.materials.map(item => item.id), ["BATCH-REPLACED-MAT"]);
+  assert.deepEqual(afterReplace.jobs.jobs.map(item => item.id), ["BATCH-REPLACED-JOB"]);
+  assert.deepEqual(afterReplace.remainders.remainders.map(item => item.id), ["BATCH-REPLACED-REM"]);
+  assert.equal(afterReplace.reservations.reservations.length, 0);
+  assert.equal(afterReplace.movements.movements.length, 0);
+  assert.equal(afterReplace.plans.plans.length, 0);
+  assert.ok(["fulfilled", "rejected"].includes(replaceRace[1].status));
+  console.log("LULUS: impor replace dan reservasi bersamaan tidak meninggalkan data campuran atau referensi yatim.");
+
   await secondStorage.close();
   console.log("LULUS: reservasi bersamaan dari dua instance hanya mengizinkan satu transaksi.");
 

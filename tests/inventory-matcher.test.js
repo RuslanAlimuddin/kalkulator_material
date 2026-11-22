@@ -87,6 +87,25 @@ test("rotasi ditolak jika material berarah atau unit melarang rotasi", () => {
   }).length, 0);
 });
 
+test("matcher menolak sisa yang melanggar kebijakan rotasi meskipun potongannya tidak diputar", () => {
+  const remainder = {
+    ...base, id: "ROTATION-POLICY-MISMATCH",
+    widthCm: 100, heightCm: 60, rotationAllowed: true
+  };
+  const parts = [{ width: 20, height: 20 }];
+
+  assert.equal(matcher.findCandidates({
+    material: { ...material, rotationPolicy: "fixed" },
+    remainders: [remainder], parts, allowRotation: false
+  }).length, 0);
+
+  assert.equal(matcher.findCandidates({
+    material: { ...material, grainRequired: true },
+    grainDirection: "none", remainders: [remainder],
+    parts, allowRotation: false
+  }).length, 0);
+});
+
 test("kandidat diurutkan berdasarkan jumlah potongan yang muat", () => {
   const remainders = [
     { ...base, id: "SMALL", widthCm: 50, heightCm: 30 },

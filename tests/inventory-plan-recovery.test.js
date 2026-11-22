@@ -903,6 +903,13 @@ async function main() {
     item.remainderId === lineageChild.id &&
     item.type === "missing_reservation"
   ));
+  await storage.update("remainders", lineageChild.id, { widthCm: 41 });
+  const oversizedLineageReport = await storage.getRecoveryReport();
+  assert.ok(oversizedLineageReport.remainderLineageIssues.some(item =>
+    item.remainderId === lineageChild.id &&
+    item.type === "child_dimensions_exceed_source"
+  ));
+  await storage.update("remainders", lineageChild.id, { widthCm: 20 });
   await storage.remove("remainders", lineageChild.id);
   await storage.remove("remainders", lineageParent.id);
 

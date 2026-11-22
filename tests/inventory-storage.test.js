@@ -1300,6 +1300,31 @@ async function main() {
     ), "Audit harus mendeteksi originJobId yang tidak tersedia.");
   });
 
+  await test("laporan pemulihan bersifat read-only untuk seluruh object store", async () => {
+    await storage.importJSON(bundle("RECOVERY-READ-ONLY"), "merge");
+    await storage.update("remainders", "REM-RECOVERY-READ-ONLY", {
+      originJobId: null
+    });
+
+    const snapshot = async () => {
+      const records = {};
+      for (const storeName of STORE_NAMES) {
+        records[storeName] = await storage.getAll(storeName);
+      }
+      return records;
+    };
+    const before = await snapshot();
+    const report = await storage.getRecoveryReport();
+    const after = await snapshot();
+
+    assert.ok(report.remainderReferenceIssues.some(issue =>
+      issue.type === "missing_origin_job" &&
+      issue.remainderId === "REM-RECOVERY-READ-ONLY"
+    ));
+    assert.deepEqual(after, before,
+      "Laporan pemulihan tidak boleh menulis, menghapus, atau mengubah record apa pun.");
+  });
+
   await test("audit pemulihan menandai movement operasional dengan timestamp sama", async () => {
     await storage.importJSON(bundle("SAME-TIME-MOVEMENT-AUDIT"), "merge");
     await storage.update("remainders", "REM-SAME-TIME-MOVEMENT-AUDIT", {

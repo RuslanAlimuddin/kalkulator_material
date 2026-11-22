@@ -199,6 +199,10 @@
     request.onsuccess = () => {
       const updatedAtMs = Date.parse(remainder.updatedAt || "");
       const rawMovementEvents = request.result;
+      if (remainder.updatedAt != null && !isValidIsoUtcTimestamp(remainder.updatedAt)) {
+        callback(false);
+        return;
+      }
       // Jangan melanjutkan siklus stok di atas riwayat yang tidak dapat
       // diurutkan. Catatan rusak tidak boleh diam-diam diabaikan.
       if (rawMovementEvents.some(item =>
@@ -1650,7 +1654,8 @@
           }
           const createdTime = Date.parse(originRemainder.createdAt || "");
           const movementTime = Date.parse(movement.timestamp || "");
-          if (Number.isFinite(createdTime) && Number.isFinite(movementTime) && createdTime !== movementTime) {
+          if (isValidIsoUtcTimestamp(originRemainder.createdAt) &&
+              isValidIsoUtcTimestamp(movement.timestamp) && createdTime !== movementTime) {
             movementHistoryIssues.push({
               severity: "error", type: "origin_timestamp_mismatch",
               remainderId: movement.remainderId || null, movementId: movement.id || null,
@@ -1762,7 +1767,8 @@
         if (reservedEvents.length === 1 && expectedTerminal.length === 1) {
           const reservedTime = Date.parse(reservedEvents[0].timestamp || "");
           const terminalTime = Date.parse(expectedTerminal[0].timestamp || "");
-          if (Number.isFinite(reservedTime) && Number.isFinite(terminalTime) && reservedTime > terminalTime) {
+          if (isValidIsoUtcTimestamp(reservedEvents[0].timestamp) &&
+              isValidIsoUtcTimestamp(expectedTerminal[0].timestamp) && reservedTime > terminalTime) {
             addReservationMovementIssue("error", "reservation_movement_order_mismatch",
               [reservedEvents[0], expectedTerminal[0]],
               "Movement terminal tidak boleh mendahului movement reserved.");
@@ -1797,7 +1803,7 @@
             invalidTimestampMovements.map(item => item.id));
         }
         const ordered = history
-          .filter(item => Number.isFinite(Date.parse(item.timestamp || "")))
+          .filter(item => isValidIsoUtcTimestamp(item.timestamp))
           .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp) || a._sourceIndex - b._sourceIndex);
         const originEvents = ordered.filter(item => ["created", "remainder_created"].includes(item.type));
         const terminalEvents = ordered.filter(item => ["consumed", "discarded"].includes(item.type));

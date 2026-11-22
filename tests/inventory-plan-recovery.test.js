@@ -948,6 +948,30 @@ async function main() {
     await storage.remove("remainders", parent.id);
   }
 
+  // Timestamp movement yang rusak tidak boleh diam-diam disaring dari audit kronologi.
+  await storage.importJSON(bundle("INVALID-MOVEMENT-TIMESTAMP"), "merge");
+  await storage.put("movements", {
+    id: "MOV-INVALID-TIMESTAMP",
+    remainderId: "REC-REM-INVALID-MOVEMENT-TIMESTAMP",
+    type: "condition_changed",
+    jobId: "JOB-INVALID-MOVEMENT-TIMESTAMP",
+    timestamp: "bukan-tanggal",
+    fromStatus: "available",
+    toStatus: "available",
+    fromCondition: "good",
+    toCondition: "damaged"
+  });
+  const invalidMovementTimestampReport = await storage.getRecoveryReport();
+  assert.ok(invalidMovementTimestampReport.movementHistoryIssues.some(item =>
+    item.type === "invalid_movement_timestamp" &&
+    item.remainderId === "REC-REM-INVALID-MOVEMENT-TIMESTAMP" &&
+    item.movementIds.includes("MOV-INVALID-TIMESTAMP")
+  ), "Audit harus melaporkan movement dengan timestamp tidak valid.");
+  await storage.remove("movements", "MOV-INVALID-TIMESTAMP");
+  await storage.remove("remainders", "REC-REM-INVALID-MOVEMENT-TIMESTAMP");
+  await storage.remove("jobs", "JOB-INVALID-MOVEMENT-TIMESTAMP");
+  await storage.remove("materials", "MAT-INVALID-MOVEMENT-TIMESTAMP");
+
   // Laporan pemulihan harus menemukan siklus asal-usul yang sudah berada
   // di database lokal, bukan hanya menolak siklus saat impor.
   const cycleA = {

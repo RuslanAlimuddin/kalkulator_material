@@ -499,6 +499,13 @@
         if (item.rotationAllowed !== source.rotationAllowed) {
           error(p + ".rotationAllowed", "Aturan rotasi sisa turunan harus sama dengan sumbernya.");
         }
+        const fitsDirectly = item.widthCm <= source.widthCm &&
+          item.heightCm <= source.heightCm;
+        const fitsRotated = source.rotationAllowed === true &&
+          item.widthCm <= source.heightCm && item.heightCm <= source.widthCm;
+        if (!fitsDirectly && !fitsRotated) {
+          error(p, "Ukuran sisa turunan tidak boleh melebihi ukuran sumber, termasuk setelah rotasi.");
+        }
       }
       if (!reservation) {
         error(p + ".reservationId", "Reservasi sumber sisa turunan tidak ditemukan.");

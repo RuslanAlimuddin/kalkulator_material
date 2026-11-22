@@ -526,6 +526,33 @@
       }
     });
 
+    // Total luas semua anak dari satu sumber tidak boleh melampaui
+    // luas sumber. Pemeriksaan per-anak saja memungkinkan duplikasi stok.
+    if (remainders) {
+      const childrenBySource = new Map();
+      remainders.forEach(item => {
+        if (!isObject(item) || item.sourceType !== "inventory" ||
+            !isNonEmptyString(item.sourceRemainderId)) return;
+        if (!childrenBySource.has(item.sourceRemainderId)) {
+          childrenBySource.set(item.sourceRemainderId, []);
+        }
+        childrenBySource.get(item.sourceRemainderId).push(item);
+      });
+      childrenBySource.forEach((children, sourceId) => {
+        const source = remainderById.get(sourceId);
+        if (!source || !isPositiveNumber(source.widthCm) ||
+            !isPositiveNumber(source.heightCm)) return;
+        const sourceArea = source.widthCm * source.heightCm;
+        const childArea = children.reduce((total, item) =>
+          total + (isPositiveNumber(item.widthCm) && isPositiveNumber(item.heightCm)
+            ? item.widthCm * item.heightCm : 0), 0);
+        if (childArea > sourceArea + 1e-6) {
+          error("remainders", "Total luas seluruh sisa turunan dari " + sourceId +
+            " melebihi luas sumber material.");
+        }
+      });
+    }
+
     // Pastikan hubungan sumber sisa material membentuk rantai satu arah.
     // Tanpa pemeriksaan siklus, paket dapat menyatakan A berasal dari B dan
     // B berasal dari A, meskipun masing-masing sumber berstatus consumed.

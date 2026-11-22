@@ -1201,6 +1201,34 @@ async function main() {
     );
   });
 
+  await test("perubahan kondisi menolak jobId yang tidak ditemukan tanpa mengubah stok atau riwayat", async () => {
+    await storage.importJSON(bundle("CONDITION-MISSING-JOB"), "merge");
+    const before = await storage.get("remainders", "REM-CONDITION-MISSING-JOB");
+
+    await assert.rejects(storage.updateRemainderState({
+      id: "REM-CONDITION-MISSING-JOB",
+      changes: { condition: "damaged" },
+      jobId: "JOB-CONDITION-NOT-FOUND",
+      timestamp: "2026-11-18T12:00:00.001Z"
+    }));
+
+    assert.deepEqual(
+      await storage.get("remainders", "REM-CONDITION-MISSING-JOB"),
+      before
+    );
+    const movements = await storage.getByIndex(
+      "movements", "remainderId", "REM-CONDITION-MISSING-JOB"
+    );
+    assert.equal(movements.some(item => item.type === "condition_changed"), false);
+    const report = await storage.getRecoveryReport();
+    assert.equal(
+      report.movementHistoryIssues.some(item =>
+        item.type === "missing_job" && item.remainderId === "REM-CONDITION-MISSING-JOB"
+      ),
+      false
+    );
+  });
+
   await test("penyelesaian rencana menolak timestamp tidak valid tanpa mengubah status", async () => {
     const plan = {
       id: "PLAN-TIMESTAMP-INVALID",

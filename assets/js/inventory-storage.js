@@ -1241,10 +1241,18 @@
         allowed.status = "discarded";
       }
       if (!Object.keys(allowed).length) throw new Error("Tidak ada perubahan status/kondisi.");
+      const requestedJobId = input.jobId == null ? null : input.jobId;
+      if (requestedJobId !== null &&
+          (typeof requestedJobId !== "string" || !requestedJobId.trim())) {
+        throw new Error("jobId jika diisi harus berupa teks yang tidak kosong.");
+      }
       const timestamp = resolveTimestamp(input.timestamp);
       const database = await db();
       let updated;
-      await withTransaction(database, ["remainders", "reservations", "movements"], "readwrite", tx => {
+      // Sertakan jobs agar pemeriksaan referensi dan penulisan movement
+      // terserialisasi dengan penghapusan pekerjaan pada transaksi lain.
+      await withTransaction(database, ["jobs", "remainders", "reservations", "movements"], "readwrite", tx => {
+        const jobs = tx.objectStore("jobs");
         const remainders = tx.objectStore("remainders");
         const reservations = tx.objectStore("reservations");
         const movements = tx.objectStore("movements");
@@ -1258,31 +1266,42 @@
               tx.abort();
               return;
             }
-            // Gunakan aturan kronologi yang sama dengan reservasi dan konsumsi.
-            // Pemeriksaan tetap berada dalam transaksi yang sama.
-            isTimestampAtOrAfterMovementHistory(movements, current, timestamp, validTime => {
-              if (!validTime) { tx.abort(); return; }
-              updated = {
-                ...current,
-                ...allowed,
-                updatedAt: timestamp,
-                version: Number(current.version || 0) + 1
-              };
-              remainders.put(updated);
-              const discarded = allowed.status === "discarded";
-              movements.add({
-                id: makeId("MOV"),
-                remainderId: current.id,
-                type: discarded ? "discarded" : "condition_changed",
-                jobId: input.jobId || current.originJobId,
-                timestamp,
-                fromStatus: current.status,
-                toStatus: updated.status,
-                fromCondition: current.condition,
-                toCondition: updated.condition,
-                referenceId: input.referenceId || null
+            // Movement wajib menunjuk pekerjaan yang ada. Pemeriksaan ini
+            // berada di transaksi yang sama agar tidak berlomba dengan
+            // penghapusan pekerjaan dan tidak meninggalkan referensi yatim.
+            const movementJobId = requestedJobId || current.originJobId;
+            if (typeof movementJobId !== "string" || !movementJobId.trim()) {
+              tx.abort();
+              return;
+            }
+            const jobRequest = jobs.get(movementJobId);
+            jobRequest.onsuccess = () => {
+              if (!jobRequest.result) { tx.abort(); return; }
+              // Gunakan aturan kronologi yang sama dengan reservasi dan konsumsi.
+              isTimestampAtOrAfterMovementHistory(movements, current, timestamp, validTime => {
+                if (!validTime) { tx.abort(); return; }
+                updated = {
+                  ...current,
+                  ...allowed,
+                  updatedAt: timestamp,
+                  version: Number(current.version || 0) + 1
+                };
+                remainders.put(updated);
+                const discarded = allowed.status === "discarded";
+                movements.add({
+                  id: makeId("MOV"),
+                  remainderId: current.id,
+                  type: discarded ? "discarded" : "condition_changed",
+                  jobId: movementJobId,
+                  timestamp,
+                  fromStatus: current.status,
+                  toStatus: updated.status,
+                  fromCondition: current.condition,
+                  toCondition: updated.condition,
+                  referenceId: input.referenceId || null
+                });
               });
-            });
+            };
           };
         };
       });

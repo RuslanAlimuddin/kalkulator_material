@@ -129,6 +129,38 @@ async function main() {
   ).length, 1);
   console.log("LULUS: konsumsi reservasi bersamaan dari dua instance hanya membuat satu turunan.");
 
+  // Rantai material harus tetap konsisten saat sisa turunan dipotong kembali.
+  await storage.add("remainders", remainder("BATCH-LINEAGE-PARENT"));
+  const parentReservation = await storage.reserveRemainders({
+    remainderIds: ["BATCH-LINEAGE-PARENT"], jobId: "JOB-BATCH", timestamp: now
+  });
+  await storage.consumeReservations({
+    timestamp: "2026-11-18T13:00:01.000Z",
+    reservations: [{ reservationId: parentReservation[0].id,
+      remainders: [{ id: "BATCH-LINEAGE-CHILD", widthCm: 30, heightCm: 20 }] }],
+    newSheetRemainders: []
+  });
+  const childReservation = await storage.reserveRemainders({
+    remainderIds: ["BATCH-LINEAGE-CHILD"], jobId: "JOB-BATCH",
+    timestamp: "2026-11-18T13:00:02.000Z"
+  });
+  await storage.consumeReservations({
+    timestamp: "2026-11-18T13:00:03.000Z",
+    reservations: [{ reservationId: childReservation[0].id,
+      remainders: [{ id: "BATCH-LINEAGE-GRANDCHILD", widthCm: 15, heightCm: 10 }] }],
+    newSheetRemainders: []
+  });
+  assert.equal((await storage.get("remainders", "BATCH-LINEAGE-PARENT")).status, "consumed");
+  assert.equal((await storage.get("remainders", "BATCH-LINEAGE-CHILD")).status, "consumed");
+  assert.equal((await storage.get("remainders", "BATCH-LINEAGE-GRANDCHILD")).status, "available");
+  assert.equal((await storage.get("remainders", "BATCH-LINEAGE-CHILD")).sourceRemainderId,
+    "BATCH-LINEAGE-PARENT");
+  assert.equal((await storage.get("remainders", "BATCH-LINEAGE-GRANDCHILD")).sourceRemainderId,
+    "BATCH-LINEAGE-CHILD");
+  const lineageReport = await storage.getRecoveryReport();
+  assert.deepEqual(lineageReport.remainderLineageIssues, []);
+  console.log("LULUS: rantai sumber-induk, anak, dan cucu konsisten setelah konsumsi berulang.");
+
   await secondStorage.close();
   console.log("LULUS: reservasi bersamaan dari dua instance hanya mengizinkan satu transaksi.");
 

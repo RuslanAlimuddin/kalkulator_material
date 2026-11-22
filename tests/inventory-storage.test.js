@@ -371,6 +371,48 @@ async function main() {
     }
   });
 
+  await test("konfirmasi rencana menolak material yang dinonaktifkan setelah pratinjau", async () => {
+    const data = bundle("INACTIVE-MATERIAL-PREVIEW");
+    await storage.importJSON(data, "merge");
+    await storage.update("materials", "MAT-INACTIVE-MATERIAL-PREVIEW", {
+      active: false
+    });
+
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-INACTIVE-MATERIAL-PREVIEW"],
+      jobId: "JOB-INACTIVE-MATERIAL-PREVIEW",
+      planId: "PLAN-INACTIVE-MATERIAL-PREVIEW",
+      timestamp: now,
+      planSnapshot: {
+        material: { id: "MAT-INACTIVE-MATERIAL-PREVIEW", active: true },
+        plan: {
+          inventoryUsage: [
+            { remainderId: "REM-INACTIVE-MATERIAL-PREVIEW" }
+          ]
+        }
+      }
+    }));
+
+    assert.equal(
+      (await storage.get("remainders", "REM-INACTIVE-MATERIAL-PREVIEW")).status,
+      "available"
+    );
+    assert.equal(
+      (await storage.getByIndex("reservations", "remainderId", "REM-INACTIVE-MATERIAL-PREVIEW"))
+        .filter(item => item.status === "active").length,
+      0
+    );
+    assert.equal(
+      (await storage.getAll("plans")).some(item => item.id === "PLAN-INACTIVE-MATERIAL-PREVIEW"),
+      false
+    );
+    assert.equal(
+      (await storage.getByIndex("movements", "remainderId", "REM-INACTIVE-MATERIAL-PREVIEW"))
+        .some(item => item.type === "reserved"),
+      false
+    );
+  });
+
   await test("reservasi massal gagal seluruhnya jika satu unit tidak layak", async () => {
     await storage.importJSON(bundle("BATCH-ROLLBACK-1"), "merge");
     await storage.importJSON(bundle("BATCH-ROLLBACK-2"), "merge");

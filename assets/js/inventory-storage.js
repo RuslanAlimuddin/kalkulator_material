@@ -611,8 +611,12 @@
       const planId = input.planId || (snapshot ? makeId("PLAN") : null);
       const out = remainderIds.map(remainderId => ({ id: makeId("RSV"), movementId: makeId("MOV"), remainderId, jobId: input.jobId, planId }));
       const database = await db();
-      await withTransaction(database, ["jobs", "remainders", "reservations", "movements", "plans"], "readwrite", tx => {
-        const js = tx.objectStore("jobs"), rs = tx.objectStore("remainders"), ss = tx.objectStore("reservations"), ms = tx.objectStore("movements"), ps = tx.objectStore("plans");
+      if (snapshot && snapshot.material &&
+          (typeof snapshot.material.id !== "string" || !snapshot.material.id.trim())) {
+        throw new Error("Snapshot rencana harus menyertakan ID material yang valid.");
+      }
+      await withTransaction(database, ["jobs", "materials", "remainders", "reservations", "movements", "plans"], "readwrite", tx => {
+        const js = tx.objectStore("jobs"), mats = tx.objectStore("materials"), rs = tx.objectStore("remainders"), ss = tx.objectStore("reservations"), ms = tx.objectStore("movements"), ps = tx.objectStore("plans");
         const checked = []; let cursor = 0;
         const commit = () => {
           out.forEach((item, index) => {
@@ -642,6 +646,20 @@
         const jobRequest = js.get(input.jobId);
         jobRequest.onsuccess = () => {
           if (!jobRequest.result || jobRequest.result.status !== "open") { tx.abort(); return; }
+          // Snapshot UI membawa identitas material yang dipakai menghitung rencana.
+          // Validasi ulang status katalog di transaksi yang sama agar material
+          // yang dinonaktifkan setelah pratinjau tidak dapat dikonfirmasi.
+          if (snapshot && snapshot.material) {
+            const materialRequest = mats.get(snapshot.material.id);
+            materialRequest.onsuccess = () => {
+              if (!materialRequest.result || materialRequest.result.active === false) {
+                tx.abort();
+                return;
+              }
+              checkNext();
+            };
+            return;
+          }
           checkNext();
         };
       });

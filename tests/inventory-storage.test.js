@@ -1504,6 +1504,64 @@ async function main() {
     ));
   });
 
+  await test("operasi stok menolak sumber dengan riwayat movement bertimestamp rusak", async () => {
+    const reserveSuffix = "INVALID-HISTORY-RESERVE";
+    const releaseSuffix = "INVALID-HISTORY-RELEASE";
+    const consumeSuffix = "INVALID-HISTORY-CONSUME";
+    for (const suffix of [reserveSuffix, releaseSuffix, consumeSuffix]) {
+      await storage.importJSON(bundle(suffix), "merge");
+    }
+
+    const addInvalidMovement = async suffix => {
+      await storage.put("movements", {
+        id: "MOV-INVALID-" + suffix,
+        remainderId: "REM-" + suffix,
+        type: "condition_changed",
+        jobId: "JOB-" + suffix,
+        timestamp: "bukan-tanggal",
+        fromStatus: "available",
+        toStatus: "available",
+        fromCondition: "good",
+        toCondition: "damaged"
+      });
+    };
+
+    await addInvalidMovement(reserveSuffix);
+    await assert.rejects(storage.reserveRemainder({
+      remainderId: "REM-" + reserveSuffix,
+      jobId: "JOB-" + reserveSuffix,
+      timestamp: "2026-11-18T12:01:00.000Z"
+    }));
+    assert.equal((await storage.get("remainders", "REM-" + reserveSuffix)).status, "available");
+    assert.equal((await storage.getByIndex("reservations", "remainderId", "REM-" + reserveSuffix)).length, 0);
+
+    const releaseReservation = await storage.reserveRemainder({
+      remainderId: "REM-" + releaseSuffix,
+      jobId: "JOB-" + releaseSuffix,
+      timestamp: "2026-11-18T12:01:00.000Z"
+    });
+    await addInvalidMovement(releaseSuffix);
+    await assert.rejects(storage.releaseReservation(releaseReservation.id, {
+      timestamp: "2026-11-18T12:02:00.000Z"
+    }));
+    assert.equal((await storage.get("remainders", "REM-" + releaseSuffix)).status, "reserved");
+    assert.equal((await storage.get("reservations", releaseReservation.id)).status, "active");
+
+    const consumeReservation = await storage.reserveRemainder({
+      remainderId: "REM-" + consumeSuffix,
+      jobId: "JOB-" + consumeSuffix,
+      timestamp: "2026-11-18T12:01:00.000Z"
+    });
+    await addInvalidMovement(consumeSuffix);
+    await assert.rejects(storage.consumeReservation({
+      reservationId: consumeReservation.id,
+      timestamp: "2026-11-18T12:02:00.000Z",
+      remainders: []
+    }));
+    assert.equal((await storage.get("remainders", "REM-" + consumeSuffix)).status, "reserved");
+    assert.equal((await storage.get("reservations", consumeReservation.id)).status, "active");
+  });
+
   await test("perubahan kondisi menolak timestamp yang mundur dari movement terakhir", async () => {
     await storage.importJSON(bundle("BACKDATED-CONDITION"), "merge");
     await storage.updateRemainderState({

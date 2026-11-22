@@ -675,7 +675,8 @@
                 )
               : null;
             const hasInventorySheetSnapshot = Boolean(snapshot && snapshot.plan &&
-              Array.isArray(snapshot.plan.sheets));
+              Array.isArray(snapshot.plan.sheets) &&
+              snapshot.plan.sheets.some(sheet => sheet && sheet.source === "inventory"));
             if (!source || source.status !== "available" || source.condition !== "good" ||
                 (snapshot && snapshot.material &&
                  (!previewMaterialRecord || source.materialId !== snapshot.material.id ||

@@ -58,9 +58,15 @@ async function main() {
       { width: 18, height: 9, source: "new", sheetId: 1 }
     ],
     sheets: [
-      { id: "INVENTORY-0-CONSUME-1", source: "inventory" },
-      { id: "INVENTORY-1-CONSUME-2", source: "inventory" },
-      { id: 1, source: "new" }
+      {
+        id: "INVENTORY-0-CONSUME-1", source: "inventory",
+        remainderId: "CONSUME-1", width: 50, height: 35
+      },
+      {
+        id: "INVENTORY-1-CONSUME-2", source: "inventory",
+        remainderId: "CONSUME-2", width: 50, height: 35
+      },
+      { id: 1, source: "new", width: 100, height: 100 }
     ],
     tooSmallRemainders: [
       { sourceRemainderId: "CONSUME-1", width: 2, height: 2 }
@@ -199,7 +205,17 @@ async function main() {
         { sourceRemainderId: "CONSUME-ROLLBACK-2", width: 10, height: 6, source: "inventory" },
         { width: 9, height: 7, source: "new", sheetId: 9 }
       ],
-      sheets: [{ id: 9, source: "new" }]
+      sheets: [
+        {
+          id: "INVENTORY-0-CONSUME-ROLLBACK-1", source: "inventory",
+          remainderId: "CONSUME-ROLLBACK-1", width: 50, height: 35
+        },
+        {
+          id: "INVENTORY-1-CONSUME-ROLLBACK-2", source: "inventory",
+          remainderId: "CONSUME-ROLLBACK-2", width: 50, height: 35
+        },
+        { id: 9, source: "new", width: 100, height: 100 }
+      ]
     },
     jobId: "JOB-TARGET",
     material: { id: "MAT-CONSUME", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },

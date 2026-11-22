@@ -175,6 +175,40 @@ async function main() {
   console.log("LULUS: pemulihan berulang bersifat read-only dan tidak menggandakan data.");
   console.log("LULUS: rantai sumber-induk, anak, dan cucu konsisten setelah konsumsi berulang.");
 
+  // Impor merge bersamaan dengan ID yang sama harus menghasilkan satu paket utuh,
+  // bukan dua salinan atau campuran data parsial.
+  const importBundle = {
+    schemaVersion: 1,
+    materials: { schemaVersion: 1, materials: [{
+      id: "BATCH-IMPORT-MAT", name: "Material impor uji", category: "uji",
+      thicknessMm: 8, surface: "glossy", grainRequired: false, motif: "plain",
+      rotationPolicy: "free", active: true
+    }] },
+    jobs: { schemaVersion: 1, jobs: [{
+      id: "BATCH-IMPORT-JOB", name: "Pekerjaan impor uji", status: "open",
+      createdAt: now, closedAt: null
+    }] },
+    remainders: { schemaVersion: 1, remainders: [{
+      id: "BATCH-IMPORT-REM", materialId: "BATCH-IMPORT-MAT",
+      widthCm: 45, heightCm: 32, thicknessMm: 8, grainDirection: "none",
+      motif: "plain", rotationAllowed: true, condition: "good", status: "available",
+      originJobId: "BATCH-IMPORT-JOB", sourceSheetId: "BATCH-IMPORT-SHEET",
+      createdAt: now, updatedAt: now, version: 1
+    }] },
+    reservations: { schemaVersion: 1, reservations: [] },
+    movements: { schemaVersion: 1, movements: [] }
+  };
+  const importResults = await Promise.allSettled([
+    storage.importJSON(importBundle, "merge"),
+    secondStorage.importJSON(importBundle, "merge")
+  ]);
+  assert.equal(importResults.filter(item => item.status === "fulfilled").length, 1);
+  assert.equal(importResults.filter(item => item.status === "rejected").length, 1);
+  assert.equal((await storage.getAll("materials")).filter(item => item.id === "BATCH-IMPORT-MAT").length, 1);
+  assert.equal((await storage.getAll("jobs")).filter(item => item.id === "BATCH-IMPORT-JOB").length, 1);
+  assert.equal((await storage.getAll("remainders")).filter(item => item.id === "BATCH-IMPORT-REM").length, 1);
+  console.log("LULUS: impor merge bersamaan dengan ID sama hanya menyimpan satu paket utuh.");
+
   await secondStorage.close();
   console.log("LULUS: reservasi bersamaan dari dua instance hanya mengizinkan satu transaksi.");
 

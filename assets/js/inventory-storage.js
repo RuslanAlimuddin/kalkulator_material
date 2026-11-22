@@ -207,6 +207,14 @@
     return fitsDirectly || fitsRotated;
   }
 
+  function childRemaindersFitSourceArea(drafts, source) {
+    const sourceArea = Number(source.widthCm) * Number(source.heightCm);
+    const childArea = drafts.reduce((total, item) =>
+      total + Number(item.widthCm) * Number(item.heightCm), 0);
+    return Number.isFinite(sourceArea) && sourceArea > 0 &&
+      Number.isFinite(childArea) && childArea <= sourceArea + 1e-6;
+  }
+
   function isTimestampAtOrAfterMovementHistory(movements, remainder, timestamp, callback) {
     const request = movements.index("remainderId").getAll(remainder.id);
     request.onsuccess = () => {
@@ -909,7 +917,8 @@
           sr.onsuccess = () => {
             const source = sr.result;
             if (!source || source.status !== "reserved" || source.condition !== "good" ||
-                drafts.some(draft => !fitsWithinSourceRemainder(draft, source))) {
+                (drafts.some(draft => !fitsWithinSourceRemainder(draft, source)) ||
+                 !childRemaindersFitSourceArea(drafts, source))) {
               tx.abort();
               return;
             }
@@ -1154,7 +1163,8 @@
               sourceRequest.onsuccess = () => {
                 const source = sourceRequest.result;
                 if (!source || source.status !== "reserved" || source.condition !== "good" ||
-                    batch.drafts.some(draft => !fitsWithinSourceRemainder(draft, source))) {
+                    (batch.drafts.some(draft => !fitsWithinSourceRemainder(draft, source)) ||
+                     !childRemaindersFitSourceArea(batch.drafts, source))) {
                   tx.abort();
                   return;
                 }
@@ -2044,6 +2054,16 @@
                   message: "Sisa turunan tercatat dibuat sebelum reservasi sumber dikonsumsi."
                 });
               }
+            }
+            const sourceChildren = remainders.filter(item =>
+              item.sourceType === "inventory" && item.sourceRemainderId === sourceId
+            );
+            if (!childRemaindersFitSourceArea(sourceChildren, source)) {
+              remainderLineageIssues.push({
+                severity: "error", type: "child_area_exceeds_source", remainderId,
+                sourceRemainderId: sourceId,
+                message: "Total luas seluruh sisa turunan melebihi luas sumber material."
+              });
             }
             if (!fitsWithinSourceRemainder(current, source)) {
               remainderLineageIssues.push({

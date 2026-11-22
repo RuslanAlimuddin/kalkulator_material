@@ -137,9 +137,16 @@ async function main() {
   assert.equal((await storage.get("remainders", "REC-REM-2")).status, "reserved");
   assert.equal((await storage.get("plans", reserved.planId)).status, "reserved");
   await storage.close();
-
+  // Uji pemulihan sungguhan: database lokal dihapus, lalu paket ekspor
+  // dengan reservasi aktif diimpor kembali ke database kosong.
+  await deleteDatabase();
   storage = Storage.createStorage({ allowUnsafeInventoryWrites: true });
   await storage.open();
+  const importResult = await storage.importJSON(exported, "replace");
+  assert.equal(importResult.mode, "replace");
+  assert.equal((await storage.get("plans", reserved.planId)).status, "reserved");
+  assert.equal((await storage.get("reservations", reserved.reservations[0].id)).status, "active");
+  assert.equal((await storage.get("remainders", "REC-REM-1")).status, "reserved");
   const recoveredEngine = Engine.createInventoryEngine({ storage });
   // Pemulihan wajib menolak data sumber yang tidak lagi cocok dengan reservasi.
   const originalRemainder = await storage.get("remainders", "REC-REM-1");

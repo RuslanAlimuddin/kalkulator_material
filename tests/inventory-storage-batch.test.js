@@ -358,6 +358,36 @@ async function main() {
   assert.ok(["fulfilled", "rejected"].includes(replaceRace[1].status));
   console.log("LULUS: impor replace dan reservasi bersamaan tidak meninggalkan data campuran atau referensi yatim.");
 
+  // Mengosongkan katalog material tidak boleh berlomba dengan pembuatan stok.
+  await storage.add("materials", {
+    id: "BATCH-CLEAR-MAT-RACE", name: "Material clear race", category: "uji",
+    thicknessMm: 8, surface: "glossy", grainRequired: false, motif: "plain",
+    rotationPolicy: "free", active: true
+  });
+  await storage.add("jobs", {
+    id: "BATCH-CLEAR-MAT-RACE-JOB", name: "Pekerjaan clear race", status: "open",
+    createdAt: now, closedAt: null
+  });
+  const clearMaterialRace = await Promise.allSettled([
+    storage.clear("materials"),
+    secondStorage.createRemainder({
+      id: "BATCH-CLEAR-MAT-RACE-REM", materialId: "BATCH-CLEAR-MAT-RACE",
+      originJobId: "BATCH-CLEAR-MAT-RACE-JOB", sourceSheetId: "BATCH-CLEAR-MAT-RACE-SHEET",
+      widthCm: 25, heightCm: 20, thicknessMm: 8, grainDirection: "none",
+      motif: "plain", rotationAllowed: true, createdAt: "2026-11-18T13:00:08.000Z"
+    })
+  ]);
+  assert.equal(clearMaterialRace.filter(item => item.status === "fulfilled").length, 1);
+  const clearRaceMaterial = await storage.get("materials", "BATCH-CLEAR-MAT-RACE");
+  const clearRaceRemainder = await storage.get("remainders", "BATCH-CLEAR-MAT-RACE-REM");
+  if (clearRaceRemainder) {
+    assert.ok(clearRaceMaterial, "Katalog material tidak boleh dikosongkan jika stok berhasil dibuat.");
+    assert.equal(clearRaceRemainder.materialId, clearRaceMaterial.id);
+  } else {
+    assert.equal(clearRaceMaterial, null, "Jika katalog dikosongkan lebih dahulu, pembuatan stok harus gagal.");
+  }
+  console.log("LULUS: pengosongan katalog material dan pembuatan stok tidak menghasilkan referensi material yatim.");
+
   await secondStorage.close();
   console.log("LULUS: reservasi bersamaan dari dua instance hanya mengizinkan satu transaksi.");
 

@@ -910,6 +910,23 @@ async function main() {
     item.type === "child_dimensions_exceed_source"
   ));
   await storage.update("remainders", lineageChild.id, { widthCm: 20 });
+  const duplicateLineageChild = {
+    ...lineageChild,
+    id: "REC-LINEAGE-CHILD-DUPLICATE",
+    widthCm: lineageParent.widthCm,
+    heightCm: lineageParent.heightCm
+  };
+  await storage.update("remainders", lineageChild.id, {
+    widthCm: lineageParent.widthCm,
+    heightCm: lineageParent.heightCm
+  });
+  await storage.put("remainders", duplicateLineageChild);
+  const excessiveChildAreaReport = await storage.getRecoveryReport();
+  assert.ok(excessiveChildAreaReport.remainderLineageIssues.some(item =>
+    item.type === "child_area_exceeds_source" &&
+    item.sourceRemainderId === lineageParent.id
+  ));
+  await storage.remove("remainders", duplicateLineageChild.id);
   await storage.remove("remainders", lineageChild.id);
   await storage.remove("remainders", lineageParent.id);
 

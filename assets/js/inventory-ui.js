@@ -137,7 +137,11 @@
   $("searchStock").addEventListener("input", renderRemainders);
 
   $("materialForm").addEventListener("submit", async event => {
-    event.preventDefault(); clearNotice();
+    event.preventDefault();
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    if (submitButton.disabled) return;
+    submitButton.disabled = true;
+    clearNotice();
     try {
       const name = $("materialName").value.trim();
       const record = {
@@ -155,10 +159,15 @@
       event.target.reset(); $("materialMotif").value = "plain";
       await refresh(); notify("Material berhasil ditambahkan.");
     } catch (error) { notify(error.message || "Gagal menyimpan material.", true); }
+    finally { submitButton.disabled = false; }
   });
 
   $("jobForm").addEventListener("submit", async event => {
-    event.preventDefault(); clearNotice();
+    event.preventDefault();
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    if (submitButton.disabled) return;
+    submitButton.disabled = true;
+    clearNotice();
     try {
       const name = $("jobName").value.trim();
       if (!name) throw new Error("Nama pekerjaan wajib diisi.");
@@ -168,10 +177,15 @@
       });
       event.target.reset(); await refresh(); notify("Pekerjaan berhasil dicatat.");
     } catch (error) { notify(error.message || "Gagal menyimpan pekerjaan.", true); }
+    finally { submitButton.disabled = false; }
   });
 
   $("remainderForm").addEventListener("submit", async event => {
-    event.preventDefault(); clearNotice();
+    event.preventDefault();
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    if (submitButton.disabled) return;
+    submitButton.disabled = true;
+    clearNotice();
     try {
       const material = materialById($("remainderMaterial").value);
       const jobId = $("remainderJob").value;
@@ -191,6 +205,7 @@
       event.target.reset(); await refresh();
       notify("Sisa berhasil dicatat dengan ID " + record.id + ". Riwayat pembentukannya juga tersimpan.");
     } catch (error) { notify(error.message || "Gagal mencatat sisa.", true); }
+    finally { submitButton.disabled = false; }
   });
 
   $("stockTable").addEventListener("click", async event => {

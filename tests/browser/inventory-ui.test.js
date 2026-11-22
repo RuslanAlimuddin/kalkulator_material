@@ -38,12 +38,18 @@ async function main() {
     await page.locator("#materialName").fill("Triplek Browser");
     await page.locator("#materialCategory").fill("triplek");
     await page.locator("#materialThickness").fill("12");
-    await page.locator("#materialForm button[type=submit]").click();
+    await page.locator("#materialForm").evaluate(form => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
     await page.getByText("Material berhasil ditambahkan.").waitFor();
 
     await page.locator("[data-tab=jobs]").click();
     await page.locator("#jobName").fill("Pekerjaan Browser");
-    await page.locator("#jobForm button[type=submit]").click();
+    await page.locator("#jobForm").evaluate(form => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
     await page.getByText("Pekerjaan berhasil dicatat.").waitFor();
 
     await page.locator("[data-tab=stock]").click();
@@ -52,7 +58,10 @@ async function main() {
     await page.locator("#sourceSheet").fill("JOB-BROWSER-SHEET-01");
     await page.locator("#remainderWidth").fill("80");
     await page.locator("#remainderHeight").fill("45");
-    await page.locator("#remainderForm button[type=submit]").click();
+    await page.locator("#remainderForm").evaluate(form => {
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    });
     await page.getByText(/Sisa berhasil dicatat/).waitFor();
     await page.locator("#stockTable").getByText("80 × 45 cm").waitFor();
     assert.equal(await page.locator("#countAvailable").textContent(),"1");

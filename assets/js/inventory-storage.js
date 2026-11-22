@@ -1500,6 +1500,7 @@
       const movements = results[4];
       const materials = results[5];
       const jobIds = new Set(jobs.map(item => item.id));
+      const jobById = new Map(jobs.map(item => [item.id, item]));
       const materialIds = new Set(materials.map(item => item.id));
       const plansWithoutJob = plans.filter(item => !jobIds.has(item.jobId));
       const movementHistoryIssues = [];
@@ -1508,11 +1509,19 @@
       const remainderIds = new Set(remainders.map(item => item.id));
       const reservationRemainderById = new Map(remainders.map(item => [item.id, item]));
       reservations.forEach(item => {
-        if (!jobIds.has(item.jobId)) {
+        const reservationJob = jobById.get(item.jobId);
+        if (!reservationJob) {
           reservationReferenceIssues.push({
             severity: "error", type: "missing_job", reservationId: item.id,
             jobId: item.jobId || null,
             message: "Reservasi merujuk pekerjaan yang tidak ditemukan."
+          });
+        } else if (item.status === "active" && reservationJob.status !== "open") {
+          reservationReferenceIssues.push({
+            severity: "error", type: "active_job_not_open",
+            reservationId: item.id, jobId: item.jobId,
+            jobStatus: reservationJob.status,
+            message: "Reservasi aktif terhubung ke pekerjaan yang tidak lagi berstatus open."
           });
         }
         if (!remainderIds.has(item.remainderId)) {

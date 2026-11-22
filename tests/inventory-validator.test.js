@@ -756,6 +756,24 @@ test("asal-usul sisa turunan harus menunjuk sumber dan reservasi yang benar", ()
   });
   assert.equal(validate(data).valid, true, JSON.stringify(validate(data).errors));
 
+  const duplicateChild = {
+    ...data.remainders.remainders[1],
+    id: "REM-CHILD-DUPLICATE",
+    widthCm: data.remainders.remainders[0].widthCm,
+    heightCm: data.remainders.remainders[0].heightCm
+  };
+  data.remainders.remainders.push(duplicateChild);
+  data.movements.movements.push({
+    id: "MOV-CHILD-DUPLICATE-CREATED", remainderId: duplicateChild.id,
+    type: "remainder_created", jobId: "JOB-B", timestamp: now,
+    fromStatus: null, toStatus: "available", referenceId: "REM-001"
+  });
+  assert.ok(validate(data).errors.some(e =>
+    /Total luas seluruh sisa turunan/.test(e.message)
+  ), "Gabungan luas sisa turunan tidak boleh melebihi luas sumber.");
+  data.remainders.remainders.pop();
+  data.movements.movements.pop();
+
   data.remainders.remainders[1].widthCm = 50;
   assert.ok(validate(data).errors.some(e => /Ukuran sisa turunan tidak boleh melebihi ukuran sumber/.test(e.message)));
   data.remainders.remainders[1].widthCm = 31;

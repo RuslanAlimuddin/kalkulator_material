@@ -41,25 +41,27 @@
 
   // Seluruh operasi bisnis menggunakan format tanggal UTC yang sama dengan
   // validator paket agar timestamp tidak valid tidak pernah masuk ke riwayat.
-  function resolveTimestamp(value) {
-    const timestamp = value === undefined || value === null ? new Date().toISOString() : value;
+  function isValidIsoUtcTimestamp(timestamp) {
     const match = typeof timestamp === "string"
       ? /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?Z$/.exec(timestamp)
       : null;
-    const validIsoUtc = Boolean(match && (() => {
-      const year = Number(match[1]);
-      const month = Number(match[2]);
-      const day = Number(match[3]);
-      const hour = Number(match[4]);
-      const minute = Number(match[5]);
-      const second = Number(match[6]);
-      const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
-      const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-      return month >= 1 && month <= 12 &&
-        day >= 1 && day <= daysInMonth[month - 1] &&
-        hour <= 23 && minute <= 59 && second <= 59;
-    })());
-    if (!validIsoUtc) {
+    if (!match) return false;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const hour = Number(match[4]);
+    const minute = Number(match[5]);
+    const second = Number(match[6]);
+    const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return month >= 1 && month <= 12 &&
+      day >= 1 && day <= daysInMonth[month - 1] &&
+      hour <= 23 && minute <= 59 && second <= 59;
+  }
+
+  function resolveTimestamp(value) {
+    const timestamp = value === undefined || value === null ? new Date().toISOString() : value;
+    if (!isValidIsoUtcTimestamp(timestamp)) {
       throw new Error("Timestamp harus berupa tanggal ISO 8601 UTC yang valid.");
     }
     return timestamp;
@@ -200,7 +202,7 @@
       // Jangan melanjutkan siklus stok di atas riwayat yang tidak dapat
       // diurutkan. Catatan rusak tidak boleh diam-diam diabaikan.
       if (rawMovementEvents.some(item =>
-        !Number.isFinite(Date.parse(item.timestamp || ""))
+        !isValidIsoUtcTimestamp(item.timestamp)
       )) {
         callback(false);
         return;
@@ -1597,7 +1599,7 @@
         const list = movementByRemainder.get(movement.remainderId) || [];
         list.push({ ...movement, _sourceIndex: index });
         movementByRemainder.set(movement.remainderId, list);
-        if (!Number.isFinite(Date.parse(movement.timestamp || ""))) {
+        if (!isValidIsoUtcTimestamp(movement.timestamp)) {
           movementHistoryIssues.push({
             severity: "error", type: "invalid_timestamp",
             remainderId: movement.remainderId || null, movementId: movement.id || null,
@@ -1692,13 +1694,13 @@
             const expectedTimestamp = movement.type === "reserved" ? reservation.createdAt
               : movement.type === "reservation_released" ? reservation.releasedAt
               : reservation.consumedAt;
-            if (!Number.isFinite(Date.parse(expectedTimestamp || ""))) {
+            if (!isValidIsoUtcTimestamp(expectedTimestamp)) {
               movementHistoryIssues.push({
                 severity: "error", type: "reservation_timestamp_invalid",
                 remainderId: movement.remainderId || null, movementId: movement.id || null,
                 message: "Timestamp siklus hidup reservasi tidak tersedia atau tidak valid."
               });
-            } else if (Number.isFinite(Date.parse(movement.timestamp || "")) &&
+            } else if (isValidIsoUtcTimestamp(movement.timestamp) &&
                 Date.parse(movement.timestamp) !== Date.parse(expectedTimestamp)) {
               movementHistoryIssues.push({
                 severity: "error", type: "reservation_timestamp_mismatch",
@@ -1787,7 +1789,7 @@
           return;
         }
         const invalidTimestampMovements = history.filter(item =>
-          !Number.isFinite(Date.parse(item.timestamp || ""))
+          !isValidIsoUtcTimestamp(item.timestamp)
         );
         if (invalidTimestampMovements.length) {
           addMovementIssue("error", "invalid_movement_timestamp", remainder.id,
@@ -1989,13 +1991,13 @@
                   message: "Pekerjaan reservasi sumber tidak cocok dengan pekerjaan asal sisa turunan."
                 });
               }
-              if (!Number.isFinite(Date.parse(sourceReservation.consumedAt || ""))) {
+              if (!isValidIsoUtcTimestamp(sourceReservation.consumedAt)) {
                 remainderLineageIssues.push({
                   severity: "error", type: "reservation_timestamp_invalid", remainderId,
                   reservationId: sourceReservation.id,
                   message: "Waktu konsumsi reservasi sumber tidak tersedia atau tidak valid."
                 });
-              } else if (Number.isFinite(Date.parse(current.createdAt || "")) &&
+              } else if (isValidIsoUtcTimestamp(current.createdAt) &&
                   Date.parse(current.createdAt) < Date.parse(sourceReservation.consumedAt)) {
                 remainderLineageIssues.push({
                   severity: "error", type: "child_created_before_consumption", remainderId,

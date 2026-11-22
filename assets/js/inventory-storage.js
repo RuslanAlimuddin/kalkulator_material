@@ -177,8 +177,7 @@
 
   function ensureGenericWriteAllowed(storeName, options) {
     if (BUSINESS_MANAGED_STORES.includes(storeName) &&
-        !(options && options.allowUnsafeInventoryWrites === true)) {
-      throw new Error(
+        !(options && options.allowUnsafeInventoryWrites === true)) {      throw new Error(
         "Penulisan langsung ke " + storeName +
         " dibatasi. Gunakan operasi inventaris khusus agar status, reservasi, dan riwayat tetap atomik."
       );
@@ -357,8 +356,7 @@
         throw new Error("Gunakan put() untuk memperbarui meta berdasarkan key.");
       }
       if (!id || !changes || typeof changes !== "object" || Array.isArray(changes)) {
-        throw new Error("ID dan objek perubahan wajib diisi.");
-      }
+        throw new Error("ID dan objek perubahan wajib diisi.");      }
       const database = await db();
       const transactionStores = storeName === "materials"
         ? ["materials", "remainders"]
@@ -537,8 +535,7 @@
               const hasActive = existingRequest.result.some(item => item.status === "active");
               if (hasActive) {
                 tx.abort();
-                return;
-              }
+                return;              }
               isTimestampAtOrAfterMovementHistory(movements, remainder, timestamp, validTime => {
                 if (!validTime) { tx.abort(); return; }
                 const updated = {
@@ -717,8 +714,7 @@
                   movements.add({
                     id: makeId("MOV"),
                     remainderId: remainder.id,
-                    type: "reservation_released",
-                    jobId: reservation.jobId,
+                    type: "reservation_released",                    jobId: reservation.jobId,
                     timestamp,
                     fromStatus: "reserved",
                     toStatus: "available",
@@ -897,8 +893,7 @@
                 drafts.forEach(draft => {
                   const record = {
                     id: draft.id, materialId: source.materialId,
-                    widthCm: draft.widthCm, heightCm: draft.heightCm,
-                    thicknessMm: source.thicknessMm, grainDirection: source.grainDirection,
+                    widthCm: draft.widthCm, heightCm: draft.heightCm,                    thicknessMm: source.thicknessMm, grainDirection: source.grainDirection,
                     motif: source.motif, rotationAllowed: source.rotationAllowed,
                     condition: "good", status: "available", originJobId: reservation.jobId,
                     sourceSheetId: input.sourceSheetId || source.sourceSheetId,
@@ -1077,8 +1072,7 @@
                 const newSheetJobMismatch = newSheetDrafts.some(item =>
                   item.originJobId !== savedPlan.jobId
                 );
-                const sourceMismatch = usageIds.some(id => typeof id !== "string" || !id.trim()) ||
-                  new Set(usageIds).size !== usageIds.length ||
+                const sourceMismatch = usageIds.some(id => typeof id !== "string" || !id.trim()) ||                  new Set(usageIds).size !== usageIds.length ||
                   usageIds.length !== checked.length ||
                   checked.some(item => !usageIds.includes(item.reservation.remainderId));
                 if (JSON.stringify(expectedIds) !== JSON.stringify(consumedIds) ||
@@ -1257,8 +1251,7 @@
       const allowed = {};
       if (changes.condition != null) {
         if (!["good", "damaged", "unknown"].includes(changes.condition)) {
-          throw new Error("Kondisi material tidak dikenal.");
-        }
+          throw new Error("Kondisi material tidak dikenal.");        }
         allowed.condition = changes.condition;
       }
       if (changes.status != null) {
@@ -1437,7 +1430,6 @@
             }
           });
         });
-
         (bundle.meta || []).forEach(record => stores.meta.put(record));
         stores.meta.put({
           key: "schemaVersion", value: 2, updatedAt: new Date().toISOString()
@@ -1617,8 +1609,7 @@
               expectedReferenceId, actualReferenceId: movement.referenceId || null,
               message: "Referensi movement pembuatan tidak cocok dengan sumber sisa material."
             });
-          }
-        }
+          }        }
         if (originRemainder && ["inventory", "new"].includes(originRemainder.sourceType) &&
             movement.type === "remainder_created") {
           if (movement.jobId !== originRemainder.originJobId) {
@@ -1797,8 +1788,7 @@
             "Satu sisa material memiliki lebih dari satu riwayat terminal.", terminalEvents.map(item => item.id));
         }
         for (let i = 1; i < ordered.length; i += 1) {
-          const previous = ordered[i - 1], current = ordered[i];
-          const previousTime = Date.parse(previous.timestamp), currentTime = Date.parse(current.timestamp);
+          const previous = ordered[i - 1], current = ordered[i];          const previousTime = Date.parse(previous.timestamp), currentTime = Date.parse(current.timestamp);
           if (previous.type === "imported" || current.type === "imported") continue;
           if (previousTime === currentTime) {
             const previousIsOrigin = ["created", "remainder_created"].includes(previous.type);
@@ -1977,8 +1967,7 @@
                   reservationId: sourceReservation.id,
                   message: "Sisa turunan tercatat dibuat sebelum reservasi sumber dikonsumsi."
                 });
-              }
-            }
+              }            }
             if (current.materialId !== source.materialId ||
                 current.thicknessMm !== source.thicknessMm ||
                 current.grainDirection !== source.grainDirection ||
@@ -2074,9 +2063,10 @@
       const timestamp = resolveTimestamp(input.timestamp);
       const database = await db();
       let updated = null;
-      await withTransaction(database, ["plans", "reservations"], "readwrite", tx => {
+      await withTransaction(database, ["plans", "reservations", "jobs"], "readwrite", tx => {
         const plans = tx.objectStore("plans");
         const reservations = tx.objectStore("reservations");
+        const jobs = tx.objectStore("jobs");
         const request = plans.get(input.planId);
         request.onsuccess = () => {
           const current = request.result;
@@ -2096,12 +2086,25 @@
               tx.abort();
               return;
             }
-            updated = {
-              ...current, status: input.status,
-              cancelledAt: input.status === "cancelled" ? timestamp : current.cancelledAt || null,
-              completedAt: input.status === "completed" ? timestamp : current.completedAt || null
+
+            // Rencana tanpa reservasi tidak mengunci pekerjaan agar tetap
+            // dapat ditutup. Karena itu, penyelesaian harus memeriksa ulang
+            // status pekerjaan di transaksi yang sama. Pembatalan tetap
+            // diizinkan setelah pekerjaan ditutup.
+            const jobRequest = jobs.get(current.jobId);
+            jobRequest.onsuccess = () => {
+              const job = jobRequest.result;
+              if (!job || (input.status === "completed" && job.status !== "open")) {
+                tx.abort();
+                return;
+              }
+              updated = {
+                ...current, status: input.status,
+                cancelledAt: input.status === "cancelled" ? timestamp : current.cancelledAt || null,
+                completedAt: input.status === "completed" ? timestamp : current.completedAt || null
+              };
+              plans.put(updated);
             };
-            plans.put(updated);
           };
         };
       });

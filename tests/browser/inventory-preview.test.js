@@ -101,6 +101,29 @@ async function main() {
     await page.locator("#inventoryPreviewSources").getByText(/Lembar baru/).waitFor();
     assert.equal(await readStatus(), "available", "Pratinjau tidak boleh mengubah status stok.");
 
+    // Perubahan pola, posisi pemasangan, mode, atau ukuran membatalkan pratinjau lama.
+    await page.locator("#patternCards button").filter({ hasText: "Running Bond" }).click();
+    await page.locator("#inventoryPreviewResult").waitFor({ state: "hidden" });
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+    await page.locator("#alignPicker .align-dot").first().click();
+    await page.locator("#inventoryPreviewResult").waitFor({ state: "hidden" });
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+    await page.locator("#btnEkonomis").click();
+    await page.locator("#inventoryPreviewResult").waitFor({ state: "hidden" });
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+    await page.locator("#w").fill("4.5");
+    await page.locator("#inventoryPreviewResult").waitFor({ state: "hidden" });
+    await page.locator("#w").fill("4");
+
+    // Kembalikan pengaturan ke keadaan awal untuk melanjutkan alur reservasi.
+    await page.locator("#patternCards button").filter({ hasText: "Stack Bond" }).click();
+    await page.locator("#btnPresisi").click();
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+
     // Persetujuan mengunci sumber yang sama persis dengan hasil pratinjau.
     await page.locator("#inventoryConfirmButton").click();
     await page.locator('#inventoryActivePlans [data-plan-id]').waitFor();

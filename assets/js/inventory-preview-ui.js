@@ -11,6 +11,7 @@
   let materials = [];
   let jobs = [];
   let currentPreview = null;
+  let previewRevision = 0;
   let activePlanViews = [];
 
   function message(text, error) {
@@ -25,6 +26,7 @@
   }
 
   function clearPreview() {
+    previewRevision += 1;
     currentPreview = null;
     $("inventoryPreviewResult").hidden = true;
     $("inventoryPreviewSummary").textContent = "";
@@ -152,6 +154,7 @@
   async function createPreview() {
     clearMessage();
     clearPreview();
+    const requestRevision = previewRevision;
 
     const material = materials.find(item => item.id === $("inventoryMaterial").value);
     const jobId = $("inventoryJob").value;
@@ -180,6 +183,7 @@
       minRemainderW: $("minSisaW").value,
       minRemainderH: $("minSisaH").value
     });
+    if (requestRevision !== previewRevision) return;
     currentPreview = preview;
     renderPreview(preview);
     message("Pratinjau selesai. Stok inventaris belum diubah. Periksa sumber sebelum menyetujui.");
@@ -417,6 +421,10 @@
         confirmCurrentPreview().catch(error => message(error.message || "Reservasi gagal.", true));
       });
       $("inventoryActivePlans").addEventListener("click", handleActivePlanAction);
+      document.addEventListener("inventory:inputs-changed", () => {
+        clearPreview();
+        clearMessage();
+      });
       ["inventoryMaterial", "inventoryJob", "inventoryGrainDirection"].forEach(id => {
         $(id).addEventListener("change", () => {
           clearPreview();

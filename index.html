@@ -466,6 +466,9 @@ const DIRS=[
 
 let curPreset=0,curMode='presisi',curPattern='stack',curDir='horizontal',curAlign='BL';
 const EPS=0.05;
+function notifyInventoryInputsChanged(){
+  document.dispatchEvent(new Event('inventory:inputs-changed'));
+}
 
 // ============================================================
 // UTILS
@@ -488,6 +491,7 @@ function buildAlignPicker(){
     dot.innerHTML='<div class="dot-inner"></div>';
     dot.onclick=()=>{
       curAlign=a.id;
+      notifyInventoryInputsChanged();
       buildAlignPicker();
       document.getElementById('alignName').textContent=a.label;
       document.getElementById('alignDesc').textContent=a.desc;
@@ -578,6 +582,7 @@ function buildPatternCards(){
     btn.innerHTML=`${patternSVG(p.id,curDir)}<span class="clabel">${p.label}</span><span class="csub">${p.sub}</span>`;
     btn.onclick=()=>{
       curPattern=p.id;
+      notifyInventoryInputsChanged();
       buildPatternCards();buildDirCards();
       document.getElementById('dirSection').style.display=p.id==='stack'?'none':'block';
       updatePatternInfo();
@@ -594,7 +599,7 @@ function buildDirCards(){
     const btn=document.createElement('button');
     btn.className='opt-card'+(d.id===curDir?' active':'');
     btn.innerHTML=`${dirSVG(d.id)}<span class="clabel">${d.label}</span><span class="csub">${d.sub}</span>`;
-    btn.onclick=()=>{curDir=d.id;buildDirCards();buildPatternCards();updatePatternInfo();};
+    btn.onclick=()=>{curDir=d.id;notifyInventoryInputsChanged();buildDirCards();buildPatternCards();updatePatternInfo();};
     g.appendChild(btn);
   });
 }
@@ -614,6 +619,7 @@ function updatePatternInfo(){
 // ============================================================
 function setMode(m){
   curMode=m;
+  notifyInventoryInputsChanged();
   document.getElementById('btnPresisi').className='mode-btn'+(m==='presisi'?' active':'');
   document.getElementById('btnEkonomis').className='mode-btn'+(m==='ekonomis'?' active':'');
   document.getElementById('modeDesc').textContent=m==='presisi'

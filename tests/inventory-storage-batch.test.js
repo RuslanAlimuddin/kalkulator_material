@@ -359,6 +359,7 @@ async function main() {
   console.log("LULUS: impor replace dan reservasi bersamaan tidak meninggalkan data campuran atau referensi yatim.");
 
   // Mengosongkan katalog material tidak boleh berlomba dengan pembuatan stok.
+  await storage.remove("remainders", "BATCH-REPLACED-REM");
   await storage.add("materials", {
     id: "BATCH-CLEAR-MAT-RACE", name: "Material clear race", category: "uji",
     thicknessMm: 8, surface: "glossy", grainRequired: false, motif: "plain",

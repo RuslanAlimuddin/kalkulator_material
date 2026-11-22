@@ -389,6 +389,44 @@ async function main() {
   }
   console.log("LULUS: pengosongan katalog material dan pembuatan stok tidak menghasilkan referensi material yatim.");
 
+  // Bersihkan fixture race material sebelum menguji pengosongan pekerjaan.
+  if (await storage.get("remainders", "BATCH-CLEAR-MAT-RACE-REM")) {
+    await storage.remove("remainders", "BATCH-CLEAR-MAT-RACE-REM");
+  }
+  if (await storage.get("materials", "BATCH-CLEAR-MAT-RACE")) {
+    await storage.remove("materials", "BATCH-CLEAR-MAT-RACE");
+  }
+
+  // Mengosongkan katalog pekerjaan tidak boleh berlomba dengan stok yang merujuknya.
+  await storage.add("materials", {
+    id: "BATCH-CLEAR-JOB-MAT", name: "Material clear pekerjaan", category: "uji",
+    thicknessMm: 8, surface: "glossy", grainRequired: false, motif: "plain",
+    rotationPolicy: "free", active: true
+  });
+  await storage.add("jobs", {
+    id: "BATCH-CLEAR-JOB-RACE", name: "Pekerjaan clear race", status: "open",
+    createdAt: now, closedAt: null
+  });
+  const clearJobRace = await Promise.allSettled([
+    storage.clear("jobs"),
+    secondStorage.createRemainder({
+      id: "BATCH-CLEAR-JOB-RACE-REM", materialId: "BATCH-CLEAR-JOB-MAT",
+      originJobId: "BATCH-CLEAR-JOB-RACE", sourceSheetId: "BATCH-CLEAR-JOB-RACE-SHEET",
+      widthCm: 25, heightCm: 20, thicknessMm: 8, grainDirection: "none",
+      motif: "plain", rotationAllowed: true, createdAt: "2026-11-18T13:00:09.000Z"
+    })
+  ]);
+  assert.equal(clearJobRace.filter(item => item.status === "fulfilled").length, 1);
+  const clearJobRecord = await storage.get("jobs", "BATCH-CLEAR-JOB-RACE");
+  const clearJobRemainder = await storage.get("remainders", "BATCH-CLEAR-JOB-RACE-REM");
+  if (clearJobRemainder) {
+    assert.ok(clearJobRecord, "Katalog pekerjaan tidak boleh dikosongkan jika stok berhasil dibuat.");
+    assert.equal(clearJobRemainder.originJobId, clearJobRecord.id);
+  } else {
+    assert.equal(clearJobRecord, null, "Jika katalog pekerjaan dikosongkan lebih dahulu, pembuatan stok harus gagal.");
+  }
+  console.log("LULUS: pengosongan katalog pekerjaan dan pembuatan stok tidak menghasilkan referensi pekerjaan yatim.");
+
   await secondStorage.close();
   console.log("LULUS: reservasi bersamaan dari dua instance hanya mengizinkan satu transaksi.");
 

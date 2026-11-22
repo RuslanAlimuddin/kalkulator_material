@@ -1778,6 +1778,14 @@
           }
           return;
         }
+        const invalidTimestampMovements = history.filter(item =>
+          !Number.isFinite(Date.parse(item.timestamp || ""))
+        );
+        if (invalidTimestampMovements.length) {
+          addMovementIssue("error", "invalid_movement_timestamp", remainder.id,
+            "Riwayat pergerakan memiliki timestamp yang tidak valid sehingga urutan kronologinya tidak dapat dipercaya.",
+            invalidTimestampMovements.map(item => item.id));
+        }
         const ordered = history
           .filter(item => Number.isFinite(Date.parse(item.timestamp || "")))
           .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp) || a._sourceIndex - b._sourceIndex);

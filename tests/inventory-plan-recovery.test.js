@@ -970,7 +970,7 @@ async function main() {
     remainderId: invalidTimestampRemainderId,
     type: "condition_changed",
     jobId: "JOB-OLD",
-    timestamp: "bukan-tanggal",
+    timestamp: "2026-02-30T12:00:00.000Z",
     fromStatus: "available",
     toStatus: "available",
     fromCondition: "good",

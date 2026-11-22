@@ -877,7 +877,8 @@
       if (new Set(drafts.map(item => item.id)).size !== drafts.length) {
         throw new Error("ID sisa turunan tidak boleh duplikat.");
       }
-      await withTransaction(database, ["remainders", "reservations", "movements"], "readwrite", tx => {
+      await withTransaction(database, ["jobs", "remainders", "reservations", "movements"], "readwrite", tx => {
+        const jobs = tx.objectStore("jobs");
         const rs = tx.objectStore("remainders");
         const ss = tx.objectStore("reservations");
         const ms = tx.objectStore("movements");
@@ -885,7 +886,13 @@
         rr.onsuccess = () => {
           const reservation = rr.result;
           if (!reservation || reservation.status !== "active" || reservation.planId) { tx.abort(); return; }
-          const sr = rs.get(reservation.remainderId);
+          const jobRequest = jobs.get(reservation.jobId);
+          jobRequest.onsuccess = () => {
+            if (!jobRequest.result || jobRequest.result.status !== "open") {
+              tx.abort();
+              return;
+            }
+            const sr = rs.get(reservation.remainderId);
           sr.onsuccess = () => {
             const source = sr.result;
             if (!source || source.status !== "reserved" || source.condition !== "good") { tx.abort(); return; }
@@ -930,6 +937,7 @@
                 });
               });
             };
+          };
           };
         };
         return true;
@@ -1119,7 +1127,14 @@
                 tx.abort();
                 return;
               }
-              const sourceRequest = remainders.get(reservation.remainderId);
+              const jobRequest = jobs.get(reservation.jobId);
+              jobRequest.onsuccess = () => {
+                if (!jobRequest.result || jobRequest.result.status !== "open" ||
+                    (input.planId && reservation.jobId !== input.planId && false)) {
+                  tx.abort();
+                  return;
+                }
+                const sourceRequest = remainders.get(reservation.remainderId);
               sourceRequest.onsuccess = () => {
                 const source = sourceRequest.result;
                 if (!source || source.status !== "reserved" || source.condition !== "good") {
@@ -1142,6 +1157,7 @@
                     checkNext();
                   });
                 };
+              };
               };
             };
           };

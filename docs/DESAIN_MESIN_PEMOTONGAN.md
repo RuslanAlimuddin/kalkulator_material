@@ -10,6 +10,8 @@ Mesin geometri, mesin pemotongan, adapter, dan integrasi awal telah diuji pada P
 - `tests/engine.test.js`
 - `tests/cutting-engine.test.js`
 - `tests/cutting-adapter.test.js`
+- `assets/js/pricing-engine.js`: perhitungan harga per lembar/kemasan dengan validasi isi kemasan.
+- `tests/pricing-engine.test.js`
 
 ## Mesin pemotongan
 
@@ -70,7 +72,7 @@ Kebijakan sementara:
 - Potongan berluas besar diprioritaskan.
 - Rotasi tidak dilakukan diam-diam; adapter hanya mengizinkannya pada mode ekonomis yang memintanya.
 - Kerf mengurangi ruang bebas. Celah lebih kecil daripada kerf tidak diklaim sebagai sisa pakai.
-- Sisa tercatat masih berupa persegi panjang. Belum ada batas ukuran minimum untuk menentukan apakah sisa benar-benar berguna bagi pekerjaan berikutnya.
+- Sisa tercatat masih berupa persegi panjang. Batas minimum lebar dan tinggi dapat digunakan untuk mengelompokkan sisa berdasarkan dimensi, tetapi belum menjamin kecocokan sisa untuk pekerjaan berikutnya.
 - Integrasi inventaris sudah memeriksa identitas material, ketebalan, motif, arah serat, kondisi sisa, dan kebijakan rotasi. Pencocokan permukaan serta batasan mesin potong khusus belum tersedia.
 - Belum ada diagram khusus tata letak potongan pada lembar sumber; visualisasi yang ada tetap menggambarkan posisi pemasangan pada bidang.
 - Sisa inventaris lintas pekerjaan sudah terhubung melalui matcher, planner, reservasi, dan penyelesaian. Kalkulator harga utama tetap menghitung kebutuhan lembar tanpa mengurangi pembelian berdasarkan stok inventaris; pembelian kemasan juga belum terhubung ke transaksi inventaris.
@@ -111,7 +113,7 @@ Pengguna melaporkan ketiga suite (engine.test.js, cutting-engine.test.js, cuttin
 2. `reuseCount` dihitung dari potongan kedua dan seterusnya yang ditempatkan pada lembar sumber yang sama. Angka ini bukan jumlah potongan yang diambil dari inventaris sisa pekerjaan sebelumnya.
 3. `reusableRemainders` adalah ruang kosong persegi panjang yang tersisa pada lembar yang sedang dihitung. Belum ada ambang ukuran minimum; jadi ruang kecil pun dapat masuk daftar sisa.
 4. `unclassifiedArea` adalah selisih luas lembar sumber dikurangi luas potongan dan luas persegi panjang yang dicatat. Dapat mencakup kerf dan ruang yang tidak terwakili sebagai persegi panjang bebas; bukan otomatis limbah.
-5. Harga per lembar dan per kemasan dihitung dari `sheetCount`; jumlah kemasan dibulatkan ke atas. Aplikasi belum mengurangi kebutuhan dengan stok awal atau inventaris sisa lama.
+5. Harga per lembar dan per kemasan dihitung dari `sheetCount`; jumlah kemasan dibulatkan ke atas. Isi kemasan wajib berupa bilangan bulat minimal 1. Aplikasi belum mengurangi kebutuhan pembelian dengan stok awal atau inventaris sisa lama.
 6. Diagram saat ini menggambarkan tata letak pemasangan pada bidang, bukan tata letak potong tiap lembar sumber.
 
 ### Koreksi istilah antarmuka

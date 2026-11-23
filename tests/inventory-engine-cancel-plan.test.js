@@ -93,6 +93,10 @@ async function main() {
     (await storage.get("reservations", mismatchPlan.reservations[0].id)).status,
     "active"
   );
+  // Pulihkan fixture agar uji ekspor cadangan berikutnya memakai data valid.
+  await storage.update("plans", mismatchPlan.planId, {
+    reservationIds: mismatchPlan.reservations.map(item => item.id)
+  });
   console.log("LULUS: snapshot dengan daftar ID reservasi tidak cocok ditolak tanpa mengubah stok.");
 
   // Sumber yang hilang atau tidak lagi berstatus reserved juga harus diblokir.
@@ -118,6 +122,10 @@ async function main() {
     (await storage.get("reservations", sourceStatePlan.reservations[0].id)).status,
     "active"
   );
+  // Pulihkan status fixture ke kondisi sebelum simulasi kerusakan.
+  await storage.update("remainders", "CANCEL-RECOVERY-SOURCE-STATE", {
+    status: "reserved"
+  });
   console.log("LULUS: sumber yang tidak lagi reserved memblokir pemulihan/pembatalan tanpa perubahan tambahan.");
 
   // Uji round-trip cadangan untuk rencana yang dibatalkan.

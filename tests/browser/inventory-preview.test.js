@@ -163,6 +163,46 @@ async function main() {
     await page.locator("#inventoryPreviewButton").click();
     await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
 
+    // Perubahan pilihan material, pekerjaan, dan arah serat membatalkan snapshot lama.
+    await page.locator("#inventoryMaterial").selectOption("");
+    await page.locator("#inventoryPreviewResult").waitFor({ state: "hidden" });
+    assert.equal(await page.locator("#inventoryConfirmButton").isVisible(), false);
+    await page.locator("#inventoryMaterial").selectOption("MAT-PREVIEW");
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+    await page.locator("#inventoryJob").selectOption("");
+    await page.locator("#inventoryPreviewResult").waitFor({ state: "hidden" });
+    await page.locator("#inventoryJob").selectOption("JOB-PREVIEW");
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+    await page.locator("#inventoryGrainDirection").selectOption("horizontal");
+    await page.locator("#inventoryPreviewResult").waitFor({ state: "hidden" });
+    await page.locator("#inventoryGrainDirection").selectOption("none");
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+
+    // Perubahan seluruh input geometri tambahan juga membatalkan snapshot lama.
+    await page.locator("#ori").selectOption("0");
+    await page.locator("#inventoryPreviewResult").waitFor({ state: "hidden" });
+    await page.locator("#ori").selectOption("1");
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+    await page.locator("#gap").fill("0.1");
+    await page.locator("#inventoryPreviewResult").waitFor({ state: "hidden" });
+    await page.locator("#gap").fill("0");
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+    await page.locator("#minSisaW").fill("1");
+    await page.locator("#inventoryPreviewResult").waitFor({ state: "hidden" });
+    await page.locator("#minSisaW").fill("0");
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+    await page.locator("#minSisaH").fill("1");
+    await page.locator("#inventoryPreviewResult").waitFor({ state: "hidden" });
+    await page.locator("#minSisaH").fill("0");
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+
     // Persetujuan mengunci sumber yang sama persis dengan hasil pratinjau.
     await page.locator("#inventoryConfirmButton").click();
     await page.locator('#inventoryActivePlans [data-plan-id]').waitFor();

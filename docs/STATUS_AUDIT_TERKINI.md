@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `79e81c320ed79235de86b1fe3b2c6a1f4fcd5b70` (`test: use boundary value that overflows package purchase`). Mesin harga kini menolak jumlah yang tidak aman dan hasil overflow; label harga utama serta validasi harga pratinjau juga diperjelas. Seluruh empat CI pada HEAD ini sudah diverifikasi `completed/success`.
+- HEAD kode terbaru yang sudah diverifikasi: `6c25192ae57f79b8ffa07a46b5085c3f3044c8ce` (`test: match precise unrounded surface unit cost`). Pratinjau inventaris kini menampilkan harga material per m² dan estimasi biaya per m² bidang untuk estimasi bruto/neto; seluruh empat CI pada HEAD ini `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -441,3 +441,44 @@ Pekerjaan berikutnya:
 2. Audit konsistensi label/definisi harga pada mode harga satuan dan kemasan, termasuk pembelian kemasan utuh ketika kebutuhan baru nol.
 3. Tinjau integrasi inventaris dengan perhitungan lama untuk memastikan kalkulasi tanpa inventaris tetap tidak berubah dan pratinjau hanya memengaruhi estimasi neto.
 4. Setelah audit teknis selesai, susun daftar uji manual ringkas bagi pengguna.
+### 4K. Konsistensi informasi harga per m² pada estimasi inventaris — selesai, seluruh CI lulus
+File:
+- `assets/js/inventory-preview-ui.js`
+- `tests/browser/inventory-preview.test.js`
+
+Temuan:
+- Kotak harga kalkulator utama sudah menampilkan harga material per m² dan estimasi biaya per m² bidang, tetapi dua baris estimasi pada pratinjau inventaris sebelumnya hanya menampilkan total dan rincian lembar/kemasan.
+- Ini membuat informasi biaya bruto dan biaya pembelian baru tidak sebanding dengan tampilan kalkulator utama.
+
+Perbaikan:
+- Kedua baris estimasi inventaris kini menampilkan `Harga material: ... per m²` dan `Estimasi biaya per m² bidang: ...`.
+- `Harga material per m²` dihitung dari harga ekuivalen per lembar dibagi luas satu lembar material. Pada mode kemasan, harga per lembar adalah harga kemasan dibagi isi kemasan.
+- `Estimasi biaya per m² bidang` dihitung dari total biaya pembelian aktual (termasuk pembulatan ke kemasan utuh) dibagi luas bidang. Karena itu angka ini dapat lebih besar dari harga material per m².
+- Bila kebutuhan baru nol karena seluruh kebutuhan ditutup inventaris, estimasi pembelian baru dan biaya per m² bidang menjadi Rp0, tetapi harga material per m² tetap ditampilkan sebagai referensi harga katalog.
+- Estimasi nol lembar tetap melewati validasi mesin harga untuk memeriksa isi kemasan dan memperoleh nilai harga satuan yang konsisten; nilai pembelian/lembar dibeli tetap ditetapkan nol.
+
+Tes browser:
+- Mode harga satuan: kebutuhan bruto 2 lembar menghasilkan total Rp200.000 dan biaya per m² bidang Rp50.000; pembelian baru 1 lembar menghasilkan Rp100.000 dan biaya per m² bidang Rp25.000.
+- Mode kemasan: kebutuhan bruto 5 lembar dan pembelian baru 3 lembar dengan kemasan isi 4 menghasilkan total Rp800.000/Rp400.000 serta biaya per m² bidang yang mencerminkan pembelian 2/1 kemasan.
+- Kondisi seluruh kebutuhan ditutup inventaris: total pembelian baru Rp0 dan biaya per m² bidang Rp0, sementara harga material per m² tetap terlihat.
+- Format harga per m² dapat memiliki angka desimal (contoh Rp41.322,314); tes menerima presisi yang benar dan tidak memaksakan pembulatan yang tidak dilakukan UI.
+
+Percobaan CI pertama mengungkap bahwa nilai harga per m² ditampilkan dengan presisi desimal (`Rp41.322,314`), bukan dibulatkan ke rupiah penuh. Tes diselaraskan dengan format aktual; percobaan berikutnya juga memperjelas biaya bidang bahwa hasil aktual dapat berupa `Rp36.363,636`, bukan `Rp36.364`. Tidak ada perubahan formula produksi untuk mengakali tes; format angka yang ada dipertahankan.
+
+Commit terkait:
+- Implementasi tampilan biaya satuan: `fc135822f47c22693f9e47a0a74c0b344dac6240`.
+- Tes awal tampilan biaya satuan: `838bff06a72eb9109c52bbfbb7826838e052f5a8`.
+- Penyesuaian presisi harga per m²: `059436fb91d2693ba06a2322955ccf6ba2a1cd5e`.
+- Penyesuaian presisi biaya per m² bidang: `6c25192ae57f79b8ffa07a46b5085c3f3044c8ce`.
+
+Seluruh empat CI pada HEAD `6c25192ae57f79b8ffa07a46b5085c3f3044c8ce` telah diverifikasi `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`.
+
+Pemeriksaan integrasi kalkulator lama:
+- Tes browser tetap menjalankan tombol `Hitung` lama sebelum dan selama skenario inventaris; hasil nilai kebutuhan bruto tetap dihitung dari jumlah lembar hasil kalkulasi utama.
+- Jalur pratinjau inventaris menghitung baseline tanpa inventaris dan pembelian neto secara terpisah; perubahan harga/informasi pratinjau tidak melakukan reservasi atau mengubah stok.
+- Tidak ada perubahan pada rumus geometri/pemotongan atau formula total harga lama dalam tahap ini.
+
+Pekerjaan berikutnya:
+1. Lanjutkan pemeriksaan integrasi inventaris pada hasil lama: pastikan label, rincian, dan nilai kebutuhan tetap konsisten pada mode harga satuan/kemasan, termasuk setelah input kalkulator diubah dan dihitung ulang.
+2. Tinjau skenario pratinjau yang sudah usang (ukuran, pola, material, pekerjaan, harga, dan kemasan berubah) agar tombol persetujuan tidak memakai hasil geometri lama. Input harga/kemasan boleh memperbarui estimasi tanpa mengubah geometri, sedangkan input geometri harus membatalkan pratinjau.
+3. Setelah audit integrasi UI selesai, susun checklist uji manual yang ringkas untuk validasi penggunaan nyata.

@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `6a7e273494a190d06cd0c6116d0e142a6a85ae6f` (`test: protect material catalog while plans are pending`). CRUD material kini menjaga snapshot rencana aktif, termasuk rencana yang belum memakai sisa inventaris; seluruh empat CI pada HEAD kode ini `completed/success`. Dokumen checklist manual diperbarui.
+- HEAD kode terbaru yang sudah diverifikasi: `3a141a6e66091e1a353e1bc8265aac039ddd5b45` (`test: block recovery when material or job catalog is stale`). CRUD, validasi impor, dan pemulihan rencana kini memeriksa konsistensi snapshot material/pekerjaan; seluruh empat CI pada HEAD kode ini `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -571,3 +571,41 @@ Pekerjaan berikutnya:
 1. Audit jalur impor/ekspor dan pemulihan ketika ada rencana aktif, terutama pastikan impor `replace` yang mengganti seluruh database tidak meninggalkan kombinasi snapshot, material, pekerjaan, dan reservasi yang saling tidak cocok.
 2. Periksa apakah restore/recovery memvalidasi snapshot material serta pekerjaan terhadap katalog saat ini, dan apakah UI menjelaskan kondisi yang tidak dapat dipulihkan.
 3. Setelah audit transaksi pemulihan selesai, rapikan checklist manual dan evaluasi apakah sudah waktunya uji manual dengan salinan data.
+### 4Q. Impor dan pemulihan snapshot aktif memvalidasi katalog material/pekerjaan — diperkuat, seluruh CI lulus
+File:
+- `assets/js/inventory-validator.js`
+- `assets/js/inventory-storage.js`
+- `assets/js/inventory-engine.js`
+- `tests/inventory-validator.test.js`
+- `tests/inventory-plan-recovery.test.js`
+
+Temuan:
+- Impor paket memang memvalidasi geometri, relasi reservasi, dan status pekerjaan aktif, tetapi belum membandingkan `plan.material` pada snapshot `reserved` dengan katalog material yang ikut diimpor.
+- Pemulihan `restorePlan()` sebelumnya memeriksa snapshot, reservasi, dan sumber inventaris, tetapi tidak membaca ulang katalog material dan pekerjaan. Data yang berubah melalui jalur impor/unsafe write bisa membuat rencana dipulihkan walaupun katalog tidak lagi sesuai.
+
+Perbaikan:
+- Validator impor kini, bila snapshot aktif menyertakan material, memastikan material tersebut ada pada katalog, masih aktif, dan atribut fisik yang disimpan pada snapshot (ketebalan, motif, kebijakan rotasi, dan kebutuhan serat) cocok dengan katalog.
+- Snapshot lama tanpa objek `material` tetap diterima untuk kompatibilitas historis. Snapshot modern yang menyertakan objek material tetapi referensinya hilang/tidak cocok ditolak.
+- `getPlanRecoveryState()` kini membaca snapshot, reservasi, sisa, material, dan pekerjaan dalam satu transaksi `readonly`.
+- `restorePlan()` memeriksa bahwa pekerjaan masih ada dan terbuka, serta material snapshot masih tersedia/aktif dan spesifikasi fisiknya masih cocok. Jika tidak, pemulihan/penyelesaian diblokir dan UI menampilkan alasan pemblokiran pada kartu rencana; stok tidak dimutasi.
+
+Tes regresi:
+- Validator menerima snapshot material yang cocok dan menolak snapshot dengan ketebalan berbeda, material nonaktif, atau material yang hilang.
+- Pemulihan rencana menolak material yang dinonaktifkan serta pekerjaan yang ditutup melalui perubahan mentah untuk mensimulasikan data tidak konsisten yang lolos dari jalur CRUD normal.
+- Tes pemulihan yang sudah ada tetap mencakup reservasi, relasi sumber, pemulihan dari ekspor/impor, dan audit ketidaksesuaian.
+
+Commit terkait:
+- `955ead4b978084cc6b80bb9024239f0bda19434e` — validasi material snapshot saat impor.
+- `e00b916e664d89591adae095f8e29ccdd4876762` — tes validator impor.
+- `5f3d8f0d3145d0e6292caf578d709a10fb2bfbe0` — perluasan pembacaan snapshot pemulihan.
+- `427980adb71c8d69d2116481160f279155ec804d` — validasi katalog pada restore.
+- `3a141a6e66091e1a353e1bc8265aac039ddd5b45` — tes pemulihan katalog stale.
+
+Seluruh empat CI pada HEAD kode `3a141a6e66091e1a353e1bc8265aac039ddd5b45` telah diverifikasi `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`.
+
+Catatan batas kompatibilitas: snapshot aktif versi lama yang tidak menyimpan objek material masih dapat lolos validator untuk mempertahankan kompatibilitas. `restorePlan()` tetap memeriksa sumber dan pekerjaan; snapshot tanpa material tidak dapat dibandingkan spesifikasi material historisnya.
+
+Pekerjaan berikutnya:
+1. Audit apakah laporan pemulihan (`getRecoveryReport`) perlu melaporkan snapshot material aktif yang tidak cocok secara eksplisit, bukan hanya menampilkan alasan pada kartu rencana ketika restore gagal.
+2. Periksa skenario impor `replace` terhadap database lokal yang masih memiliki rencana aktif. Pastikan perilaku penggantian seluruh database jelas dan tidak ada penggabungan parsial yang menimbulkan data yatim.
+3. Setelah audit impor/pemulihan selesai, selesaikan checklist uji manual dan siapkan uji pada salinan data.

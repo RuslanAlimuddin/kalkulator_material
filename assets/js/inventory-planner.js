@@ -210,6 +210,7 @@
       );
 
       return {
+        geometryVersion: 1,
         cells,
         sheets,
         sheetCount: sheets.length,

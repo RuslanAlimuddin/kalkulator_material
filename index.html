@@ -310,7 +310,7 @@ canvas{display:block}
   <div class="sec-title">Hasil Perhitungan</div>
   <div class="metric-grid" id="metrics"></div>
   <div class="harga-total-box" id="hargaTotalBox">
-    <div class="ht-label">Estimasi Total Biaya Material</div>
+    <div class="ht-label">Nilai kebutuhan material (tanpa inventaris)</div>
     <div class="ht-val" id="hargaTotalVal"></div>
     <div class="ht-detail" id="hargaTotalDetail"></div>
   </div>
@@ -823,7 +823,8 @@ function calc(){
   if(infoHarga){
     htBox.style.display='block';
     document.getElementById('hargaTotalVal').textContent=fmtRupiah(hargaTotal);
-    let detail=`Harga material: ${fmtRupiah(infoHarga.hargaPerM2)} per m²
+    let detail=`Nilai ini dihitung tanpa mengurangi sisa inventaris.
+`+`Harga material: ${fmtRupiah(infoHarga.hargaPerM2)} per m²
 `+
       `Kebutuhan: ${totalSheets} lembar × ${fmtRupiah(infoHarga.hargaPerLembar)} per lembar`;
     if(infoHarga.per==='kemasan'){

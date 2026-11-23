@@ -19,21 +19,15 @@
     }
 
     const geometry = input.geometry;
+    if (!["presisi", "ekonomis"].includes(input.mode)) {
+      throw new Error("Mode pemotongan harus presisi atau ekonomis.");
+    }
     const sheetW = Number(input.sheetW);
     const sheetH = Number(input.sheetH);
     if (!Number.isFinite(sheetW) || sheetW <= 0 ||
         !Number.isFinite(sheetH) || sheetH <= 0) {
       throw new Error("Ukuran lembar sumber harus lebih dari 0.");
     }
-    if (geometry.cells.length === 0) {
-      return {
-        cells: [], sheetCount: 0, reuseCount: 0, sheets: [],
-        reusableRemainders: [], usableRemainders: [], tooSmallRemainders: [],
-        usableRemainderArea: 0, tooSmallRemainderArea: 0, unclassifiedArea: 0,
-        totalPartArea: 0, totalSheetArea: 0
-      };
-    }
-
     const kerf = input.kerf == null ? 0 : Number(input.kerf);
     if (!Number.isFinite(kerf) || kerf < 0) {
       throw new Error("Kerf tidak boleh negatif.");
@@ -44,6 +38,15 @@
     if (!Number.isFinite(minRemainderW) || minRemainderW < 0 ||
         !Number.isFinite(minRemainderH) || minRemainderH < 0) {
       throw new Error("Ukuran minimum sisa tidak boleh negatif.");
+    }
+
+    if (geometry.cells.length === 0) {
+      return {
+        cells: [], sheetCount: 0, reuseCount: 0, sheets: [],
+        reusableRemainders: [], usableRemainders: [], tooSmallRemainders: [],
+        usableRemainderArea: 0, tooSmallRemainderArea: 0, unclassifiedArea: 0,
+        totalPartArea: 0, totalSheetArea: 0
+      };
     }
 
     const canReuse = input.mode === "ekonomis" || input.autoStripReuse === true;

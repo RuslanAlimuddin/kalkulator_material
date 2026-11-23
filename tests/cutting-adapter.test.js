@@ -97,4 +97,23 @@ test("adapter menolak ukuran minimum sisa negatif", () => {
   }), /tidak boleh negatif/);
 });
 
+test("adapter menolak mode yang tidak dikenal", () => {
+  assert.throws(() => calculateMaterialSources({
+    geometry: stripGeometry, sheetW: 20, sheetH: 600, mode: "unknown",
+    cuttingEngine: { calculateCutting }
+  }), /Mode pemotongan harus presisi atau ekonomis/);
+});
+
+test("parameter kerf dan batas sisa tetap divalidasi saat geometri kosong", () => {
+  const emptyGeometry = { cells: [] };
+  assert.throws(() => calculateMaterialSources({
+    geometry: emptyGeometry, sheetW: 20, sheetH: 600, mode: "presisi",
+    kerf: -1, cuttingEngine: { calculateCutting }
+  }), /Kerf tidak boleh negatif/);
+  assert.throws(() => calculateMaterialSources({
+    geometry: emptyGeometry, sheetW: 20, sheetH: 600, mode: "presisi",
+    minRemainderW: -1, cuttingEngine: { calculateCutting }
+  }), /Ukuran minimum sisa tidak boleh negatif/);
+});
+
 console.log("Semua pengujian adapter pemotongan selesai.");

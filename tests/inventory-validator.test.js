@@ -73,6 +73,27 @@ test("paket inventaris valid diterima", () => {
   assert.deepEqual(result.errors, []);
 });
 
+test("versi paket utama yang didukung diterima dan versi tidak dikenal ditolak", () => {
+  const legacyWithoutVersion = validBundle();
+  assert.equal(validate(legacyWithoutVersion).valid, true);
+
+  for (const schemaVersion of [1, 2]) {
+    const supported = validBundle();
+    supported.schemaVersion = schemaVersion;
+    assert.equal(validate(supported).valid, true);
+  }
+
+  for (const schemaVersion of [0, 3, 999, "2"]) {
+    const unsupported = validBundle();
+    unsupported.schemaVersion = schemaVersion;
+    const result = validate(unsupported);
+    assert.equal(result.valid, false, "Versi " + schemaVersion + " seharusnya ditolak.");
+    assert.ok(result.errors.some(item =>
+      item.path === "schemaVersion" && /didukung adalah 1 atau 2/.test(item.message)
+    ));
+  }
+});
+
 test("snapshot rencana dengan geometri bidang yang terpisah diterima", () => {
   const data = validPlanBundle();
   data.plans.plans[0].plan = {

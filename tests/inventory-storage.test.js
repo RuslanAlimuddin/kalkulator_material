@@ -457,6 +457,59 @@ async function main() {
     assert.equal(movements[0].type, "reserved");
   });
 
+  await test("transaksi tunggal menolak ID dan referensi dengan tipe tidak valid", async () => {
+    await storage.importJSON(bundle("SINGLE-TX-ID-GUARDS"), "merge");
+
+    for (const invalid of [
+      { remainderId: 123, jobId: "JOB-SINGLE-TX-ID-GUARDS" },
+      { remainderId: "REM-SINGLE-TX-ID-GUARDS", jobId: 123 },
+      { remainderId: "REM-SINGLE-TX-ID-GUARDS", jobId: "JOB-SINGLE-TX-ID-GUARDS", id: 123 }
+    ]) {
+      await assert.rejects(storage.reserveRemainder({ ...invalid, timestamp: now }));
+    }
+    assert.equal((await storage.get("remainders", "REM-SINGLE-TX-ID-GUARDS")).status, "available");
+    assert.equal((await storage.getAll("reservations")).some(item =>
+      item.remainderId === "REM-SINGLE-TX-ID-GUARDS"), false);
+
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-SINGLE-TX-ID-GUARDS",
+      jobId: "JOB-SINGLE-TX-ID-GUARDS",
+      timestamp: now
+    });
+    await assert.rejects(storage.consumeReservation({
+      reservationId: reservation.id,
+      sourceSheetId: 123,
+      timestamp: "2026-11-18T12:00:00.001Z",
+      remainders: [{ id: 123, widthCm: 10, heightCm: 8 }]
+    }));
+    await assert.rejects(storage.consumeReservation({
+      reservationId: reservation.id,
+      timestamp: "2026-11-18T12:00:00.001Z",
+      remainders: [{ id: 123, widthCm: 10, heightCm: 8 }]
+    }));
+    assert.equal((await storage.get("remainders", "REM-SINGLE-TX-ID-GUARDS")).status, "reserved");
+    assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+    assert.equal((await storage.getAll("remainders")).some(item =>
+      item.sourceRemainderId === "REM-SINGLE-TX-ID-GUARDS"), false);
+
+    const base = {
+      materialId: "MAT-SINGLE-TX-ID-GUARDS",
+      originJobId: "JOB-SINGLE-TX-ID-GUARDS",
+      sourceSheetId: "SHEET-SINGLE-TX-ID-GUARDS",
+      widthCm: 20, heightCm: 15, thicknessMm: 8,
+      grainDirection: "none", motif: "plain", rotationAllowed: true
+    };
+    await assert.rejects(storage.createRemainder({ ...base, id: 123 }));
+    await assert.rejects(storage.updateRemainderState({
+      id: "REM-SINGLE-TX-ID-GUARDS",
+      changes: { condition: "damaged" },
+      referenceId: 123,
+      timestamp: "2026-11-18T12:00:00.002Z"
+    }));
+    assert.equal((await storage.get("remainders", "REM-SINGLE-TX-ID-GUARDS")).condition, "good");
+    assert.equal((await storage.getAll("remainders")).some(item => item.id === 123), false);
+  });
+
   await test("reservasi massal mengunci semua unit dalam satu transaksi", async () => {
     await storage.importJSON(bundle("BATCH-1"), "merge");
     await storage.importJSON(bundle("BATCH-2"), "merge");

@@ -77,11 +77,26 @@ async function main() {
     await page.locator("#movementTable").getByText("Sisa dicatat").waitFor();
     await page.locator("#movementTable").getByText("Kondisi diubah").waitFor();
 
+    // Pastikan URL blob tetap hidup cukup lama agar browser memulai unduhan.
+    await page.evaluate(() => {
+      window.__revokedBackupUrls = [];
+      const revoke = URL.revokeObjectURL.bind(URL);
+      URL.revokeObjectURL = url => {
+        window.__revokedBackupUrls.push(url);
+        revoke(url);
+      };
+    });
     // Uji file cadangan melalui tombol UI, bukan hanya API penyimpanan.
     const [backupDownload] = await Promise.all([
       page.waitForEvent("download"),
       page.locator("#exportButton").click()
     ]);
+    assert.equal(
+      await page.evaluate(() => window.__revokedBackupUrls.length),
+      0,
+      "URL unduhan tidak boleh dicabut langsung setelah klik."
+    );
+    await page.waitForFunction(() => window.__revokedBackupUrls.length === 1);
     const backupPath = await backupDownload.path();
     assert.ok(backupPath, "Tombol ekspor harus menghasilkan file cadangan.");
     const backup = JSON.parse(fs.readFileSync(backupPath, "utf8"));

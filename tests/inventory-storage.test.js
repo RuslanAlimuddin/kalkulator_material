@@ -1154,7 +1154,7 @@ async function main() {
       await storage.update("jobs", jobId, { status, closedAt: now });
 
       await assert.rejects(storage.createRemainder({
-        id: "REM-" + suffix,
+        id: "REM-NEW-" + suffix,
         materialId: "MAT-" + suffix,
         originJobId: jobId,
         sourceSheetId: "SHEET-" + suffix,
@@ -1162,7 +1162,7 @@ async function main() {
         grainDirection: "none", motif: "plain", rotationAllowed: true
       }));
 
-      assert.equal(await storage.get("remainders", "REM-" + suffix), null);
+      assert.equal(await storage.get("remainders", "REM-NEW-" + suffix), null);
       assert.equal(
         (await storage.getByIndex("movements", "remainderId", "REM-" + suffix)).length,
         0

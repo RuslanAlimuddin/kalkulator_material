@@ -207,7 +207,7 @@ async function main() {
   assert.equal(newOnlyPlan.reservations.length, 0);
   // Karena rencana lembar baru tidak memiliki reservasi inventaris, pekerjaan
   // dapat ditutup setelah pratinjau. Konsumsi rencana lama harus ditolak.
-  await storage.update("jobs", "JOB-NEW-ONLY", { status: "closed" });
+  await storage.update("jobs", "JOB-NEW-ONLY", { status: "completed", closedAt: now });
   await assert.rejects(engine.consumePlan({
     reservedPlan: newOnlyPlan,
     sourceSheetIdPrefix: "JOB-NEW-ONLY-SHEET",
@@ -219,7 +219,7 @@ async function main() {
   );
   assert.equal((await storage.get("plans", newOnlyPlan.planId)).status, "reserved");
   // Buka kembali pekerjaan untuk melanjutkan skenario konsumsi normal.
-  await storage.update("jobs", "JOB-NEW-ONLY", { status: "open" });
+  await storage.update("jobs", "JOB-NEW-ONLY", { status: "open", closedAt: null });
   const newOnlyResult = await engine.consumePlan({
     reservedPlan: newOnlyPlan,
     sourceSheetIdPrefix: "JOB-NEW-ONLY-SHEET",
@@ -240,13 +240,13 @@ async function main() {
     jobId: "JOB-EMPTY-PLAN",
     timestamp: now
   });
-  await storage.update("jobs", "JOB-EMPTY-PLAN", { status: "closed" });
+  await storage.update("jobs", "JOB-EMPTY-PLAN", { status: "completed", closedAt: now });
   await assert.rejects(engine.consumePlan({
     reservedPlan: emptyPlan,
     timestamp: "2026-11-18T13:30:00.001Z"
   }));
   assert.equal((await storage.get("plans", emptyPlan.planId)).status, "reserved");
-  await storage.update("jobs", "JOB-EMPTY-PLAN", { status: "open" });
+  await storage.update("jobs", "JOB-EMPTY-PLAN", { status: "open", closedAt: null });
   const completedEmptyPlan = await engine.consumePlan({
     reservedPlan: emptyPlan,
     timestamp: "2026-11-18T13:30:00.002Z"

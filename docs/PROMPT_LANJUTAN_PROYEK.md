@@ -64,7 +64,7 @@ Jangan menyamakan satu unit sisa inventaris dengan satu lembar utuh untuk menila
 
 Pada pemeriksaan terakhir, commit `d70724cffba86dc755b838855d9d5c9add694a98` berhasil ditemukan dan dibaca. Branch `pengembangan-mesin-hitung` juga berhasil ditemukan, dan file-file pada branch tersebut dapat diambil.
 
-Pada HEAD kode `6c25192ae57f79b8ffa07a46b5085c3f3044c8ce`, empat check-run GitHub diverifikasi langsung dan semuanya `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`. SHA dokumentasi setelah pembaruan harus diperiksa ulang karena setiap commit baru memicu CI baru.
+Pada HEAD kode `e62bd9f98458887b6a70c91ff5db352970c7ee7b`, empat check-run GitHub diverifikasi langsung dan semuanya `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`. SHA dokumentasi setelah pembaruan harus diperiksa ulang karena setiap commit baru memicu CI baru.
 
 ### D. Audit awal transaksi reservasi dan konsumsi
 

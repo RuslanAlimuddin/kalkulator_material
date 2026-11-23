@@ -163,6 +163,33 @@ async function main() {
   assert.equal(await storage.get("plans", "PLAN-GEOMETRY-OVERLAP"), null);
   console.log("LULUS: geometri sisa yang bertumpuk ditolak sebelum reservasi stok.");
 
+  const wrongSourceRemainder = {
+    sheetId: "INVENTORY-0-CONSUME-GEOMETRY-OVERLAP",
+    source: "inventory", sourceRemainderId: "REM-WRONG",
+    x: 0, y: 0, width: 20, height: 20
+  };
+  await assert.rejects(engine.reservePlan({
+    planId: "PLAN-GEOMETRY-SOURCE-MISMATCH",
+    plan: {
+      geometryVersion: 1,
+      inventoryUsage: [{ remainderId: "CONSUME-GEOMETRY-OVERLAP" }],
+      sheets: [{
+        id: "INVENTORY-0-CONSUME-GEOMETRY-OVERLAP",
+        source: "inventory", remainderId: "CONSUME-GEOMETRY-OVERLAP",
+        width: 50, height: 35, placements: [],
+        leftovers: [{ x: 0, y: 0, width: 20, height: 20 }]
+      }],
+      usableRemainders: [wrongSourceRemainder]
+    },
+    jobId: "JOB-TARGET",
+    material: { id: "MAT-CONSUME", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },
+    grainDirection: "none",
+    timestamp: "2026-11-18T13:30:00.005Z"
+  }), /unit sumber lembar/);
+  assert.equal((await storage.get("remainders", "CONSUME-GEOMETRY-OVERLAP")).status, "available");
+  assert.equal((await storage.getByIndex("reservations", "remainderId", "CONSUME-GEOMETRY-OVERLAP")).length, 0);
+  console.log("LULUS: sumber sisa yang tidak cocok dengan lembar asal ditolak sebelum reservasi.");
+
   const newOnlyPlan = await engine.reservePlan({
     plan: {
       inventoryUsage: [],

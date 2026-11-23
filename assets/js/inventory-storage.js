@@ -1726,16 +1726,26 @@
         throw new Error("ID snapshot rencana wajib diisi.");
       }
       const database = await db();
-      const tx = database.transaction(["plans", "reservations", "remainders"], "readonly");
+      const tx = database.transaction(
+        ["plans", "reservations", "remainders", "materials", "jobs"], "readonly"
+      );
       const done = transactionDone(tx);
       done.catch(() => {});
       const results = await Promise.all([
         requestResult(tx.objectStore("plans").get(planId)),
         requestResult(tx.objectStore("reservations").index("planId").getAll(planId)),
-        requestResult(tx.objectStore("remainders").getAll())
+        requestResult(tx.objectStore("remainders").getAll()),
+        requestResult(tx.objectStore("materials").getAll()),
+        requestResult(tx.objectStore("jobs").getAll())
       ]);
       await done;
-      return { plan: results[0] || null, reservations: results[1], remainders: results[2] };
+      return {
+        plan: results[0] || null,
+        reservations: results[1],
+        remainders: results[2],
+        materials: results[3],
+        jobs: results[4]
+      };
     }
 
     async function getRecoveryReport() {

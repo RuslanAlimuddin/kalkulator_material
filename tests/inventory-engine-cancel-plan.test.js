@@ -71,6 +71,55 @@ async function main() {
   assert.deepEqual(noInventory.releasedReservations, []);
   console.log("LULUS: pembatalan rencana tanpa sumber inventaris tidak membuat perubahan.");
 
+  // Snapshot yang tidak cocok dengan reservasi aktif harus gagal dipulihkan
+  // tanpa melepaskan atau mengubah stok.
+  await storage.add("remainders", item("CANCEL-RECOVERY-MISMATCH"));
+  const mismatchPlan = await engine.reservePlan({
+    plan: {
+      inventoryUsage: [{ remainderId: "CANCEL-RECOVERY-MISMATCH" }],
+      usableRemainders: []
+    },
+    jobId: "JOB-NEW",
+    timestamp: "2026-11-18T14:10:00.010Z"
+  });
+  await storage.update("plans", mismatchPlan.planId, { reservationIds: [] });
+  await assert.rejects(engine.restorePlan(mismatchPlan.planId), /tidak cocok/);
+  await assert.rejects(engine.cancelPlan({
+    reservedPlan: mismatchPlan, timestamp: "2026-11-18T14:10:00.011Z"
+  }));
+  assert.equal((await storage.get("plans", mismatchPlan.planId)).status, "reserved");
+  assert.equal((await storage.get("remainders", "CANCEL-RECOVERY-MISMATCH")).status, "reserved");
+  assert.equal(
+    (await storage.get("reservations", mismatchPlan.reservations[0].id)).status,
+    "active"
+  );
+  console.log("LULUS: snapshot dengan daftar ID reservasi tidak cocok ditolak tanpa mengubah stok.");
+
+  // Sumber yang hilang atau tidak lagi berstatus reserved juga harus diblokir.
+  await storage.add("remainders", item("CANCEL-RECOVERY-SOURCE-STATE"));
+  const sourceStatePlan = await engine.reservePlan({
+    plan: {
+      inventoryUsage: [{ remainderId: "CANCEL-RECOVERY-SOURCE-STATE" }],
+      usableRemainders: []
+    },
+    jobId: "JOB-NEW",
+    timestamp: "2026-11-18T14:10:00.020Z"
+  });
+  await storage.update("remainders", "CANCEL-RECOVERY-SOURCE-STATE", {
+    status: "available"
+  });
+  await assert.rejects(engine.restorePlan(sourceStatePlan.planId), /Sumber inventaris hilang/);
+  await assert.rejects(engine.cancelPlan({
+    reservedPlan: sourceStatePlan, timestamp: "2026-11-18T14:10:00.021Z"
+  }));
+  assert.equal((await storage.get("plans", sourceStatePlan.planId)).status, "reserved");
+  assert.equal((await storage.get("remainders", "CANCEL-RECOVERY-SOURCE-STATE")).status, "available");
+  assert.equal(
+    (await storage.get("reservations", sourceStatePlan.reservations[0].id)).status,
+    "active"
+  );
+  console.log("LULUS: sumber yang tidak lagi reserved memblokir pemulihan/pembatalan tanpa perubahan tambahan.");
+
   // Uji round-trip cadangan untuk rencana yang dibatalkan.
   const backup = await storage.exportJSON();
   const validator = require("../assets/js/inventory-validator.js");

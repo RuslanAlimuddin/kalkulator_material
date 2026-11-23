@@ -62,4 +62,32 @@ test("jumlah lembar pecahan dan harga negatif ditolak", () => {
   }), /Harga tidak boleh negatif/);
 });
 
+test("jumlah lembar dan isi kemasan harus berupa integer aman", () => {
+  for (const totalSheets of [Number.MAX_SAFE_INTEGER + 1, Infinity, NaN]) {
+    assert.throws(() => calculatePricing({
+      totalSheets, areaMaterialM2: 1, areaSurfaceM2: 2, price: 100
+    }), /bilangan bulat aman/);
+  }
+  assert.throws(() => calculatePricing({
+    totalSheets: 2, areaMaterialM2: 1, areaSurfaceM2: 2,
+    price: 100, per: "package", packageSize: Number.MAX_SAFE_INTEGER + 1
+  }), /bilangan bulat aman/);
+});
+
+test("overflow pada jumlah lembar dibeli atau hasil uang ditolak", () => {
+  assert.throws(() => calculatePricing({
+    totalSheets: Number.MAX_SAFE_INTEGER - 1,
+    areaMaterialM2: 1, areaSurfaceM2: 2,
+    price: 100, per: "package", packageSize: 2
+  }), /melewati batas angka yang aman/);
+  assert.throws(() => calculatePricing({
+    totalSheets: 2, areaMaterialM2: 1, areaSurfaceM2: 2,
+    price: Number.MAX_VALUE
+  }), /melewati batas angka yang aman/);
+  assert.throws(() => calculatePricing({
+    totalSheets: 1, areaMaterialM2: Number.MIN_VALUE, areaSurfaceM2: 2,
+    price: 1
+  }), /melewati batas angka yang aman/);
+});
+
 console.log("Semua pengujian mesin harga selesai.");

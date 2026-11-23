@@ -67,6 +67,7 @@
         material: previewPlan.material,
         grainDirection: previewPlan.grainDirection,
         motif: previewPlan.motif,
+        previewCreatedAt: previewPlan.previewCreatedAt,
         timestamp: options.timestamp
       });
       return {

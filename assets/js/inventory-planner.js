@@ -44,6 +44,7 @@
       const originalCells = input.geometry.cells;
       if (originalCells.length === 0) {
         return {
+          geometryVersion: 1,
           cells: [], sheets: [], sheetCount: 0, inventorySheetCount: 0,
           newSheetCount: 0, reuseCount: 0, inventoryUsage: [],
           usableRemainders: [], tooSmallRemainders: []

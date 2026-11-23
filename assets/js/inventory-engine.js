@@ -15,6 +15,67 @@
       throw new Error("Storage inventaris dengan consumeReservation wajib disediakan.");
     }
 
+    function validatePlanGeometry(plan) {
+      // Snapshot versi lama tidak menyimpan geometri lembar; tetap didukung.
+      if (plan.sheets == null) return;
+      if (!Array.isArray(plan.sheets)) {
+        throw new Error("Geometri snapshot rencana tidak valid: daftar lembar bukan array.");
+      }
+      const epsilon = 0.000001;
+      const sheetById = new Map();
+      const overlaps = (a, b) =>
+        Math.min(a.x + a.width, b.x + b.width) >
+          Math.max(a.x, b.x) + epsilon &&
+        Math.min(a.y + a.height, b.y + b.height) >
+          Math.max(a.y, b.y) + epsilon;
+
+      for (const sheet of plan.sheets) {
+        if (!sheet || sheet.id == null || String(sheet.id).trim() === "" ||
+            sheetById.has(String(sheet.id)) ||
+            !Number.isFinite(sheet.width) || sheet.width <= 0 ||
+            !Number.isFinite(sheet.height) || sheet.height <= 0 ||
+            !Array.isArray(sheet.placements) || !Array.isArray(sheet.leftovers)) {
+          throw new Error("Geometri snapshot rencana memiliki lembar atau batas ukuran yang tidak valid.");
+        }
+        sheetById.set(String(sheet.id), sheet);
+        const rectangles = [];
+        for (const [kind, records] of [
+          ["placements", sheet.placements], ["leftovers", sheet.leftovers]
+        ]) {
+          for (const rect of records) {
+            if (!rect || ![rect.x, rect.y].every(value =>
+                  Number.isFinite(value) && value >= 0) ||
+                !Number.isFinite(rect.width) || rect.width <= 0 ||
+                !Number.isFinite(rect.height) || rect.height <= 0 ||
+                rect.x + rect.width > sheet.width + epsilon ||
+                rect.y + rect.height > sheet.height + epsilon) {
+              throw new Error("Geometri snapshot rencana memiliki bidang di luar batas lembar atau ukuran tidak valid.");
+            }
+            if (rectangles.some(previous => overlaps(previous, rect))) {
+              throw new Error("Geometri snapshot rencana memiliki bidang potongan atau sisa yang saling bertumpuk.");
+            }
+            rectangles.push(rect);
+          }
+        }
+      }
+
+      if (Array.isArray(plan.usableRemainders)) {
+        if (plan.usableRemainders.length > 0 && plan.sheets.length === 0) {
+          throw new Error("Snapshot memiliki sisa layak tetapi tidak memiliki geometri lembar sumber.");
+        }
+        for (const remainder of plan.usableRemainders) {
+          const sheet = remainder && sheetById.get(String(remainder.sheetId));
+          if (!sheet || !Array.isArray(sheet.leftovers) ||
+              sheet.leftovers.filter(rect =>
+                rect.x === remainder.x && rect.y === remainder.y &&
+                rect.width === remainder.width && rect.height === remainder.height
+              ).length !== 1) {
+            throw new Error("Geometri sisa layak tidak cocok dengan bidang leftovers pada lembar asal.");
+          }
+        }
+      }
+    }
+
     async function consumeReservation(input) {
       if (!input || typeof input.reservationId !== "string" || !input.reservationId.trim()) {
         throw new Error("ID reservasi wajib diisi.");
@@ -128,6 +189,7 @@
         }
       }
       const plan = reservedPlan.plan;
+      validatePlanGeometry(plan);
       const usage = reservedPlan.inventoryUsage;
       if (typeof storage.consumeReservations !== "function") {
         throw new Error("Storage belum mendukung konsumsi multi-reservasi atomik.");
@@ -207,6 +269,7 @@
       if (!saved || saved.status !== "reserved" || !saved.plan) {
         throw new Error("Snapshot rencana aktif tidak ditemukan atau merupakan reservasi lama tanpa snapshot.");
       }
+      validatePlanGeometry(saved.plan);
       if (!Array.isArray(saved.plan.inventoryUsage) || !Array.isArray(saved.reservationIds)) {
         throw new Error("Snapshot tidak memiliki daftar sumber dan reservasi yang valid.");
       }

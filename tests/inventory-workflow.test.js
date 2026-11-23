@@ -44,6 +44,7 @@ async function main() {
   let reserveCalls = 0;
   let cancelCalls = 0;
   let completeCalls = 0;
+  let lastReserveInput = null;
   const planner = {
     calculate(input) {
       plannerCalls += 1;
@@ -57,6 +58,7 @@ async function main() {
   };
   const engine = {
     async reservePlan(input) {
+      lastReserveInput = input;
       reserveCalls += 1;
       if (reserveCalls === 1) throw new Error("Stok berubah saat reservasi.");
       return {
@@ -111,7 +113,9 @@ async function main() {
   assert.equal(confirmedPreview.plan, preview.plan);
   assert.equal(reserveCalls, reserveCallsBeforePreview + 1);
   assert.equal(plannerCalls, plannerCallsBeforeConfirm);
+  assert.equal(lastReserveInput.previewCreatedAt, preview.previewCreatedAt);
   console.log("LULUS: konfirmasi memakai rencana yang ditampilkan tanpa menghitung ulang atau mengganti sumber diam-diam.");
+  console.log("LULUS: waktu pembuatan pratinjau diteruskan ke snapshot reservasi.");
 
   const canceled = await workflow.cancel(reservedPlan, { timestamp: now });
   assert.deepEqual(canceled.releasedReservations, ["RSV-WF"]);

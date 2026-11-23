@@ -42,8 +42,14 @@
         ...input.plannerInput,
         remainders
       });
+      // Baseline tanpa inventaris memakai planner/adapter yang sama, agar
+      // jumlah kebutuhan bruto identik dengan algoritma pemotongan utama.
+      const baselinePlan = input.includeBaseline === true
+        ? planner.calculate({ ...input.plannerInput, remainders: [] })
+        : null;
       return {
         plan,
+        baselinePlan,
         jobId: input.jobId,
         material: input.plannerInput.material || null,
         grainDirection: input.plannerInput.grainDirection || null,

@@ -147,8 +147,95 @@
     if (!remainderRows.length) leftovers.appendChild(makeListItem("Tidak ada sisa bidang yang terdeteksi", ""));
 
     $("inventoryPreviewResult").hidden = false;
+    renderPricing(preview);
     $("inventoryConfirmButton").hidden = false;
     $("inventoryConfirmButton").disabled = false;
+  }
+
+  function formatInventoryPrice(value) {
+    if (typeof fmtRupiah === "function") return fmtRupiah(value);
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency", currency: "IDR", maximumFractionDigits: 0
+    }).format(value);
+  }
+
+  function renderPricing(preview) {
+    const root = $("inventoryPreviewPricing");
+    if (!root) return;
+    root.replaceChildren();
+
+    const priceRaw = $("harga").value.trim();
+    const price = priceRaw === "" ? 0 : Number(priceRaw);
+    const packageMode = $("hargaPer").value === "kemasan";
+    const packageSize = $("isiKemasan").value === "" ? NaN : Number($("isiKemasan").value);
+    const rawLength = Number($("mw").value);
+    const rawWidth = Number($("mh").value);
+    const areaMaterialM2 = rawLength * rawWidth / 10000;
+    const areaSurfaceM2 = Number($("w").value) * Number($("h").value);
+
+    const title = document.createElement("strong");
+    title.textContent = "Estimasi biaya material";
+    root.appendChild(title);
+
+    if (!Number.isFinite(price) || price <= 0) {
+      appendText(root, "p", "Masukkan harga material di bagian Harga Material untuk melihat kedua estimasi.", "inventory-preview-muted");
+      return;
+    }
+
+    function estimate(sheetCount) {
+      if (sheetCount === 0) return { totalPrice: 0, packageCount: 0, sheetsPurchased: 0, unusedSheets: 0 };
+      return MaterialPricingEngine.calculatePricing({
+        totalSheets: sheetCount,
+        areaMaterialM2,
+        areaSurfaceM2,
+        price,
+        per: packageMode ? "package" : "sheet",
+        packageSize: packageMode ? packageSize : undefined
+      });
+    }
+
+    let gross, purchase;
+    try {
+      gross = estimate(preview.baselinePlan.newSheetCount);
+      purchase = estimate(preview.plan.newSheetCount);
+    } catch (error) {
+      appendText(root, "p", error.message || "Harga atau isi kemasan tidak valid.", "inventory-preview-warning");
+      return;
+    }
+
+    const rows = [
+      {
+        label: "Nilai kebutuhan material (tanpa inventaris)",
+        count: preview.baselinePlan.newSheetCount,
+        result: gross
+      },
+      {
+        label: "Estimasi pembelian baru (setelah inventaris)",
+        count: preview.plan.newSheetCount,
+        result: purchase
+      }
+    ];
+    rows.forEach(row => {
+      const card = document.createElement("div");
+      card.className = "inventory-price-row";
+      appendText(card, "span", row.label);
+      const value = document.createElement("strong");
+      value.textContent = formatInventoryPrice(row.result.totalPrice);
+      card.appendChild(value);
+      let detail = row.count + " lembar material";
+      if (packageMode && row.result.packageCount != null) {
+        detail = row.result.packageCount + " kemasan × " + formatInventoryPrice(price) +
+          " · " + row.result.sheetsPurchased + " lembar dibeli";
+        if (row.result.unusedSheets > 0) detail += " · sisa utuh " + row.result.unusedSheets + " lembar";
+      } else {
+        detail += " × " + formatInventoryPrice(price) + " per lembar";
+      }
+      appendText(card, "small", detail);
+      root.appendChild(card);
+    });
+    appendText(root, "p",
+      "Perbedaan kedua angka berasal dari sisa inventaris yang cocok dan benar-benar dipakai dalam rencana. Pratinjau belum mengunci atau mengurangi stok.",
+      "inventory-preview-muted");
   }
 
   async function createPreview() {
@@ -180,6 +267,7 @@
       motif: material.motif,
       grainDirection: $("inventoryGrainDirection").value,
       kerf: 0,
+      includeBaseline: true,
       minRemainderW: $("minSisaW").value,
       minRemainderH: $("minSisaH").value
     });
@@ -433,6 +521,14 @@
         $(id).addEventListener("change", () => {
           clearPreview();
           clearMessage();
+        });
+      });
+      ["harga", "hargaPer", "isiKemasan"].forEach(id => {
+        $(id).addEventListener("input", () => {
+          if (currentPreview) renderPricing(currentPreview);
+        });
+        $(id).addEventListener("change", () => {
+          if (currentPreview) renderPricing(currentPreview);
         });
       });
       ["w", "h", "mn", "mw", "mh", "ori", "gap", "minSisaW", "minSisaH"].forEach(id => {

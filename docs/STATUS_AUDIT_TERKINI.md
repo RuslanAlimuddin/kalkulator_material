@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `c5970257d3415029ea70b537d6d70e73486df10a` (`test: restore recovery fixtures after corruption checks`). Perubahan ini menambah tes fail-closed saat snapshot dan status sumber tidak konsisten, serta memulihkan fixture setelah simulasi kerusakan. Empat CI pada SHA ini sudah diverifikasi `completed/success`.
+- HEAD kode terbaru yang sudah diverifikasi: `fa2254a9aac32dd69cfb5bfe262ddb40ec32b568` (`test: guard single inventory transaction identifiers`). Perbaikan memvalidasi ID dan referensi pada jalur transaksi tunggal; empat CI pada commit ini sudah diverifikasi `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -185,6 +185,34 @@ Keempat check-run pada commit ini `completed/success`:
 - `batch-reservation`
 - `browser-indexeddb`
 
+### 4D. Validasi ID dan referensi transaksi tunggal — cacat ditemukan, diperbaiki, dan CI lulus
+File:
+- `assets/js/inventory-storage.js`
+- `tests/inventory-storage.test.js`
+- Pembanding: aturan field pada `assets/js/inventory-validator.js`
+
+Temuan:
+- Jalur transaksi massal sudah memiliki validasi tipe untuk beberapa ID, tetapi jalur tunggal belum konsisten.
+- `reserveRemainder()` sebelumnya hanya memeriksa nilai `remainderId` dan `jobId` bersifat truthy; ID reservasi khusus yang diberikan pemanggil juga tidak diperiksa sebagai string.
+- `consumeReservation()` belum memeriksa ID sisa turunan opsional dan `sourceSheetId` opsional.
+- `createRemainder()` belum memeriksa tipe ID khusus.
+- `updateRemainderState()` meneruskan `referenceId` ke movement tanpa memastikan tipe string.
+
+Perbaikan:
+- ID wajib dan ID opsional yang diberikan pemanggil kini harus berupa string tidak kosong.
+- ID otomatis tetap dipakai bila field ID opsional tidak diberikan.
+- Referensi movement opsional divalidasi sebelum transaksi dijalankan.
+- Tes regresi memeriksa ID numerik pada reservasi, konsumsi, pencatatan sisa, serta referensi perubahan kondisi; tes memastikan stok, reservasi, dan riwayat tidak berubah saat input ditolak.
+
+Commit kode: `0d1230c57049a80ca6559357d4b58dc6e0249627`.
+Commit tes: `fa2254a9aac32dd69cfb5bfe262ddb40ec32b568`.
+Empat check-run pada commit tes `completed/success`: `test`, `inventory-and-regression`, `batch-reservation`, dan `browser-indexeddb`.
+
+Kesimpulan:
+- Cacat validasi ID pada jalur transaksi tunggal sudah diperbaiki.
+- Belum ada perubahan pada perilaku bisnis reservasi/konsumsi yang valid.
+- Audit masih perlu memeriksa referensi dan field transaksi lain yang belum disentuh, terutama validasi `planId`, konsistensi snapshot, serta field opsional pada operasi pelepasan.
+
 ### 5. Perbaikan validasi adapter — selesai dan CI lulus
 - Commit: `f3dfe56c3e13ee8794d5ac57cfa64b4db66c9816`.
 - File kode: `assets/js/cutting-adapter.js`.
@@ -213,7 +241,7 @@ Keempat check-run pada commit ini `completed/success`:
 
 ## Pekerjaan berikutnya — urutan wajib
 1. Audit validasi CRUD katalog material dan record pekerjaan sudah diperbaiki serta lulus seluruh CI. Lanjutkan audit batas API lain yang belum diperiksa, terutama field/record transaksi dan nilai ekstrem, tanpa mengulang CRUD material/pekerjaan.
-2. Lanjutkan audit validasi batas API untuk record transaksi (reservasi, rencana, movement, sisa material), khususnya ID opsional dan field referensi lainnya pada jalur konsumsi/pelepasan. Validasi ID opsional pada konsumsi massal sudah diperbaiki; jangan mengulang kasus yang sudah lulus. Kemudian kembali ke keputusan makna estimasi biaya.
+2. Lanjutkan audit validasi batas API untuk record transaksi, terutama `planId`, konsistensi snapshot, dan field referensi pada operasi pelepasan. Validasi ID transaksi tunggal dan massal yang sudah diuji tidak perlu diulang. Kemudian kembali ke keputusan makna estimasi biaya.
 3. Kembali ke keputusan makna estimasi biaya: pisahkan konsep nilai kebutuhan vs biaya pembelian baru setelah inventaris. Jangan meminta keputusan pengguna sebelum menyajikan ringkasan opsi yang konkret dan konsekuensinya.
 4. Jika ditemukan cacat nyata, tambahkan tes regresi dan perbaiki hanya di branch kerja.
 5. Setelah tahap audit/perubahan, perbarui dokumen ini dan verifikasi CI pada HEAD terbaru.

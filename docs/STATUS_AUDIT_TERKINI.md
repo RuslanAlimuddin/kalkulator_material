@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `6fce40f234c41d4b0954ca83f0e2400e98bdc854` (`test: verify baseline option passes through inventory bridge`). Integrasi estimasi kebutuhan bruto dan pembelian setelah inventaris telah diterapkan; seluruh empat CI pada HEAD ini sudah diverifikasi `completed/success`.
+- HEAD kode terbaru yang sudah diverifikasi: `07f4cec90056d63d92c34654c8e731c2e5e84401` (`test: correct currency regex in inventory pricing cases`). Integrasi estimasi kebutuhan bruto dan pembelian setelah inventaris telah diperluas dengan skenario kemasan, stok mencukupi, dan perubahan harga; seluruh empat CI pada HEAD ini sudah diverifikasi `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -57,7 +57,7 @@ Kesimpulan dan implementasi:
 - `inventory-app-bridge.js` meneruskan opsi `includeBaseline`.
 - `inventory-preview-ui.js` menampilkan kedua estimasi di area hasil pratinjau dengan mesin harga yang sama, termasuk pembelian kemasan utuh.
 - Harga, jenis harga, dan isi kemasan dapat diubah ketika pratinjau masih aktif; angka estimasi diperbarui tanpa mengulang perhitungan geometri.
-- Pengujian browser memeriksa skenario 2 lembar kebutuhan bruto dan 1 lembar pembelian baru setelah satu sisa inventaris digunakan. Pengujian workflow/bridge memeriksa opsi baseline dan memastikan perhitungan tetap terpisah dari reservasi.
+- Pengujian browser memeriksa skenario 2 lembar kebutuhan bruto dan 1 lembar pembelian baru setelah satu sisa inventaris digunakan, pembaruan harga saat pratinjau aktif, kebutuhan bruto 5 lembar vs pembelian 3 lembar dengan kemasan isi 4, dan kondisi 5 sisa inventaris mencukupi sehingga pembelian baru Rp0. Pengujian workflow/bridge memeriksa opsi baseline dan memastikan perhitungan tetap terpisah dari reservasi.
 - Tidak ada mutasi stok pada saat menghitung baseline atau menampilkan estimasi. Reservasi tetap hanya terjadi ketika pengguna menekan tombol persetujuan.
 - Perhitungan harga kalkulator lama tetap dipertahankan; tidak diubah menjadi angka neto secara diam-diam.
 
@@ -364,3 +364,20 @@ Pekerjaan berikutnya:
 2. Audit harga kemasan saat inventaris mengurangi kebutuhan melintasi batas kemasan (contoh gross 5 lembar, net 3 lembar, isi 4/kemasan).
 3. Pastikan perubahan harga/kemasan memperbarui dua angka dan perubahan geometri membatalkan pratinjau.
 4. Setelah skenario tersebut teruji, audit integrasi biaya lebih lanjut dan siapkan daftar uji manual yang relevan.
+### 4H. Uji ambang kemasan, perubahan harga langsung, dan stok mencukupi — selesai, seluruh CI lulus
+Perluasan tes browser pada `tests/browser/inventory-preview.test.js` mencakup tiga kasus tambahan:
+1. **Ambang kemasan:** kebutuhan bruto 5 lembar, 2 unit sisa inventaris dipakai, pembelian baru 3 lembar. Dengan isi 4 lembar/kemasan dan harga Rp400.000/kemasan, kebutuhan bruto dibulatkan menjadi 2 kemasan (Rp800.000), sedangkan pembelian baru menjadi 1 kemasan (Rp400.000) dengan 1 lembar utuh tersisa.
+2. **Seluruh kebutuhan dipenuhi inventaris:** 5 unit sisa inventaris menutup 5 potongan. `newSheetCount` menjadi 0 dan estimasi pembelian baru tampil Rp0, sementara nilai kebutuhan bruto tetap Rp800.000.
+3. **Perubahan harga saat pratinjau terbuka:** harga satuan diubah dari Rp100.000 menjadi Rp200.000; kedua estimasi langsung berubah dari Rp200.000/Rp100.000 menjadi Rp400.000/Rp200.000 tanpa menghitung ulang geometri atau mengubah stok.
+
+Pengujian awal pada commit `39c60cc188a905c1f6ea352d0d2b6c486880ee3d` gagal karena regex mata uang dalam tes ditulis dengan escape ganda; output aplikasi menunjukkan nilai Rp800.000 yang benar. Tes diperbaiki pada commit `07f4cec90056d63d92c34654c8e731c2e5e84401`, kemudian empat CI diverifikasi `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`.
+
+Commit pengujian:
+- Edge case stok/kemasan: `70e971ad1c35dce3afc667030dd74aa9e28b4bb1`.
+- Koreksi regex dan validasi pembaruan harga: `07f4cec90056d63d92c34654c8e731c2e5e84401`.
+
+Pekerjaan berikutnya:
+1. Audit input harga kosong, negatif, tidak finite, serta isi kemasan kosong/nol/pecahan pada UI pratinjau; pastikan pratinjau geometri tetap dapat dilihat meskipun estimasi harga tidak dapat dihitung.
+2. Uji perubahan isi kemasan saat pratinjau terbuka dan pastikan kedua estimasi diperbarui tanpa mengulang perencanaan.
+3. Periksa konsistensi label dan penjelasan antara kotak harga kalkulator utama dengan dua estimasi pada pratinjau inventaris.
+4. Setelah validasi input harga selesai, lanjutkan audit integrasi harga dan inventaris lain yang didukung bukti; jangan mengubah formula tanpa temuan.

@@ -712,6 +712,8 @@
                 (snapshot && snapshot.material &&
                  (!previewMaterialRecord || source.materialId !== snapshot.material.id ||
                   !isRemainderCompatibleWithMaterial(source, previewMaterialRecord))) ||
+                (snapshot && snapshot.grainDirection != null &&
+                 source.grainDirection !== snapshot.grainDirection) ||
                 (hasInventorySheetSnapshot && (!inventorySheet ||
                  Number(inventorySheet.width) !== Number(source.widthCm) ||
                  Number(inventorySheet.height) !== Number(source.heightCm)))) {

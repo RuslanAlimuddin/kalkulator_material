@@ -161,6 +161,30 @@ Kesimpulan:
 - Belum ditemukan cacat implementasi baru pada pemulihan snapshot dan pembatalan yang diuji.
 - Tidak perlu mengubah kode produksi pada tahap ini. Fokus berikutnya beralih ke validasi batas API untuk record transaksi (reservasi, rencana, movement, dan sisa material), tanpa mengulang pemeriksaan CRUD material/pekerjaan yang sudah selesai.
 
+### 4C. Validasi ID opsional pada konsumsi sisa — cacat ditemukan, diperbaiki, dan CI lulus
+File:
+- `assets/js/inventory-storage.js`
+- `tests/inventory-storage.test.js`
+- Pembanding skema: `assets/js/inventory-validator.js`
+
+Temuan:
+- `consumeReservations()` menerima ID sisa turunan opsional dan menggunakan ID otomatis bila tidak diberikan.
+- Sebelum perbaikan, ID yang diberikan pemanggil tidak divalidasi tipenya. Nilai numerik atau teks kosong dapat melewati pemeriksaan awal dan berpotensi menghasilkan record yang tidak memenuhi skema bundle, yang mewajibkan ID record berupa teks tidak kosong.
+- Field opsional `sourceSheetId` pada batch konsumsi juga belum memvalidasi tipe jika diberikan.
+
+Perbaikan:
+- ID sisa turunan yang diberikan harus berupa string tidak kosong; jika tidak diberikan/null, ID otomatis tetap digunakan.
+- `sourceSheetId` opsional pada konsumsi batch, jika diberikan, harus berupa string tidak kosong.
+- ID pada sisa dari lembar baru juga diperiksa dengan aturan yang sama.
+- Tes regresi mencakup ID numerik pada ketiga jalur tersebut dan memastikan stok/reservasi tidak berubah ketika input ditolak.
+
+Commit final: `b093576491e7037fb7a0191afdc046fa88daa02f`.
+Keempat check-run pada commit ini `completed/success`:
+- `test`
+- `inventory-and-regression`
+- `batch-reservation`
+- `browser-indexeddb`
+
 ### 5. Perbaikan validasi adapter — selesai dan CI lulus
 - Commit: `f3dfe56c3e13ee8794d5ac57cfa64b4db66c9816`.
 - File kode: `assets/js/cutting-adapter.js`.
@@ -189,7 +213,7 @@ Kesimpulan:
 
 ## Pekerjaan berikutnya — urutan wajib
 1. Audit validasi CRUD katalog material dan record pekerjaan sudah diperbaiki serta lulus seluruh CI. Lanjutkan audit batas API lain yang belum diperiksa, terutama field/record transaksi dan nilai ekstrem, tanpa mengulang CRUD material/pekerjaan.
-2. Audit validasi batas API untuk record transaksi (reservasi, rencana, movement, sisa material) dan nilai ekstrem. Audit pemulihan snapshot tidak konsisten, pembatalan, serta penyelesaian sudah diperluas dan seluruh CI lulus; jangan mengulang skenario yang telah tercakup tanpa alasan.
+2. Lanjutkan audit validasi batas API untuk record transaksi (reservasi, rencana, movement, sisa material), khususnya ID opsional dan field referensi lainnya pada jalur konsumsi/pelepasan. Validasi ID opsional pada konsumsi massal sudah diperbaiki; jangan mengulang kasus yang sudah lulus. Kemudian kembali ke keputusan makna estimasi biaya.
 3. Kembali ke keputusan makna estimasi biaya: pisahkan konsep nilai kebutuhan vs biaya pembelian baru setelah inventaris. Jangan meminta keputusan pengguna sebelum menyajikan ringkasan opsi yang konkret dan konsekuensinya.
 4. Jika ditemukan cacat nyata, tambahkan tes regresi dan perbaiki hanya di branch kerja.
 5. Setelah tahap audit/perubahan, perbarui dokumen ini dan verifikasi CI pada HEAD terbaru.

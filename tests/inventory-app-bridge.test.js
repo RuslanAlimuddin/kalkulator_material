@@ -76,12 +76,14 @@ async function main() {
       wallWidthM: 6, wallHeightM: 3,
       materialLengthCm: 220, materialWidthCm: 110,
       orientation: "0", pattern: "stack", alignment: "BL",
-      mode: "ekonomis", material
+      mode: "ekonomis", material,
+      includeBaseline: true
     });
     assert.equal(preview.jobId, "JOB-BRIDGE");
     assert.equal(calls.preview, 1);
     assert.equal(calls.confirm, 0);
     assert.equal(calls.input.plannerInput.material.id, "MAT-BRIDGE");
+    assert.equal(calls.input.includeBaseline, true);
   });
 
   await test("konfirmasi, pembatalan, dan penyelesaian diteruskan ke workflow", async () => {

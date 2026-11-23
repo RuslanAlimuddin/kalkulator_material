@@ -109,10 +109,21 @@ async function main() {
     assert.ok(backup.remainders.remainders.some(item => item.widthCm === 80));
 
     // Pulihkan file hasil unduhan dengan mode replace dan pastikan data/riwayat tetap ada.
-    page.once("dialog", dialog => dialog.accept());
+    let replaceConfirmation = "";
+    page.once("dialog", async dialog => {
+      replaceConfirmation = dialog.message();
+      await dialog.accept();
+    });
     await page.locator("#importMode").selectOption("replace");
     await page.locator("#importFile").setInputFiles(backupPath);
     await page.getByText(/Impor selesai:/).waitFor();
+    for (const phrase of [
+      "katalog material", "pekerjaan", "stok sisa", "reservasi",
+      "rencana pemotongan", "riwayat pergerakan", "cadangan"
+    ]) {
+      assert.ok(replaceConfirmation.toLowerCase().includes(phrase),
+        "Konfirmasi replace harus menjelaskan cakupan data: " + phrase);
+    }
     // Impor dilakukan saat tab Riwayat aktif; kembali ke Daftar Stok sebelum
     // memeriksa tabel yang memang tersembunyi pada tab lain.
     await page.locator("[data-tab=stock]").click();

@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `1696f4e45c0667363c18d549a809928f8acd1a79` (`test: assert movement absence for unique remainder id`). Ini mencakup perbaikan validasi pembuatan sisa untuk pekerjaan yang sudah ditutup. Pembaruan dokumen status setelahnya menghasilkan commit dokumentasi baru; selalu verifikasi pointer branch terbaru.
+- HEAD kode terbaru yang sudah diverifikasi: `b3d0f33bb2a86704db913dd176aa53f1f6479af9` (`fix: preserve minimal material CRUD compatibility`). Ini mencakup validasi field katalog material pada jalur CRUD umum dan mempertahankan dukungan record minimal. Empat CI pada SHA ini sudah diverifikasi `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -67,6 +67,21 @@ Pemeriksaan awal:
 
 Temuan konkret pada `cutting-adapter.js`: mode tidak dikenal diam-diam diperlakukan seperti mode Presisi, dan jalur geometri kosong mengembalikan hasil sebelum memvalidasi kerf serta batas minimum sisa. Keduanya diperbaiki pada commit `f3dfe56c3e13ee8794d5ac57cfa64b4db66c9816`; tes regresi ditambahkan pada `tests/cutting-adapter.test.js`. Empat CI pada commit perbaikan semuanya lulus, termasuk tes regresi dan browser. Audit lanjutan pada `inventaris.html`, `assets/js/inventory-ui.js`, `assets/js/inventory-storage.js`, `assets/js/inventory-validator.js`, dan tes terkait menemukan satu cacat nyata: formulir hanya menampilkan pekerjaan `open`, tetapi `createRemainder()` sebelumnya hanya memeriksa keberadaan pekerjaan. API penyimpanan dapat menerima pencatatan sisa pada pekerjaan `completed` atau `archived`, berbeda dengan batas yang dipakai reservasi, konsumsi, dan pembuatan sisa lembar baru. Perbaikan menambahkan pemeriksaan `job.status === "open"` di dalam transaksi yang sama sebelum menulis sisa dan movement. Tes regresi baru memeriksa kedua status tertutup serta memastikan tidak ada sisa maupun movement yang tersimpan. Arah serat tetap berupa teks bebas sesuai desain formulir; tidak boleh dibatasi ke enum buatan. Pemeriksaan form material, dimensi, ketebalan, kondisi, dan pemetaan kebijakan rotasi tidak menghasilkan cacat tambahan yang terbukti pada tahap ini.
 
+### 3A. CRUD katalog material — cacat ditemukan, diperbaiki, dan CI lulus
+File:
+- `assets/js/inventory-storage.js`
+- `tests/inventory-storage.test.js`
+- Pembanding skema: `assets/js/inventory-validator.js`
+
+Temuan:
+- Validator bundle menetapkan tipe/nilai yang valid untuk field material: nama/kategori/motif tidak kosong bila tersedia, ketebalan angka finite positif, `grainRequired` boolean, `rotationPolicy` salah satu `free`/`quarter_turn`/`fixed`, `active` boolean, dan `surface` bila diisi harus berupa teks tidak kosong.
+- Sebelum perbaikan, CRUD umum `add`, `put`, dan `update` tidak memvalidasi field katalog tersebut. Contohnya, ketebalan negatif atau kebijakan rotasi tak dikenal dapat tersimpan melalui API meski impor bundle akan menolaknya.
+- Perbaikan menambahkan validasi konsistensi field yang diberikan pada ketiga jalur CRUD.
+- Kompatibilitas penting: tes CRUD lama memang menggunakan record minimal (hanya ID dan nama). Karena itu, validasi tidak memaksa semua field opsional skema lengkap harus selalu ada; field yang disertakan harus valid. Validasi impor bundle tetap menjadi pemeriksaan skema penuh.
+- Tes regresi menguji ketebalan nol/negatif/Infinity, tipe boolean salah, kebijakan rotasi tidak dikenal, field teks kosong, serta memastikan add/put/update menolak tanpa mengubah data.
+
+Percobaan CI pertama pada implementasi yang terlalu ketat gagal karena memutus kontrak CRUD minimal yang sudah diuji. Implementasi kemudian dilonggarkan secara tepat agar mempertahankan kompatibilitas. Pada commit final `b3d0f33bb2a86704db913dd176aa53f1f6479af9`, empat check-run semuanya `completed/success`: `browser-indexeddb`, `batch-reservation`, `test`, dan `inventory-and-regression`.
+
 ### 4. Transaksi inventaris — pemeriksaan statis sebelumnya
 Pemeriksaan statis sebelumnya pada `inventory-storage.js`, `inventory-engine.js`, `inventory-workflow.js` dan tes terkait menunjukkan reservasi/konsumsi multi-sumber memakai transaksi IndexedDB `readwrite`; ada tes rollback, konflik penggunaan sumber, dan kegagalan konsumsi agar data tidak berubah sebagian. Ini adalah temuan statis dan cakupan tes; jangan menyebutnya sebagai eksekusi ulang tes kecuali CI terbaru memang diperiksa.
 
@@ -97,7 +112,7 @@ Pemeriksaan statis sebelumnya pada `inventory-storage.js`, `inventory-engine.js`
 - `tests/browser/inventory-preview.test.js`
 
 ## Pekerjaan berikutnya — urutan wajib
-1. Lanjutkan audit validasi input lintas modul pada batas katalog material/API umum dan nilai ekstrem yang belum dibuktikan; form inventaris serta aturan status pekerjaan untuk pencatatan sisa sudah diperiksa.
+1. Audit validasi input lintas modul pada katalog material melalui CRUD umum sudah diperbaiki dan lulus CI. Lanjutkan audit nilai ekstrem/field lainnya pada batas API, terutama record pekerjaan dan perubahan parsial, dengan tetap menjaga kontrak CRUD minimal yang telah ada.
 2. Telusuri jalur penyimpanan, transaksi, pemulihan, dan kegagalan di titik yang belum ter-cover; audit transaksi dasar yang sudah diperiksa tidak perlu diulang.
 3. Kembali ke keputusan makna estimasi biaya: pisahkan konsep nilai kebutuhan vs biaya pembelian baru setelah inventaris. Jangan meminta keputusan pengguna sebelum menyajikan ringkasan opsi yang konkret dan konsekuensinya.
 4. Jika ditemukan cacat nyata, tambahkan tes regresi dan perbaiki hanya di branch kerja.

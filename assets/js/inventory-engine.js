@@ -108,6 +108,7 @@
       if (!input || !input.plan || !Array.isArray(input.plan.inventoryUsage)) {
         throw new Error("Rencana pemotongan dengan inventoryUsage wajib disediakan.");
       }
+      validatePlanGeometry(input.plan);
       if (typeof input.jobId !== "string" || !input.jobId.trim()) {
         throw new Error("ID pekerjaan wajib diisi untuk reservasi rencana.");
       }

@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `385d51429107cbac47b6f40554f5b9d47f1bace8` (`test: invalidate preview after material or job catalog changes`). Tes browser kini mencakup invalidasi pratinjau pada perubahan input serta refresh katalog material/pekerjaan; seluruh empat CI pada HEAD ini `completed/success`.
+- HEAD kode terbaru yang sudah diverifikasi: `385d51429107cbac47b6f40554f5b9d47f1bace8` (`test: invalidate preview after material or job catalog changes`). Tes browser mencakup invalidasi pratinjau pada perubahan input serta refresh katalog material/pekerjaan; seluruh empat CI pada HEAD kode ini `completed/success`. Dokumen checklist manual ditambahkan setelah audit teknis.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -522,3 +522,19 @@ Pekerjaan berikutnya:
 1. Audit perubahan nama material (`mn`) dan sinkronisasi harga: harga/kemasan yang diubah setelah kalkulasi utama memang memperbarui pratinjau, tetapi hasil kalkulator utama tetap menampilkan snapshot perhitungan terakhir sampai tombol Hitung ditekan. Pastikan label dan perilaku ini jelas dan tidak membingungkan.
 2. Periksa apakah input nama material kalkulator lama perlu memengaruhi identitas material inventaris; jangan menyamakan nama bebas (`mn`) dengan katalog `inventoryMaterial` tanpa keputusan desain.
 3. Setelah audit ini, susun checklist uji manual yang ringkas.
+### 4N. Audit nama material bebas dan sinkronisasi harga — selesai, tanpa perubahan formula
+Pemeriksaan pada `index.html` dan `assets/js/inventory-preview-ui.js` menunjukkan:
+- Field `mn` (Nama material) adalah nama tampilan pada kalkulator lama/visualisasi. Nilainya disimpan pada `lastCalc` dan ditampilkan di label visualisasi; field ini bukan ID katalog dan tidak menentukan material inventaris.
+- Identitas material untuk pratinjau inventaris berasal dari pilihan `inventoryMaterial` dan record katalog (`materialId`, ketebalan, motif, kebijakan rotasi, serta atribut material lain). Jadi nama bebas `mn` tidak boleh otomatis mengganti atau menimpa material katalog.
+- Harga/jenis harga/isi kemasan pada pratinjau diperbarui secara langsung melalui event input/change, tanpa mengulang geometri.
+- Kotak hasil kalkulator utama adalah snapshot dari perhitungan terakhir saat tombol **Hitung Kebutuhan Material** ditekan. Mengubah harga setelahnya tidak otomatis menghitung ulang hasil utama; pengguna menekan Hitung untuk memperbarui snapshot. Ini konsisten dengan alur kalkulator manual yang juga mengharuskan Hitung setelah input geometri berubah.
+- Tidak ditemukan cacat kode yang membuktikan identitas material atau formula harga lama tertukar dengan katalog inventaris. Tidak ada perubahan formula atau integrasi identitas yang dilakukan.
+
+### 4O. Checklist uji manual — disiapkan
+Dokumen baru: `docs/CHECKLIST_UJI_MANUAL_INVENTARIS_DAN_HARGA.md`.
+Checklist mencakup kalkulator utama, harga satuan/kemasan, pratinjau bruto/neto, perubahan input, invalidasi snapshot, refresh katalog, reservasi, pemulihan, pembatalan, penyelesaian, dan pemeriksaan audit. Checklist ini disiapkan untuk uji pada data salinan; belum mengklaim uji manual dilakukan.
+
+Pekerjaan berikutnya:
+1. Periksa seluruh CI pada HEAD dokumentasi terakhir setelah penambahan checklist.
+2. Setelah CI lulus, audit teknis harga/inventaris pada sisa area yang belum tercakup atau siapkan sesi uji manual bila pengguna menghendaki.
+3. Jangan mengubah rumus lama atau menghubungkan nama bebas `mn` ke identitas katalog tanpa kebutuhan desain yang jelas.

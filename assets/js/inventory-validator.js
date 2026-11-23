@@ -159,6 +159,98 @@
     const planById = new Map();
     indexUnique(plans, "plans", planById);
 
+    function validatePlanGeometry(plan, path) {
+      // Snapshot lama tidak menyimpan geometri lembar. Tetap izinkan format
+      // lama, tetapi snapshot baru yang menyertakan sheets wajib konsisten.
+      if (plan.sheets == null) return;
+      if (!Array.isArray(plan.sheets)) {
+        error(path + ".sheets", "Daftar lembar geometri harus berupa array.");
+        return;
+      }
+      const sheetById = new Map();
+      const epsilon = 0.000001;
+      const overlaps = (a, b) =>
+        Math.min(a.x + a.width, b.x + b.width) >
+          Math.max(a.x, b.x) + epsilon &&
+        Math.min(a.y + a.height, b.y + b.height) >
+          Math.max(a.y, b.y) + epsilon;
+
+      plan.sheets.forEach((sheet, sheetIndex) => {
+        const sheetPath = path + ".sheets[" + sheetIndex + "]";
+        if (!isObject(sheet)) {
+          error(sheetPath, "Data lembar harus berupa objek.");
+          return;
+        }
+        if (sheet.id == null || String(sheet.id).trim() === "") {
+          error(sheetPath + ".id", "ID lembar geometri wajib diisi.");
+        } else if (sheetById.has(String(sheet.id))) {
+          error(sheetPath + ".id", "ID lembar geometri tidak boleh duplikat.");
+        } else {
+          sheetById.set(String(sheet.id), sheet);
+        }
+        if (!isPositiveNumber(sheet.width) || !isPositiveNumber(sheet.height)) {
+          error(sheetPath, "Ukuran lembar geometri harus berupa angka positif.");
+          return;
+        }
+        if (!Array.isArray(sheet.placements) || !Array.isArray(sheet.leftovers)) {
+          error(sheetPath, "Lembar wajib memiliki daftar placements dan leftovers.");
+          return;
+        }
+        const rectangles = [];
+        const collect = (records, kind) => records.forEach((rect, rectIndex) => {
+          const rectPath = sheetPath + "." + kind + "[" + rectIndex + "]";
+          if (!isObject(rect)) {
+            error(rectPath, "Data bidang harus berupa objek.");
+            return;
+          }
+          if (![rect.x, rect.y].every(value =>
+                typeof value === "number" && Number.isFinite(value) && value >= 0) ||
+              !isPositiveNumber(rect.width) || !isPositiveNumber(rect.height)) {
+            error(rectPath, "Koordinat harus nonnegatif dan ukuran bidang harus positif.");
+            return;
+          }
+          if (rect.x + rect.width > sheet.width + epsilon ||
+              rect.y + rect.height > sheet.height + epsilon) {
+            error(rectPath, "Bidang berada di luar batas lembar sumber.");
+            return;
+          }
+          rectangles.forEach(previous => {
+            if (overlaps(previous.rect, rect)) {
+              error(rectPath, "Bidang bertumpuk dengan " + previous.path + ".");
+            }
+          });
+          rectangles.push({ rect, path: rectPath });
+        });
+        collect(sheet.placements, "placements");
+        collect(sheet.leftovers, "leftovers");
+      });
+
+      if (Array.isArray(plan.usableRemainders) && plan.sheets.length > 0) {
+        plan.usableRemainders.forEach((remainder, remainderIndex) => {
+          const remainderPath = path + ".usableRemainders[" + remainderIndex + "]";
+          if (!isObject(remainder)) {
+            error(remainderPath, "Data sisa layak harus berupa objek.");
+            return;
+          }
+          const sheet = sheetById.get(String(remainder.sheetId));
+          if (!sheet || !Array.isArray(sheet.leftovers)) {
+            error(remainderPath + ".sheetId", "Sisa layak tidak merujuk lembar geometri yang tersedia.");
+            return;
+          }
+          const matches = sheet.leftovers.filter(rect =>
+            rect.x === remainder.x && rect.y === remainder.y &&
+            rect.width === remainder.width && rect.height === remainder.height
+          );
+          if (matches.length !== 1) {
+            error(remainderPath, "Geometri sisa layak tidak cocok tepat dengan satu bidang leftovers pada lembar asal.");
+          }
+        });
+      } else if (Array.isArray(plan.usableRemainders) &&
+          plan.usableRemainders.length > 0 && plan.sheets.length === 0) {
+        error(path + ".sheets", "Snapshot memiliki sisa layak tetapi tidak memiliki geometri lembar sumber.");
+      }
+    }
+
     if (plans) plans.forEach((item, index) => {
       if (!isObject(item)) return;
       const p = "plans.plans[" + index + "]";
@@ -204,6 +296,7 @@
         error(p + ".plan", "Snapshot aktif wajib menyimpan objek rencana.");
       }
       if (!item.legacy && isObject(item.plan)) {
+        validatePlanGeometry(item.plan, p + ".plan");
         if (!Array.isArray(item.plan.inventoryUsage)) {
           error(p + ".plan.inventoryUsage", "Snapshot rencana wajib memiliki daftar sumber inventaris.");
         } else {

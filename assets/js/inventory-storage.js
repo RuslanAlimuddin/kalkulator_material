@@ -1101,17 +1101,27 @@
             !item.reservationId.trim() || !Array.isArray(item.remainders)) {
           throw new Error("Data konsumsi reservasi ke-" + (index + 1) + " tidak valid.");
         }
+        if (item.sourceSheetId != null &&
+            (typeof item.sourceSheetId !== "string" || !item.sourceSheetId.trim())) {
+          throw new Error("ID lembar sumber pada reservasi ke-" + (index + 1) + " tidak valid.");
+        }
         const drafts = item.remainders.map(remainder => {
           if (!remainder || !Number.isFinite(remainder.widthCm) || remainder.widthCm <= 0 ||
               !Number.isFinite(remainder.heightCm) || remainder.heightCm <= 0) {
             throw new Error("Ukuran sisa turunan pada reservasi ke-" + (index + 1) + " tidak valid.");
+          }
+          if (remainder.id != null &&
+              (typeof remainder.id !== "string" || !remainder.id.trim())) {
+            throw new Error("ID sisa turunan pada reservasi ke-" + (index + 1) + " harus berupa teks yang tidak kosong.");
           }
           return { id: remainder.id || makeId("REM"), widthCm: remainder.widthCm, heightCm: remainder.heightCm };
         });
         return { reservationId: item.reservationId, sourceSheetId: item.sourceSheetId || null, drafts };
       });
       const newSheetDrafts = input.newSheetRemainders.map((item, index) => {
-        if (!item || typeof item.materialId !== "string" || !item.materialId.trim() ||
+        if (!item || (item.id != null &&
+            (typeof item.id !== "string" || !item.id.trim())) ||
+            typeof item.materialId !== "string" || !item.materialId.trim() ||
             typeof item.originJobId !== "string" || !item.originJobId.trim() ||
             typeof item.sourceSheetId !== "string" || !item.sourceSheetId.trim() ||
             !Number.isFinite(item.widthCm) || item.widthCm <= 0 ||

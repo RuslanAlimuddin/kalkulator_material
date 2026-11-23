@@ -64,7 +64,7 @@ Jangan menyamakan satu unit sisa inventaris dengan satu lembar utuh untuk menila
 
 Pada pemeriksaan terakhir, commit `d70724cffba86dc755b838855d9d5c9add694a98` berhasil ditemukan dan dibaca. Branch `pengembangan-mesin-hitung` juga berhasil ditemukan, dan file-file pada branch tersebut dapat diambil.
 
-Pada HEAD kode `07f4cec90056d63d92c34654c8e731c2e5e84401`, empat check-run GitHub diverifikasi langsung dan semuanya `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`. SHA dokumentasi setelah pembaruan harus diperiksa ulang karena setiap commit baru memicu CI baru.
+Pada HEAD kode `9f440e932c47d586310be61878dfe1f3ff24fbf1`, empat check-run GitHub diverifikasi langsung dan semuanya `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`. SHA dokumentasi setelah pembaruan harus diperiksa ulang karena setiap commit baru memicu CI baru.
 
 ### D. Audit awal transaksi reservasi dan konsumsi
 
@@ -84,7 +84,7 @@ Pemeriksaan seluruh direktori `.github/workflows` menemukan `.github/workflows/b
 
 ## 7. Tahapan audit berikutnya
 
-Ikuti urutan rinci dalam `docs/STATUS_AUDIT_TERKINI.md`. Validasi batas adapter, input UI/katalog, CRUD material/pekerjaan, pemulihan snapshot, ID transaksi tunggal/massal, `planId`, ID pelepasan reservasi, dan nilai versi numerik inventaris telah diaudit/diperbaiki. Pemisahan estimasi kebutuhan bruto dan pembelian baru setelah inventaris juga sudah diimplementasikan dan diuji. Pada HEAD kode `07f4cec90056d63d92c34654c8e731c2e5e84401`, empat CI telah diverifikasi `completed/success`. Berikutnya audit validasi input harga/kemasan yang tidak valid, tampilan ketika harga belum diisi, serta konsistensi pembaruan saat isi kemasan berubah. Skenario nol lembar baru dan ambang pembulatan kemasan sudah diuji. Jangan mengulang verifikasi yang sudah selesai tanpa perubahan atau alasan teknis.
+Ikuti urutan rinci dalam `docs/STATUS_AUDIT_TERKINI.md`. Validasi batas adapter, input UI/katalog, CRUD material/pekerjaan, pemulihan snapshot, ID transaksi tunggal/massal, `planId`, ID pelepasan reservasi, dan nilai versi numerik inventaris telah diaudit/diperbaiki. Pemisahan estimasi kebutuhan bruto dan pembelian baru setelah inventaris juga sudah diimplementasikan dan diuji. Pada HEAD kode `07f4cec90056d63d92c34654c8e731c2e5e84401`, empat CI telah diverifikasi `completed/success`. Berikutnya audit tampilan saat harga kosong/nol, konsistensi label kotak harga kalkulator utama dengan dua estimasi pada pratinjau, serta batas numerik mesin harga (jumlah lembar/harga/total biaya overflow). Validasi harga negatif, isi kemasan nol, pembaruan isi kemasan, skenario nol lembar baru, dan ambang pembulatan kemasan sudah diuji. Jangan mengulang verifikasi yang sudah selesai tanpa perubahan atau alasan teknis.
 
 ## 8. Kalimat pemicu percakapan baru
 

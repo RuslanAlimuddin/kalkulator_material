@@ -451,7 +451,7 @@
           Date.parse(item.updatedAt) < Date.parse(item.createdAt)) {
         error(p + ".updatedAt", "Waktu pembaruan sisa material tidak boleh mendahului waktu pembuatannya.");
       }
-      if (!Number.isInteger(item.version) || item.version < 1) error(p + ".version", "Versi record harus bilangan bulat minimal 1.");
+      if (!Number.isSafeInteger(item.version) || item.version < 1 || item.version >= Number.MAX_SAFE_INTEGER) error(p + ".version", "Versi record harus bilangan bulat aman minimal 1 dan masih dapat dinaikkan.");
 
       const material = materialById.get(item.materialId);
       if (!material) {

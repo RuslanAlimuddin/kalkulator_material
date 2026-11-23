@@ -293,6 +293,27 @@
       if (!saved || saved.status !== "reserved" || !saved.plan) {
         throw new Error("Snapshot rencana aktif tidak ditemukan atau merupakan reservasi lama tanpa snapshot.");
       }
+      const job = (state.jobs || []).find(item => item.id === saved.jobId);
+      if (!job || job.status !== "open") {
+        throw new Error("Pekerjaan pada snapshot tidak ditemukan atau tidak lagi terbuka; pemulihan diblokir.");
+      }
+      if (saved.material) {
+        const catalogMaterial = (state.materials || []).find(item =>
+          item.id === saved.material.id
+        );
+        const snapshotMaterial = saved.material;
+        if (!catalogMaterial || catalogMaterial.active === false ||
+            (snapshotMaterial.thicknessMm != null &&
+             Number(snapshotMaterial.thicknessMm) !== Number(catalogMaterial.thicknessMm)) ||
+            (snapshotMaterial.motif != null &&
+             snapshotMaterial.motif !== catalogMaterial.motif) ||
+            (snapshotMaterial.rotationPolicy != null &&
+             snapshotMaterial.rotationPolicy !== catalogMaterial.rotationPolicy) ||
+            (snapshotMaterial.grainRequired != null &&
+             (snapshotMaterial.grainRequired === true) !== (catalogMaterial.grainRequired === true))) {
+          throw new Error("Spesifikasi material snapshot tidak cocok dengan katalog aktif; pemulihan diblokir.");
+        }
+      }
       validatePlanGeometry(saved.plan);
       if (!Array.isArray(saved.plan.inventoryUsage) || !Array.isArray(saved.reservationIds)) {
         throw new Error("Snapshot tidak memiliki daftar sumber dan reservasi yang valid.");

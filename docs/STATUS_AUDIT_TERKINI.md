@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `07f4cec90056d63d92c34654c8e731c2e5e84401` (`test: correct currency regex in inventory pricing cases`). Integrasi estimasi kebutuhan bruto dan pembelian setelah inventaris telah diperluas dengan skenario kemasan, stok mencukupi, dan perubahan harga; seluruh empat CI pada HEAD ini sudah diverifikasi `completed/success`.
+- HEAD kode terbaru yang sudah diverifikasi: `9f440e932c47d586310be61878dfe1f3ff24fbf1` (`test: cover live package size and invalid price inputs`). Validasi harga pratinjau diperjelas dan tes harga satuan/kemasan diperluas; seluruh empat CI pada HEAD ini sudah diverifikasi `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -381,3 +381,30 @@ Pekerjaan berikutnya:
 2. Uji perubahan isi kemasan saat pratinjau terbuka dan pastikan kedua estimasi diperbarui tanpa mengulang perencanaan.
 3. Periksa konsistensi label dan penjelasan antara kotak harga kalkulator utama dengan dua estimasi pada pratinjau inventaris.
 4. Setelah validasi input harga selesai, lanjutkan audit integrasi harga dan inventaris lain yang didukung bukti; jangan mengubah formula tanpa temuan.
+### 4I. Validasi input harga/kemasan pada pratinjau — diperkuat dan seluruh CI lulus
+File:
+- `assets/js/inventory-preview-ui.js`
+- `tests/browser/inventory-preview.test.js`
+
+Temuan dan perbaikan:
+- Harga negatif sebelumnya masuk ke cabang pesan yang sama dengan harga kosong/nol, sehingga pengguna tidak mendapat penjelasan yang tepat.
+- UI kini membedakan harga kosong, angka tidak valid, harga negatif, dan harga nol. Harga negatif menampilkan pesan `Harga tidak boleh negatif.`.
+- Isi kemasan nol/pecahan/tidak valid ditangani oleh mesin harga; pesan kesalahan ditampilkan di bagian estimasi tanpa menyembunyikan hasil geometri atau mengubah stok.
+- Ketika isi kemasan berubah saat pratinjau aktif, kedua estimasi dihitung ulang dari baseline dan rencana yang sama tanpa mengulang pencocokan geometri.
+
+Tes browser tambahan:
+- Kebutuhan bruto 5 lembar dan pembelian baru 3 lembar, isi kemasan 4: bruto Rp800.000 (2 kemasan), pembelian baru Rp400.000 (1 kemasan, sisa utuh 1 lembar).
+- Isi kemasan diubah menjadi 2: bruto menjadi Rp1.200.000 dan pembelian baru Rp800.000; dikembalikan menjadi 4, angka kembali seperti semula.
+- Isi kemasan 0 menampilkan peringatan, tetapi pratinjau tetap aktif.
+- Harga -Rp1.000 menampilkan pesan negatif, dan setelah harga dipulihkan estimasi dapat dihitung lagi.
+- Seluruh empat CI pada HEAD `9f440e932c47d586310be61878dfe1f3ff24fbf1` diverifikasi `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`.
+
+Commit:
+- Perbaikan pesan validasi harga: `f4464a7d1f33057c7184a4d9246a3a01e31d18fc`.
+- Tes perubahan isi kemasan dan input tidak valid: `9f440e932c47d586310be61878dfe1f3ff24fbf1`.
+
+Pekerjaan berikutnya:
+1. Tambahkan/cek skenario harga kosong dan nol pada UI pratinjau agar pesan informatif dan pratinjau tetap utuh.
+2. Audit konsistensi label kotak harga kalkulator utama dengan dua estimasi pada pratinjau inventaris; pastikan pengguna memahami perbedaan bruto vs pembelian setelah stok.
+3. Tinjau batas numerik mesin harga (jumlah lembar, harga sangat besar, total biaya overflow) dan hanya perbaiki bila ditemukan risiko realistis dengan tes regresi.
+4. Setelah audit harga selesai, kembali ke integrasi bisnis yang masih terbuka; jangan mengubah formula tanpa bukti.

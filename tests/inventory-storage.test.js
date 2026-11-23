@@ -102,6 +102,20 @@ async function main() {
     assert.equal(await storage.get("materials", item.id), null);
   });
 
+  await test("CRUD pekerjaan menolak status di luar skema", async () => {
+    await assert.rejects(storage.add("jobs", {
+      id: "JOB-INVALID-ADD", name: "Status tidak sah", status: "closed",
+      createdAt: now, closedAt: now
+    }), /Status pekerjaan harus open, completed, atau archived/);
+
+    const original = await storage.get("jobs", "JOB-A");
+    await assert.rejects(storage.put("jobs", { ...original, status: "closed" }),
+      /Status pekerjaan harus open, completed, atau archived/);
+    await assert.rejects(storage.update("jobs", "JOB-A", { status: "closed" }),
+      /Status pekerjaan harus open, completed, atau archived/);
+    assert.deepEqual(await storage.get("jobs", "JOB-A"), original);
+  });
+
   await test("CRUD umum tidak boleh melewati transaksi bisnis inventaris", async () => {
     const guarded = createStorage();
     await assert.rejects(

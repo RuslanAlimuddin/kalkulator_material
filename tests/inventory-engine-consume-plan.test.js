@@ -309,6 +309,48 @@ async function main() {
   );
   console.log("LULUS: kegagalan satu konsumsi membatalkan perubahan sumber inventaris dan sisa lembar baru.");
 
+  // Material dengan arah serat wajib tidak boleh menghasilkan sisa yang dapat diputar,
+  // meskipun kebijakan katalog menyebut rotasi bebas.
+  await storage.add("materials", {
+    id: "MAT-GRAIN", name: "Material arah serat", category: "uji",
+    thicknessMm: 8, surface: null, grainRequired: true,
+    motif: "plain", rotationPolicy: "free", active: true
+  });
+  await storage.add("jobs", {
+    id: "JOB-GRAIN", name: "Pekerjaan arah serat", status: "open",
+    createdAt: now, closedAt: null
+  });
+  const grainPlan = await engine.reservePlan({
+    planId: "PLAN-GRAIN-NEW-SHEET",
+    jobId: "JOB-GRAIN",
+    material: {
+      id: "MAT-GRAIN", thicknessMm: 8, motif: "plain",
+      grainRequired: true, rotationPolicy: "free"
+    },
+    grainDirection: "horizontal",
+    plan: {
+      inventoryUsage: [],
+      sheets: [{
+        id: 1, source: "new", width: 100, height: 100,
+        placements: [{ x: 0, y: 0, width: 20, height: 20 }],
+        leftovers: [{ x: 20, y: 0, width: 10, height: 8 }]
+      }],
+      usableRemainders: [{
+        sheetId: 1, source: "new", x: 20, y: 0, width: 10, height: 8
+      }]
+    },
+    timestamp: "2026-11-18T13:30:00.010Z"
+  });
+  const grainCompleted = await engine.consumePlan({
+    reservedPlan: grainPlan,
+    sourceSheetIdPrefix: "JOB-GRAIN-CUT",
+    timestamp: "2026-11-18T13:30:00.011Z"
+  });
+  assert.equal(grainCompleted.createdRemainders.length, 1);
+  assert.equal(grainCompleted.createdRemainders[0].rotationAllowed, false);
+  assert.equal((await storage.get("plans", "PLAN-GRAIN-NEW-SHEET")).status, "completed");
+  console.log("LULUS: sisa lembar baru dari material dengan arah serat wajib selalu disimpan tanpa izin rotasi.");
+
   await storage.close();
   await deleteDatabase();
   console.log("Semua pengujian konsumsi rencana multi-sumber selesai.");

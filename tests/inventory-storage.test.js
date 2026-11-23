@@ -253,6 +253,49 @@ async function main() {
     assert.equal((await storage.get("remainders", "REM-A")).thicknessMm, 8);
   });
 
+  await test("material tidak boleh berubah tidak kompatibel atau dihapus saat snapshot rencana masih aktif tanpa stok inventaris", async () => {
+    const material = {
+      id: "MAT-PENDING-MATERIAL-PLAN", name: "Material snapshot",
+      category: "uji", thicknessMm: 8, surface: "glossy",
+      grainRequired: false, motif: "plain",
+      rotationPolicy: "free", active: true
+    };
+    const jobId = "JOB-PENDING-MATERIAL-PLAN";
+    await storage.add("materials", material);
+    await storage.add("jobs", {
+      id: jobId, name: "Pekerjaan dengan lembar baru",
+      status: "open", createdAt: now, closedAt: null
+    });
+    await storage.reserveRemainders({
+      remainderIds: [], jobId,
+      planId: "PLAN-PENDING-MATERIAL-PLAN",
+      planSnapshot: {
+        material,
+        plan: { inventoryUsage: [] }
+      },
+      timestamp: now
+    });
+
+    // Rencana tetap menyimpan spesifikasi material walaupun tidak memakai
+    // sisa inventaris. Mengubah atribut yang diperlukan untuk membuat sisa
+    // baru akan membuat penyelesaian rencana gagal atau menghasilkan data usang.
+    await assert.rejects(storage.update("materials", material.id, { active: false }));
+    await assert.rejects(storage.update("materials", material.id, { thicknessMm: 10 }));
+    await assert.rejects(storage.update("materials", material.id, { motif: "motif-baru" }));
+    await assert.rejects(storage.update("materials", material.id, { rotationPolicy: "fixed" }));
+    await assert.rejects(storage.update("materials", material.id, { grainRequired: true }));
+    await assert.rejects(storage.put("materials", { ...material, active: false }));
+    await assert.rejects(storage.remove("materials", material.id));
+    await assert.rejects(storage.clear("materials"));
+
+    assert.deepEqual(await storage.get("materials", material.id), material);
+    assert.equal((await storage.get("plans", "PLAN-PENDING-MATERIAL-PLAN")).status, "reserved");
+
+    // Perubahan nama tampilan tidak mengubah spesifikasi fisik snapshot.
+    await storage.update("materials", material.id, { name: "Nama baru" });
+    assert.equal((await storage.get("materials", material.id)).name, "Nama baru");
+  });
+
   await test("perubahan motif dan kebijakan material ditolak jika tidak cocok dengan sisa inventaris", async () => {
     const original = await storage.get("materials", "MAT-A");
 

@@ -77,6 +77,31 @@ async function main() {
     await page.locator("#movementTable").getByText("Sisa dicatat").waitFor();
     await page.locator("#movementTable").getByText("Kondisi diubah").waitFor();
 
+    // Uji file cadangan melalui tombol UI, bukan hanya API penyimpanan.
+    const [backupDownload] = await Promise.all([
+      page.waitForEvent("download"),
+      page.locator("#exportButton").click()
+    ]);
+    const backupPath = await backupDownload.path();
+    assert.ok(backupPath, "Tombol ekspor harus menghasilkan file cadangan.");
+    const backup = JSON.parse(fs.readFileSync(backupPath, "utf8"));
+    for (const store of ["materials","jobs","remainders","reservations","movements","plans"]) {
+      assert.ok(backup[store] && Array.isArray(backup[store][store]),
+        "Cadangan harus memuat kelompok data " + store + ".");
+    }
+    assert.ok(backup.meta.some(item => item.key === "lastExportAt"));
+    assert.ok(backup.materials.materials.some(item => item.name === "Triplek Browser"));
+    assert.ok(backup.remainders.remainders.some(item => item.widthCm === 80));
+
+    // Pulihkan file hasil unduhan dengan mode replace dan pastikan data/riwayat tetap ada.
+    page.once("dialog", dialog => dialog.accept());
+    await page.locator("#importMode").selectOption("replace");
+    await page.locator("#importFile").setInputFiles(backupPath);
+    await page.getByText(/Impor selesai:/).waitFor();
+    await page.locator("#stockTable").getByText("80 × 45 cm").waitFor();
+    await page.locator("[data-tab=history]").click();
+    await page.locator("#movementTable").getByText("Kondisi diubah").waitFor();
+
     // Cadangan valid dengan peringatan harus tetap diimpor, tetapi peringatannya
     // wajib terlihat agar pengguna tidak mengira paket sepenuhnya bersih.
     const warningBundle = await page.evaluate(async () => {

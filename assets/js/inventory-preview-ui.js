@@ -429,17 +429,21 @@
     const referenceErrors = report.remainderReferenceIssues.filter(item => item.severity === "error").length +
       report.reservationReferenceIssues.filter(item => item.severity === "error").length +
       report.remainderLineageIssues.filter(item => item.severity === "error").length;
+    const planCatalogErrors = (report.planCatalogIssues || []).filter(item =>
+      item.severity === "error"
+    ).length;
     const problems = report.plansWithoutJob.length +
       report.orphanedReservations.length +
       report.orphanedRemainders.length +
       report.multiplyReservedRemainders.length +
       report.reservationsWithoutSource.length +
       report.inconsistentPlans.length +
-      additionalReservationIssues + referenceErrors + movementErrors;
+      planCatalogErrors + additionalReservationIssues + referenceErrors + movementErrors;
     const notice = $("inventoryRecoveryNotice");
     if (problems || movementWarnings) {
       const parts = [];
       if (problems) parts.push(problems + " ketidaksesuaian yang perlu diperiksa");
+      if (planCatalogErrors) parts.push(planCatalogErrors + " snapshot rencana tidak cocok dengan katalog material/pekerjaan");
       if (movementWarnings) parts.push(movementWarnings + " peringatan riwayat (mungkin data lama/ambigu)");
       notice.textContent = "Peringatan audit inventaris: ditemukan " + parts.join(" dan ") +
         ". Jangan menyelesaikan rencana yang bermasalah sebelum diperiksa.";

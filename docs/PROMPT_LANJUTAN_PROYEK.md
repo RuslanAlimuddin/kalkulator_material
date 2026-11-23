@@ -60,6 +60,12 @@ Pada pemeriksaan terakhir, commit `d70724cffba86dc755b838855d9d5c9add694a98` ber
 
 Pengguna sebelumnya melaporkan empat pemeriksaan CI lulus pada commit tersebut. Namun, pemeriksaan status GitHub yang tersedia pada sesi terakhir tidak menampilkan status individual (hasil kosong). Karena itu, jangan menyatakan empat CI telah diverifikasi ulang sampai hasil workflow/check yang sebenarnya dapat diperoleh.
 
+### C. Pengujian browser belum tercantum dalam pipeline CI yang diperiksa
+
+File `tests/browser/inventory-preview.test.js` berisi pengujian browser penting untuk integrasi harga dan alur inventaris. Namun, workflow `.github/workflows/test.yml` yang diperiksa hanya menjalankan `npm run test:inventory` dan `npm run test:regression`. Kedua skrip tersebut tidak menjalankan file pengujian browser itu. `package.json` juga belum mencantumkan Playwright sebagai dependensi pengujian.
+
+Artinya, keberadaan file uji browser belum membuktikan bahwa uji tersebut berjalan otomatis di CI. Periksa apakah ada workflow atau mekanisme CI lain yang memang menjalankannya. Jika tidak ada, rancang integrasi Playwright ke CI sebagai pekerjaan terpisah, dengan dependensi dan pemasangan browser yang jelas. Jangan menganggap pemeriksaan browser lulus hanya karena workflow unit/regresi lulus.
+
 ## 6. HEAD dan posisi repository
 
 - HEAD terakhir yang diketahui dan berhasil diverifikasi sebagai commit: `d70724cffba86dc755b838855d9d5c9add694a98`.
@@ -70,7 +76,7 @@ Pengguna sebelumnya melaporkan empat pemeriksaan CI lulus pada commit tersebut. 
 ## 7. Tahapan audit berikutnya
 
 1. Periksa HEAD aktual branch kerja dan pastikan tidak ada perubahan baru yang belum tercatat.
-2. Periksa workflow GitHub Actions/checks dan catat hasil empat CI secara eksplisit.
+2. Periksa workflow GitHub Actions/checks dan catat hasil empat CI secara eksplisit. Pastikan pengujian browser benar-benar dijalankan otomatis, bukan hanya tersimpan sebagai file.
 3. Telusuri alur perhitungan harga pada `index.html`, `pricing-engine.js`, dan `inventory-preview-ui.js`.
 4. Tetapkan perbedaan antara biaya pembelian baru dan nilai total kebutuhan material; jangan mengasumsikan keduanya sama.
 5. Jika ditemukan bug integrasi yang terbukti, tambahkan uji regresi terlebih dahulu atau bersamaan dengan perbaikan.

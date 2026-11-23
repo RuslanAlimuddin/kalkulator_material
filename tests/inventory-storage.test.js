@@ -1143,6 +1143,33 @@ async function main() {
     assert.equal(await storage.get("remainders", "REM-CONFLICT-NEW"), null);
   });
 
+  await test("pencatatan sisa menolak pekerjaan yang sudah ditutup", async () => {
+    for (const [suffix, status] of [
+      ["CREATE-CLOSED-JOB", "completed"],
+      ["CREATE-ARCHIVED-JOB", "archived"]
+    ]) {
+      const data = bundle(suffix);
+      await storage.importJSON(data, "merge");
+      const jobId = "JOB-" + suffix;
+      await storage.update("jobs", jobId, { status, closedAt: now });
+
+      await assert.rejects(storage.createRemainder({
+        id: "REM-" + suffix,
+        materialId: "MAT-" + suffix,
+        originJobId: jobId,
+        sourceSheetId: "SHEET-" + suffix,
+        widthCm: 20, heightCm: 15, thicknessMm: 8,
+        grainDirection: "none", motif: "plain", rotationAllowed: true
+      }));
+
+      assert.equal(await storage.get("remainders", "REM-" + suffix), null);
+      assert.equal(
+        (await storage.getByIndex("movements", "remainderId", "REM-" + suffix)).length,
+        0
+      );
+    }
+  });
+
   await test("reservasi dapat dilepas dan stok kembali tersedia", async () => {
     const active = (await storage.getAll("reservations"))
       .find(item => item.remainderId === "REM-A" && item.status === "active");

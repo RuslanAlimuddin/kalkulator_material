@@ -116,6 +116,44 @@ async function main() {
     assert.deepEqual(await storage.get("jobs", "JOB-A"), original);
   });
 
+  await test("CRUD pekerjaan menolak nama dan tanggal yang tidak valid", async () => {
+    const base = {
+      id: "JOB-INVALID-FIELDS", name: "Pekerjaan valid", status: "open",
+      createdAt: now, closedAt: null
+    };
+    const invalidRecords = [
+      { name: "" },
+      { name: "   " },
+      { createdAt: "2026-02-30T10:00:00.000Z" },
+      { createdAt: "bukan-tanggal" },
+      { closedAt: "2026-02-30T10:00:00.000Z" },
+      { closedAt: "2026-11-22T10:00:00.000Z" },
+      { status: "open", closedAt: now }
+    ];
+
+    for (let i = 0; i < invalidRecords.length; i++) {
+      const invalid = { ...base, ...invalidRecords[i], id: base.id + "-" + i };
+      await assert.rejects(storage.add("jobs", invalid));
+      assert.equal(await storage.get("jobs", invalid.id), null);
+      await assert.rejects(storage.put("jobs", invalid));
+      assert.equal(await storage.get("jobs", invalid.id), null);
+    }
+
+    const original = await storage.get("jobs", "JOB-A");
+    const invalidUpdates = [
+      { name: "" },
+      { name: "   " },
+      { createdAt: "2026-02-30T10:00:00.000Z" },
+      { closedAt: "2026-02-30T10:00:00.000Z" },
+      { closedAt: "2026-11-22T10:00:00.000Z" },
+      { status: "open", closedAt: now }
+    ];
+    for (const changes of invalidUpdates) {
+      await assert.rejects(storage.update("jobs", "JOB-A", changes));
+      assert.deepEqual(await storage.get("jobs", "JOB-A"), original);
+    }
+  });
+
   await test("CRUD umum tidak boleh melewati transaksi bisnis inventaris", async () => {
     const guarded = createStorage();
     await assert.rejects(

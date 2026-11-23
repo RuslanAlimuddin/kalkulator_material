@@ -16,8 +16,12 @@
     }
 
     function validatePlanGeometry(plan) {
-      // Snapshot versi lama tidak menyimpan geometri lembar; tetap didukung.
-      if (plan.sheets == null) return;
+      // Snapshot lama tetap didukung; snapshot baru wajib menyertakan versi
+      // dan seluruh geometri lembar yang lengkap.
+      if (plan.geometryVersion == null) return;
+      if (plan.geometryVersion !== 1) {
+        throw new Error("Versi geometri snapshot rencana tidak didukung.");
+      }
       if (!Array.isArray(plan.sheets)) {
         throw new Error("Geometri snapshot rencana tidak valid: daftar lembar bukan array.");
       }

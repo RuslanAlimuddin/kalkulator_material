@@ -78,7 +78,7 @@ Pemeriksaan seluruh direktori `.github/workflows` menemukan `.github/workflows/b
 
 ## 7. Tahapan audit berikutnya
 
-Ikuti urutan rinci dalam `docs/STATUS_AUDIT_TERKINI.md`. Validasi batas adapter sudah diperbaiki dan empat CI lulus pada commit `f3dfe56c3e13ee8794d5ac57cfa64b4db66c9816`. Berikutnya lanjutkan validasi input UI/katalog/arah serat, audit jalur kegagalan/pemulihan yang belum tercakup, lalu selesaikan definisi estimasi biaya vs penggunaan inventaris. Jangan mengulang verifikasi yang sudah selesai tanpa perubahan atau alasan teknis.
+Ikuti urutan rinci dalam `docs/STATUS_AUDIT_TERKINI.md`. Validasi batas adapter, input UI/katalog, CRUD material/pekerjaan, pemulihan snapshot, ID transaksi tunggal/massal, `planId`, dan ID pelepasan reservasi telah diaudit/diperbaiki sesuai catatan `docs/STATUS_AUDIT_TERKINI.md`. Pada HEAD kode `de0e8c7769bea3a9cd76b9c4884502f0a5fdfc0f`, empat CI telah diverifikasi `completed/success`. Berikutnya lanjutkan audit nilai ekstrem dan field transaksi tersisa, kemudian selesaikan definisi estimasi biaya vs penggunaan inventaris. Jangan mengulang verifikasi yang sudah selesai tanpa perubahan atau alasan teknis.
 
 ## 8. Kalimat pemicu percakapan baru
 

@@ -77,7 +77,7 @@
         const cycleLength = pattern === "running" ? 2 : 3;
         const shift = pattern === "stack" ? 0 : phase(r, ref, cycleLength, fraction, matW, matW + gap);
         const xs = pattern === "stack" ? xBase : makeAxisStarts(wallW, matW, gap, ax, shift);
-        xs.forEach(x => {
+        xs.forEach((x, c) => {
           const left = Math.max(0, x), top = Math.max(0, y);
           const right = Math.min(wallW, x + matW), bottom = Math.min(wallH, y + matH);
           if (right-left <= EPS || bottom-top <= EPS) return;
@@ -85,7 +85,7 @@
             xStart:left, yStart:top, width:right-left, height:bottom-top,
             cutLeft:left-x, cutRight:x+matW-right,
             cutTop:top-y, cutBottom:y+matH-bottom,
-            row:r, column:cells.length, sourceX:x, sourceY:y
+            row:r, column:c, sourceX:x, sourceY:y
           });
         });
       });
@@ -95,7 +95,7 @@
         const cycleLength = pattern === "running" ? 2 : 3;
         const shift = phase(c, ref, cycleLength, fraction, matH, matH + gap);
         const ys = makeAxisStarts(wallH, matH, gap, ay, shift);
-        ys.forEach(y => {
+        ys.forEach((y, r) => {
           const left = Math.max(0, x), top = Math.max(0, y);
           const right = Math.min(wallW, x + matW), bottom = Math.min(wallH, y + matH);
           if (right-left <= EPS || bottom-top <= EPS) return;
@@ -103,7 +103,7 @@
             xStart:left, yStart:top, width:right-left, height:bottom-top,
             cutLeft:left-x, cutRight:x+matW-right,
             cutTop:top-y, cutBottom:y+matH-bottom,
-            row:cells.length, column:c, sourceX:x, sourceY:y
+            row:r, column:c, sourceX:x, sourceY:y
           });
         });
       });

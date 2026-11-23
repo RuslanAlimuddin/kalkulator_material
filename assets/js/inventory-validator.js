@@ -246,6 +246,14 @@
             error(remainderPath + ".sheetId", "Sisa layak tidak merujuk lembar geometri yang tersedia.");
             return;
           }
+          if (sheet.source === "inventory" &&
+              (remainder.source !== "inventory" ||
+               remainder.sourceRemainderId !== sheet.remainderId)) {
+            error(remainderPath, "Sisa layak inventaris harus tetap terhubung ke unit sumber lembar yang benar.");
+          }
+          if (sheet.source === "new" && remainder.source !== "new") {
+            error(remainderPath, "Sisa lembar baru tidak boleh dicatat sebagai sisa inventaris.");
+          }
           const geometryKey = [sheetKey, remainder.x, remainder.y,
             remainder.width, remainder.height].join("|");
           if (claimedLeftovers.has(geometryKey)) {

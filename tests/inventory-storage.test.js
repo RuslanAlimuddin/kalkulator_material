@@ -260,6 +260,28 @@ async function main() {
     assert.deepEqual(await storage.get("jobs", originalJob.id), originalJob);
     assert.equal((await storage.get("reservations", active.id)).status, "active");
     assert.equal((await storage.get("remainders", "REM-JOB-ACTIVE-RESERVATION-CLOSE")).status, "reserved");
+
+    // Rencana lembar baru tidak membuat reservasi stok, tetapi tetap merupakan
+    // pekerjaan tertunda yang harus menghalangi penutupan job.
+    const pendingBundle = bundle("JOB-PENDING-PLAN-CLOSE");
+    await storage.importJSON(pendingBundle, "merge");
+    const pendingJobId = "JOB-JOB-PENDING-PLAN-CLOSE";
+    await storage.add("plans", {
+      id: "PLAN-PENDING-NO-INVENTORY",
+      jobId: pendingJobId,
+      status: "reserved",
+      reservationIds: [],
+      plan: { inventoryUsage: [] }
+    });
+    const pendingJob = await storage.get("jobs", pendingJobId);
+    await assert.rejects(storage.update("jobs", pendingJobId, {
+      status: "completed", closedAt: now
+    }));
+    await assert.rejects(storage.put("jobs", {
+      ...pendingJob, status: "archived", closedAt: now
+    }));
+    assert.deepEqual(await storage.get("jobs", pendingJobId), pendingJob);
+    assert.equal((await storage.get("plans", "PLAN-PENDING-NO-INVENTORY")).status, "reserved");
   });
 
   await test("reservasi menolak pekerjaan yang tidak terdaftar tanpa mengubah stok", async () => {

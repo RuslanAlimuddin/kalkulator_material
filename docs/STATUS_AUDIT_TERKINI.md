@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi setelah perbaikan: `f3dfe56c3e13ee8794d5ac57cfa64b4db66c9816` (`fix: validate cutting adapter boundary inputs`). Pembaruan dokumen status/serah-terima setelahnya akan menghasilkan commit dokumentasi baru. Selalu baca pointer branch terbaru, jangan memakai SHA statis ini sebagai patokan selamanya.
+- HEAD kode terbaru yang sudah diverifikasi: `1696f4e45c0667363c18d549a809928f8acd1a79` (`test: assert movement absence for unique remainder id`). Ini mencakup perbaikan validasi pembuatan sisa untuk pekerjaan yang sudah ditutup. Pembaruan dokumen status setelahnya menghasilkan commit dokumentasi baru; selalu verifikasi pointer branch terbaru.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -42,7 +42,7 @@ File yang diperiksa:
 - `assets/js/inventory-preview-ui.js`
 - `assets/js/inventory-app-bridge.js`
 - `tests/pricing-engine.test.js`
-- `tests/browser/inventory-preview.test.js`
+- `tests/browser/inventory-preview.test.js`\n- `inventaris.html`\n- `assets/js/inventory-ui.js`\n- `assets/js/inventory-storage.js`\n- `assets/js/inventory-validator.js`\n- `tests/inventory-storage.test.js`
 
 Temuan:
 - Kalkulator utama menghitung `totalSheets` dari `MaterialCuttingAdapter`, lalu memberikan angka tersebut ke `MaterialPricingEngine.calculatePricing()`.
@@ -65,7 +65,7 @@ Pemeriksaan awal:
 - `engine.js` memvalidasi ukuran positif, gap nonnegatif, pola, arah, dan alignment.
 - `cutting-adapter.js` dan `cutting-engine.js` memvalidasi ukuran lembar/potongan positif, kerf dan ukuran minimum sisa nonnegatif, serta kuantitas potongan bulat positif.
 
-Temuan konkret pada `cutting-adapter.js`: mode tidak dikenal diam-diam diperlakukan seperti mode Presisi, dan jalur geometri kosong mengembalikan hasil sebelum memvalidasi kerf serta batas minimum sisa. Keduanya diperbaiki pada commit `f3dfe56c3e13ee8794d5ac57cfa64b4db66c9816`; tes regresi ditambahkan pada `tests/cutting-adapter.test.js`. Empat CI pada commit perbaikan semuanya lulus, termasuk tes regresi dan browser. Audit lintas batas belum selesai: lanjutkan untuk nilai kosong, string numerik, nilai ekstrem, ketidaksesuaian aturan UI dan mesin, serta validasi material/arah serat.
+Temuan konkret pada `cutting-adapter.js`: mode tidak dikenal diam-diam diperlakukan seperti mode Presisi, dan jalur geometri kosong mengembalikan hasil sebelum memvalidasi kerf serta batas minimum sisa. Keduanya diperbaiki pada commit `f3dfe56c3e13ee8794d5ac57cfa64b4db66c9816`; tes regresi ditambahkan pada `tests/cutting-adapter.test.js`. Empat CI pada commit perbaikan semuanya lulus, termasuk tes regresi dan browser. Audit lanjutan pada `inventaris.html`, `assets/js/inventory-ui.js`, `assets/js/inventory-storage.js`, `assets/js/inventory-validator.js`, dan tes terkait menemukan satu cacat nyata: formulir hanya menampilkan pekerjaan `open`, tetapi `createRemainder()` sebelumnya hanya memeriksa keberadaan pekerjaan. API penyimpanan dapat menerima pencatatan sisa pada pekerjaan `completed` atau `archived`, berbeda dengan batas yang dipakai reservasi, konsumsi, dan pembuatan sisa lembar baru. Perbaikan menambahkan pemeriksaan `job.status === "open"` di dalam transaksi yang sama sebelum menulis sisa dan movement. Tes regresi baru memeriksa kedua status tertutup serta memastikan tidak ada sisa maupun movement yang tersimpan. Arah serat tetap berupa teks bebas sesuai desain formulir; tidak boleh dibatasi ke enum buatan. Pemeriksaan form material, dimensi, ketebalan, kondisi, dan pemetaan kebijakan rotasi tidak menghasilkan cacat tambahan yang terbukti pada tahap ini.
 
 ### 4. Transaksi inventaris — pemeriksaan statis sebelumnya
 Pemeriksaan statis sebelumnya pada `inventory-storage.js`, `inventory-engine.js`, `inventory-workflow.js` dan tes terkait menunjukkan reservasi/konsumsi multi-sumber memakai transaksi IndexedDB `readwrite`; ada tes rollback, konflik penggunaan sumber, dan kegagalan konsumsi agar data tidak berubah sebagian. Ini adalah temuan statis dan cakupan tes; jangan menyebutnya sebagai eksekusi ulang tes kecuali CI terbaru memang diperiksa.
@@ -97,7 +97,7 @@ Pemeriksaan statis sebelumnya pada `inventory-storage.js`, `inventory-engine.js`
 - `tests/browser/inventory-preview.test.js`
 
 ## Pekerjaan berikutnya — urutan wajib
-1. Lanjutkan audit validasi input lintas modul pada jalur UI, katalog material, arah serat/motif, dan nilai ekstrem; perbaikan adapter di atas sudah selesai. Hindari tes duplikat yang sudah ada.
+1. Lanjutkan audit validasi input lintas modul pada batas katalog material/API umum dan nilai ekstrem yang belum dibuktikan; form inventaris serta aturan status pekerjaan untuk pencatatan sisa sudah diperiksa.
 2. Telusuri jalur penyimpanan, transaksi, pemulihan, dan kegagalan di titik yang belum ter-cover; audit transaksi dasar yang sudah diperiksa tidak perlu diulang.
 3. Kembali ke keputusan makna estimasi biaya: pisahkan konsep nilai kebutuhan vs biaya pembelian baru setelah inventaris. Jangan meminta keputusan pengguna sebelum menyajikan ringkasan opsi yang konkret dan konsekuensinya.
 4. Jika ditemukan cacat nyata, tambahkan tes regresi dan perbaiki hanya di branch kerja.

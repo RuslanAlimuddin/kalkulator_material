@@ -830,6 +830,9 @@
       return out.map(item => ({ id: item.id, remainderId: item.remainderId, jobId: item.jobId, planId: item.planId || null }));
     }
     async function releaseReservation(reservationId, optionsForRelease) {
+      if (typeof reservationId !== "string" || !reservationId.trim()) {
+        throw new Error("ID reservasi wajib berupa teks yang tidak kosong.");
+      }
       const releaseOptions = optionsForRelease || {};
       const database = await db();
       const timestamp = resolveTimestamp(releaseOptions.timestamp);

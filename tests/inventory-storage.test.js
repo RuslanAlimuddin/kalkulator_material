@@ -537,6 +537,45 @@ async function main() {
     assert.equal(await storage.get("plans", "PLAN-RESERVE-STALE-DIMENSIONS"), null);
   });
 
+  await test("konfirmasi rencana menolak arah serat sumber yang berubah setelah pratinjau", async () => {
+    const data = bundle("STALE-GRAIN-DIRECTION");
+    await storage.importJSON(data, "merge");
+
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-STALE-GRAIN-DIRECTION"],
+      jobId: "JOB-STALE-GRAIN-DIRECTION",
+      planId: "PLAN-STALE-GRAIN-DIRECTION",
+      timestamp: now,
+      planSnapshot: {
+        material: {
+          id: "MAT-STALE-GRAIN-DIRECTION",
+          thicknessMm: 8, motif: "plain",
+          rotationPolicy: "free", grainRequired: false
+        },
+        grainDirection: "horizontal",
+        plan: {
+          inventoryUsage: [{ remainderId: "REM-STALE-GRAIN-DIRECTION" }]
+        }
+      }
+    }));
+
+    assert.equal(
+      (await storage.get("remainders", "REM-STALE-GRAIN-DIRECTION")).status,
+      "available"
+    );
+    assert.equal(
+      (await storage.getByIndex("reservations", "remainderId", "REM-STALE-GRAIN-DIRECTION"))
+        .filter(item => item.status === "active").length,
+      0
+    );
+    assert.equal(await storage.get("plans", "PLAN-STALE-GRAIN-DIRECTION"), null);
+    assert.equal(
+      (await storage.getByIndex("movements", "remainderId", "REM-STALE-GRAIN-DIRECTION"))
+        .some(item => item.type === "reserved"),
+      false
+    );
+  });
+
   await test("konfirmasi rencana menolak spesifikasi material yang berubah setelah pratinjau", async () => {
     const material = {
       id: "MAT-STALE-SPEC-PREVIEW", name: "Material uji spesifikasi",

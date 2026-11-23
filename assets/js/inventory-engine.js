@@ -74,6 +74,14 @@
         for (const remainder of plan.usableRemainders) {
           const sheetKey = remainder && String(remainder.sheetId);
           const sheet = sheetKey == null ? null : sheetById.get(sheetKey);
+          if (sheet && sheet.source === "inventory" &&
+              (remainder.source !== "inventory" ||
+               remainder.sourceRemainderId !== sheet.remainderId)) {
+            throw new Error("Sisa layak inventaris tidak terhubung ke unit sumber lembar yang benar.");
+          }
+          if (sheet && sheet.source === "new" && remainder.source !== "new") {
+            throw new Error("Sisa lembar baru tidak boleh dicatat sebagai sisa inventaris.");
+          }
           const geometryKey = [sheetKey, remainder && remainder.x, remainder && remainder.y,
             remainder && remainder.width, remainder && remainder.height].join("|");
           if (claimedLeftovers.has(geometryKey)) {

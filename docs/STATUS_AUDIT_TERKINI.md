@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `9f440e932c47d586310be61878dfe1f3ff24fbf1` (`test: cover live package size and invalid price inputs`). Validasi harga pratinjau diperjelas dan tes harga satuan/kemasan diperluas; seluruh empat CI pada HEAD ini sudah diverifikasi `completed/success`.
+- HEAD kode terbaru yang sudah diverifikasi: `79e81c320ed79235de86b1fe3b2c6a1f4fcd5b70` (`test: use boundary value that overflows package purchase`). Mesin harga kini menolak jumlah yang tidak aman dan hasil overflow; label harga utama serta validasi harga pratinjau juga diperjelas. Seluruh empat CI pada HEAD ini sudah diverifikasi `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -408,3 +408,36 @@ Pekerjaan berikutnya:
 2. Audit konsistensi label kotak harga kalkulator utama dengan dua estimasi pada pratinjau inventaris; pastikan pengguna memahami perbedaan bruto vs pembelian setelah stok.
 3. Tinjau batas numerik mesin harga (jumlah lembar, harga sangat besar, total biaya overflow) dan hanya perbaiki bila ditemukan risiko realistis dengan tes regresi.
 4. Setelah audit harga selesai, kembali ke integrasi bisnis yang masih terbuka; jangan mengubah formula tanpa bukti.
+### 4J. Kejelasan label estimasi dan batas numerik mesin harga — diperbaiki, seluruh CI lulus
+File:
+- `index.html`
+- `assets/js/pricing-engine.js`
+- `tests/browser/inventory-preview.test.js`
+- `tests/pricing-engine.test.js`
+
+Perubahan UI:
+- Kotak harga kalkulator utama kini berlabel **Nilai kebutuhan material (tanpa inventaris)** dan detailnya menyatakan bahwa angka tersebut belum mengurangi sisa inventaris.
+- Area pratinjau inventaris tetap menampilkan dua angka terpisah: nilai kebutuhan bruto dan estimasi pembelian baru setelah inventaris.
+- Tes browser memeriksa label/detail kotak harga utama, pesan ketika harga kosong atau nol, dan pemulihan estimasi setelah harga valid dimasukkan kembali.
+
+Perbaikan mesin harga:
+- `totalSheets` dan `packageSize` kini harus `Number.isSafeInteger`, bukan sekadar integer, untuk mencegah nilai di luar presisi aman JavaScript.
+- `sheetsPurchased` hasil pembulatan kemasan wajib tetap berupa integer aman.
+- `pricePerSheet`, `pricePerM2`, `totalPrice`, dan `costPerM2Surface` harus tetap finite; overflow ditolak dengan pesan `Hasil estimasi harga melewati batas angka yang aman.`.
+
+Tes unit mesin harga mencakup integer di atas batas aman, isi kemasan di atas batas aman, pembelian kemasan yang menghasilkan jumlah lembar tidak aman, perkalian harga yang overflow, dan pembagian harga per luas yang overflow.
+
+Commit:
+- Label harga utama: `610b954feab24af9c7f66dc8dc83aed6ebb849dc`.
+- Tes label dan harga kosong/nol: `1c7f79977b4399e3b69fc7c50422d78e776dd41b`.
+- Validasi batas numerik mesin harga: `82d77ceffd4db94b3f2f27deb47cfb8319542c7a`.
+- Tes batas numerik mesin harga: `7f0a2b34827b643a1b785b794311c6ad56be06f6`.
+- Koreksi nilai kasus overflow kemasan: `79e81c320ed79235de86b1fe3b2c6a1f4fcd5b70`.
+
+Seluruh empat CI pada HEAD `79e81c320ed79235de86b1fe3b2c6a1f4fcd5b70` telah diverifikasi `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`.
+
+Pekerjaan berikutnya:
+1. Tinjau apakah harga per m² dan biaya per m² bidang pada dua estimasi perlu ditampilkan bersama total; jangan menambah UI sebelum makna dan kegunaannya jelas.
+2. Audit konsistensi label/definisi harga pada mode harga satuan dan kemasan, termasuk pembelian kemasan utuh ketika kebutuhan baru nol.
+3. Tinjau integrasi inventaris dengan perhitungan lama untuk memastikan kalkulasi tanpa inventaris tetap tidak berubah dan pratinjau hanya memengaruhi estimasi neto.
+4. Setelah audit teknis selesai, susun daftar uji manual ringkas bagi pengguna.

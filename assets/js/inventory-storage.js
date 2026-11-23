@@ -1338,7 +1338,7 @@
           }
           const jobRequest = jobs.get(remainder.originJobId);
           jobRequest.onsuccess = () => {
-            if (!jobRequest.result) { tx.abort(); return; }
+            if (!jobRequest.result || jobRequest.result.status !== "open") { tx.abort(); return; }
             remainders.add(remainder);
             movements.add({
               id: makeId("MOV"),

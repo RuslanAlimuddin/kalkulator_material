@@ -1996,7 +1996,96 @@ async function main() {
   });
 
   await storage.close();
+
+  await test("upgrade database versi 1 mempertahankan data dan membentuk pemulihan hanya untuk reservasi aktif", async () => {
+    await deleteDatabase();
+    const legacyDb = await new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        db.createObjectStore("materials", { keyPath: "id" });
+        db.createObjectStore("jobs", { keyPath: "id" });
+        const remainders = db.createObjectStore("remainders", { keyPath: "id" });
+        remainders.createIndex("status", "status", { unique: false });
+        remainders.createIndex("materialId", "materialId", { unique: false });
+        remainders.createIndex("originJobId", "originJobId", { unique: false });
+        const reservations = db.createObjectStore("reservations", { keyPath: "id" });
+        reservations.createIndex("remainderId", "remainderId", { unique: false });
+        reservations.createIndex("jobId", "jobId", { unique: false });
+        reservations.createIndex("status", "status", { unique: false });
+        const movements = db.createObjectStore("movements", { keyPath: "id" });
+        movements.createIndex("remainderId", "remainderId", { unique: false });
+        movements.createIndex("jobId", "jobId", { unique: false });
+        movements.createIndex("timestamp", "timestamp", { unique: false });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const seedTx = legacyDb.transaction(
+      ["materials", "jobs", "remainders", "reservations"], "readwrite"
+    );
+    seedTx.objectStore("materials").put({
+      id: "MAT-UPGRADE-V1", name: "Material versi lama", thicknessMm: 8,
+      motif: "plain", rotationPolicy: "free", active: true
+    });
+    seedTx.objectStore("jobs").put({
+      id: "JOB-UPGRADE-V1", name: "Pekerjaan versi lama", status: "open",
+      createdAt: now, closedAt: null
+    });
+    seedTx.objectStore("remainders").put({
+      id: "REM-UPGRADE-V1-ACTIVE", materialId: "MAT-UPGRADE-V1",
+      originJobId: "JOB-UPGRADE-V1", widthCm: 40, heightCm: 30,
+      thicknessMm: 8, motif: "plain", rotationAllowed: true,
+      condition: "good", status: "reserved", createdAt: now, updatedAt: now, version: 1
+    });
+    seedTx.objectStore("remainders").put({
+      id: "REM-UPGRADE-V1-RELEASED", materialId: "MAT-UPGRADE-V1",
+      originJobId: "JOB-UPGRADE-V1", widthCm: 35, heightCm: 25,
+      thicknessMm: 8, motif: "plain", rotationAllowed: true,
+      condition: "good", status: "available", createdAt: now, updatedAt: now, version: 1
+    });
+    seedTx.objectStore("reservations").put({
+      id: "RSV-UPGRADE-V1-ACTIVE", remainderId: "REM-UPGRADE-V1-ACTIVE",
+      jobId: "JOB-UPGRADE-V1", status: "active", createdAt: now,
+      releasedAt: null, consumedAt: null
+    });
+    seedTx.objectStore("reservations").put({
+      id: "RSV-UPGRADE-V1-RELEASED", remainderId: "REM-UPGRADE-V1-RELEASED",
+      jobId: "JOB-UPGRADE-V1", status: "released", createdAt: now,
+      releasedAt: now, consumedAt: null
+    });
+    await new Promise((resolve, reject) => {
+      seedTx.oncomplete = resolve;
+      seedTx.onabort = () => reject(seedTx.error || new Error("Seed versi 1 gagal."));
+      seedTx.onerror = () => reject(seedTx.error || new Error("Seed versi 1 gagal."));
+    });
+    legacyDb.close();
+
+    const upgradedDb = await storage.open();
+    assert.equal(upgradedDb.version, 2);
+    assert.ok(upgradedDb.objectStoreNames.contains("plans"));
+    assert.ok(upgradedDb.transaction("reservations").objectStore("reservations")
+      .indexNames.contains("planId"));
+    assert.equal((await storage.get("materials", "MAT-UPGRADE-V1")).name, "Material versi lama");
+    assert.equal((await storage.get("jobs", "JOB-UPGRADE-V1")).status, "open");
+    assert.equal((await storage.get("remainders", "REM-UPGRADE-V1-ACTIVE")).status, "reserved");
+
+    const active = await storage.get("reservations", "RSV-UPGRADE-V1-ACTIVE");
+    assert.equal(active.planId, "LEGACY-RSV-UPGRADE-V1-ACTIVE");
+    const recoveryPlan = await storage.get("plans", active.planId);
+    assert.equal(recoveryPlan.status, "legacy_recovery");
+    assert.deepEqual(recoveryPlan.reservationIds, [active.id]);
+    assert.equal(recoveryPlan.jobId, "JOB-UPGRADE-V1");
+
+    const released = await storage.get("reservations", "RSV-UPGRADE-V1-RELEASED");
+    assert.equal(released.status, "released");
+    assert.equal(released.planId, undefined);
+    assert.equal(await storage.get("plans", "LEGACY-RSV-UPGRADE-V1-RELEASED"), null);
+    assert.equal((await storage.get("meta", "schemaVersion")).value, 2);
+  });
+
   console.log("Semua pengujian storage inventaris selesai.");
+  await storage.close();
   await deleteDatabase();
 }
 

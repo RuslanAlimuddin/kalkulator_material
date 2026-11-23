@@ -417,12 +417,23 @@ async function main() {
         status: "reserved",
         legacy: false
       });
+      // Rencana yang merujuk pekerjaan hilang muncul di plansWithoutJob dan
+      // inconsistentPlans, tetapi harus dihitung sekali pada pemberitahuan UI.
+      await storage.add("plans", {
+        id: "PLAN-AUDIT-UI-MISSING-JOB",
+        jobId: "JOB-AUDIT-UI-MISSING",
+        material: null,
+        plan: { inventoryUsage: [] },
+        reservationIds: [],
+        status: "reserved",
+        legacy: false
+      });
       await storage.close();
     });
     await page.reload();
     const recoveryNotice = page.locator("#inventoryRecoveryNotice");
     await recoveryNotice.waitFor({ state: "visible" });
-    assert.match(await recoveryNotice.textContent(), /2 ketidaksesuaian/);
+    assert.match(await recoveryNotice.textContent(), /3 ketidaksesuaian/);
     assert.match(await recoveryNotice.textContent(), /snapshot rencana tidak cocok dengan katalog/);
     const stalePlanCard = page.locator('[data-plan-id="PLAN-AUDIT-UI-STALE-MATERIAL"]');
     await stalePlanCard.waitFor();

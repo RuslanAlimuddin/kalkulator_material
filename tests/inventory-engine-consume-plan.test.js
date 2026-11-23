@@ -127,6 +127,42 @@ async function main() {
   console.log("LULUS: sisa dari pemakaian multi-sumber pekerjaan B dapat dipakai kembali oleh pekerjaan C.");
   console.log("LULUS: beberapa reservasi dikonsumsi bersama dan sisa turunan tiap sumber tercatat.");
 
+  // Snapshot geometri baru wajib menolak dua bidang leftovers yang bertumpuk
+  // sebelum stok sumber dikunci melalui reservasi.
+  await storage.add("remainders", remainder("CONSUME-GEOMETRY-OVERLAP"));
+  await assert.rejects(engine.reservePlan({
+    planId: "PLAN-GEOMETRY-OVERLAP",
+    plan: {
+      geometryVersion: 1,
+      inventoryUsage: [{ remainderId: "CONSUME-GEOMETRY-OVERLAP" }],
+      sheets: [{
+        id: "INVENTORY-0-CONSUME-GEOMETRY-OVERLAP",
+        source: "inventory", remainderId: "CONSUME-GEOMETRY-OVERLAP",
+        width: 50, height: 35, placements: [],
+        leftovers: [
+          { x: 0, y: 0, width: 20, height: 20 },
+          { x: 10, y: 10, width: 20, height: 20 }
+        ]
+      }],
+      usableRemainders: [
+        { sheetId: "INVENTORY-0-CONSUME-GEOMETRY-OVERLAP",
+          source: "inventory", sourceRemainderId: "CONSUME-GEOMETRY-OVERLAP",
+          x: 0, y: 0, width: 20, height: 20 },
+        { sheetId: "INVENTORY-0-CONSUME-GEOMETRY-OVERLAP",
+          source: "inventory", sourceRemainderId: "CONSUME-GEOMETRY-OVERLAP",
+          x: 10, y: 10, width: 20, height: 20 }
+      ]
+    },
+    jobId: "JOB-TARGET",
+    material: { id: "MAT-CONSUME", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },
+    grainDirection: "none",
+    timestamp: "2026-11-18T13:30:00.004Z"
+  }), /bertumpuk/);
+  assert.equal((await storage.get("remainders", "CONSUME-GEOMETRY-OVERLAP")).status, "available");
+  assert.equal((await storage.getByIndex("reservations", "remainderId", "CONSUME-GEOMETRY-OVERLAP")).length, 0);
+  assert.equal(await storage.get("plans", "PLAN-GEOMETRY-OVERLAP"), undefined);
+  console.log("LULUS: geometri sisa yang bertumpuk ditolak sebelum reservasi stok.");
+
   const newOnlyPlan = await engine.reservePlan({
     plan: {
       inventoryUsage: [],

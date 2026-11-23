@@ -1776,7 +1776,7 @@
       const planCatalogIssues = [];
       plans.filter(item => item && item.status === "reserved").forEach(plan => {
         const job = jobById.get(plan.jobId);
-        if (!job || job.status !== "open") {
+        if (job && job.status !== "open") {
           planCatalogIssues.push({
             severity: "error", type: "active_job_not_open",
             planId: plan.id, jobId: plan.jobId || null,

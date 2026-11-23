@@ -248,7 +248,13 @@
       if (!confirm(warning)) return;
       const result = await storage.importJSON(bundle, mode);
       await refresh();
-      notify("Impor selesai: " + result.imported + " record. Mode: " + result.mode + ".");
+      const warnings = Array.isArray(result.warnings) ? result.warnings : [];
+      const warningSummary = warnings.length
+        ? " Peringatan (" + warnings.length + "): " +
+          warnings.slice(0, 2).map(item => item.message).join(" ") +
+          (warnings.length > 2 ? " Dan " + (warnings.length - 2) + " peringatan lainnya." : "")
+        : "";
+      notify("Impor selesai: " + result.imported + " record. Mode: " + result.mode + "." + warningSummary);
     } catch (error) { notify(error.message || "Impor gagal.", true); }
     finally { event.target.value = ""; }
   });

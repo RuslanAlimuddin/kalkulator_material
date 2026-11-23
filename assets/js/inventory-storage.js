@@ -15,6 +15,7 @@
     "materials", "jobs", "remainders", "reservations", "movements", "plans", "meta"
   ];
   const BUNDLE_STORES = ["materials", "jobs", "remainders", "reservations", "movements", "plans"];
+  const JOB_STATUSES = ["open", "completed", "archived"];
   let fallbackCounter = 0;
 
   function makeId(prefix) {
@@ -30,6 +31,12 @@
         Math.random().toString(36).slice(2) + "-" + fallbackCounter.toString(36);
     }
     return (prefix || "ID") + "-" + randomPart;
+  }
+
+  function ensureValidJobRecord(record) {
+    if (!record || !JOB_STATUSES.includes(record.status)) {
+      throw new Error("Status pekerjaan harus open, completed, atau archived.");
+    }
   }
 
   function requestResult(request) {
@@ -336,6 +343,7 @@
     async function add(storeName, record) {
       ensureStore(storeName);
       ensureGenericWriteAllowed(storeName, opts);
+      if (storeName === "jobs") ensureValidJobRecord(record);
       const key = storeName === "meta" ? record && record.key : record && record.id;
       if (!record || typeof record !== "object" || key == null || key === "") {
         throw new Error("Record harus memiliki " + (storeName === "meta" ? "key." : "id."));
@@ -349,6 +357,7 @@
     async function put(storeName, record) {
       ensureStore(storeName);
       ensureGenericWriteAllowed(storeName, opts);
+      if (storeName === "jobs") ensureValidJobRecord(record);
       const key = storeName === "meta" ? record && record.key : record && record.id;
       if (!record || typeof record !== "object" || key == null || key === "") {
         throw new Error("Record harus memiliki " + (storeName === "meta" ? "key." : "id."));
@@ -407,6 +416,7 @@
             return;
           }
           const updated = { ...request.result, ...changes, id };
+          if (storeName === "jobs") ensureValidJobRecord(updated);
           if (storeName === "jobs") {
             const active = tx.objectStore("reservations").index("jobId").getAll(id);
             active.onsuccess = () => {

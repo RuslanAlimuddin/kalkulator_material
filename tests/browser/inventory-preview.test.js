@@ -91,6 +91,23 @@ async function main() {
     await page.locator('button[onclick="calc()"]').click();
     await page.locator("#rsec:not(.hidden)").waitFor();
 
+    // Integrasi mesin harga harus menerjemahkan hasil ke properti yang dibaca UI.
+    await page.locator("#harga").fill("100000");
+    await page.locator("#hargaPer").selectOption("satuan");
+    await page.locator('button[onclick="calc()"]').click();
+    await page.locator("#hargaTotalBox").waitFor({ state: "visible" });
+    assert.match(await page.locator("#hargaTotalVal").textContent(), /Rp\s*200\.000/);
+    assert.match(await page.locator("#hargaTotalDetail").textContent(), /Kebutuhan: 2 lembar/);
+
+    // Pembelian kemasan memakai pembulatan jumlah kemasan dan menampilkan lembar sisa.
+    await page.locator("#hargaPer").selectOption("kemasan");
+    await page.locator("#harga").fill("300000");
+    await page.locator("#isiKemasan").fill("4");
+    await page.locator('button[onclick="calc()"]').click();
+    assert.match(await page.locator("#hargaTotalVal").textContent(), /Rp\s*300\.000/);
+    assert.match(await page.locator("#hargaTotalDetail").textContent(), /Isi yang dibeli: 4 lembar/);
+    assert.match(await page.locator("#hargaTotalDetail").textContent(), /Sisa lembar utuh: 2 lembar/);
+
     // Pratinjau menggabungkan sisa inventaris dan lembar baru tanpa mutasi stok.
     await page.locator("#inventoryPreviewButton").click();
     await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();

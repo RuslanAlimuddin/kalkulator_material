@@ -58,25 +58,32 @@ for (const direction of ["horizontal", "vertikal"]) {
       wallW: 617, wallH: 483, matW: 110, matH: 70,
       gap: 0, pattern, direction, alignment: "MC"
     });
-    const rowGroups = new Map();
-    const columnGroups = new Map();
-    for (const cell of result.cells) {
-      assert.ok(Number.isInteger(cell.row) && cell.row >= 0,
-        "Indeks baris harus bilangan bulat nonnegatif");
-      assert.ok(Number.isInteger(cell.column) && cell.column >= 0,
-        "Indeks kolom harus bilangan bulat nonnegatif");
-      if (!rowGroups.has(cell.row)) rowGroups.set(cell.row, []);
-      if (!columnGroups.has(cell.column)) columnGroups.set(cell.column, []);
-      rowGroups.get(cell.row).push(cell);
-      columnGroups.get(cell.column).push(cell);
-    }
-    for (const cells of rowGroups.values()) {
-      const ys = new Set(cells.map(cell => cell.sourceY));
-      assert.equal(ys.size, 1, pattern + " " + direction + ": satu indeks baris harus satu posisi sumber Y");
-    }
-    for (const cells of columnGroups.values()) {
-      const xs = new Set(cells.map(cell => cell.sourceX));
-      assert.equal(xs.size, 1, pattern + " " + direction + ": satu indeks kolom harus satu posisi sumber X");
+    if (direction === "horizontal") {
+      const rows = new Map();
+      for (const cell of result.cells) {
+        assert.ok(Number.isInteger(cell.row) && cell.row >= 0);
+        assert.ok(Number.isInteger(cell.column) && cell.column >= 0);
+        if (!rows.has(cell.row)) rows.set(cell.row, []);
+        rows.get(cell.row).push(cell);
+      }
+      for (const cells of rows.values()) {
+        assert.equal(new Set(cells.map(cell => cell.sourceY)).size, 1);
+        const columns = cells.map(cell => cell.column).sort((a,b) => a-b);
+        assert.deepEqual(columns, Array.from({length: cells.length}, (_,i) => i));
+      }
+    } else {
+      const columns = new Map();
+      for (const cell of result.cells) {
+        assert.ok(Number.isInteger(cell.row) && cell.row >= 0);
+        assert.ok(Number.isInteger(cell.column) && cell.column >= 0);
+        if (!columns.has(cell.column)) columns.set(cell.column, []);
+        columns.get(cell.column).push(cell);
+      }
+      for (const cells of columns.values()) {
+        assert.equal(new Set(cells.map(cell => cell.sourceX)).size, 1);
+        const rows = cells.map(cell => cell.row).sort((a,b) => a-b);
+        assert.deepEqual(rows, Array.from({length: cells.length}, (_,i) => i));
+      }
     }
   }
 }

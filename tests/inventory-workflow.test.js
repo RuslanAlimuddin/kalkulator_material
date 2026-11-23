@@ -48,10 +48,14 @@ async function main() {
   const planner = {
     calculate(input) {
       plannerCalls += 1;
+      if (input.remainders.length === 0) {
+        return { inventoryUsage: [], usableRemainders: [], newSheetCount: 4, attempt: plannerCalls };
+      }
       assert.deepEqual(input.remainders.map(item => item.id), ["WF-AVAILABLE"]);
       return {
         inventoryUsage: [{ remainderId: "WF-AVAILABLE" }],
         usableRemainders: [],
+        newSheetCount: 2,
         attempt: plannerCalls
       };
     }
@@ -115,6 +119,17 @@ async function main() {
   assert.equal(plannerCalls, plannerCallsBeforeConfirm);
   assert.equal(lastReserveInput.previewCreatedAt, preview.previewCreatedAt);
   console.log("LULUS: konfirmasi memakai rencana yang ditampilkan tanpa menghitung ulang atau mengganti sumber diam-diam.");
+
+  const baselinePreview = await workflow.preview({
+    jobId: "JOB-B-BASELINE",
+    plannerInput: { geometry: { cells: [] }, material: { id: "MAT-WF" } },
+    includeBaseline: true,
+    timestamp: now
+  });
+  assert.equal(baselinePreview.plan.newSheetCount, 2);
+  assert.equal(baselinePreview.baselinePlan.newSheetCount, 4);
+  assert.deepEqual(baselinePreview.baselinePlan.inventoryUsage, []);
+  console.log("LULUS: pratinjau dapat menghitung kebutuhan bruto tanpa inventaris secara terpisah dari jumlah lembar baru.");
   console.log("LULUS: waktu pembuatan pratinjau diteruskan ke snapshot reservasi.");
 
   const canceled = await workflow.cancel(reservedPlan, { timestamp: now });

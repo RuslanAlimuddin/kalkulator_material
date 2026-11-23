@@ -854,7 +854,8 @@ async function main() {
     );
     assert.equal((await storage.get("reservations", reservation.id)).status, "active");
     assert.equal(
-      (await storage.getByIndex("remainders", "sourceRemainderId", "REM-CONSUME-INVALID-OPTIONAL-IDS")).length,
+      (await storage.getAll("remainders")).filter(item =>
+        item.sourceRemainderId === "REM-CONSUME-INVALID-OPTIONAL-IDS").length,
       0
     );
     assert.equal(await storage.get("remainders", 123), null);

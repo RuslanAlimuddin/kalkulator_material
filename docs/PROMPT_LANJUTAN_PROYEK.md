@@ -60,6 +60,12 @@ Pada pemeriksaan terakhir, commit `d70724cffba86dc755b838855d9d5c9add694a98` ber
 
 Pengguna sebelumnya melaporkan empat pemeriksaan CI lulus pada commit tersebut. Namun, pemeriksaan status GitHub yang tersedia pada sesi terakhir tidak menampilkan status individual (hasil kosong). Karena itu, jangan menyatakan empat CI telah diverifikasi ulang sampai hasil workflow/check yang sebenarnya dapat diperoleh.
 
+### D. Audit awal transaksi reservasi dan konsumsi
+
+Pemeriksaan statis pada `inventory-storage.js`, `inventory-engine.js`, dan pengujian terkait menunjukkan bahwa reservasi massal serta konsumsi multi-reservasi menggunakan transaksi IndexedDB `readwrite` yang mencakup store terkait. Pengujian yang ada memeriksa rollback saat salah satu sumber gagal, konflik dua instance yang mencoba memakai sumber sama, dan kegagalan konsumsi agar sumber serta sisa baru tidak berubah sebagian.
+
+Ini merupakan bukti cakupan desain dan pengujian yang baik, tetapi belum sama dengan verifikasi eksekusi CI terbaru. Audit berikutnya tetap perlu memeriksa jalur lain yang relevan dan status workflow aktual; jangan mengulang pengujian yang sudah tercakup tanpa alasan.
+
 ### C. Pengujian browser belum tercantum dalam pipeline CI yang diperiksa
 
 File `tests/browser/inventory-preview.test.js` berisi pengujian browser penting untuk integrasi harga dan alur inventaris. Namun, workflow `.github/workflows/test.yml` yang diperiksa hanya menjalankan `npm run test:inventory` dan `npm run test:regression`. Kedua skrip tersebut tidak menjalankan file pengujian browser itu. `package.json` juga belum mencantumkan Playwright sebagai dependensi pengujian.
@@ -68,10 +74,10 @@ Artinya, keberadaan file uji browser belum membuktikan bahwa uji tersebut berjal
 
 ## 6. HEAD dan posisi repository
 
-- HEAD terakhir yang diketahui dan berhasil diverifikasi sebagai commit: `d70724cffba86dc755b838855d9d5c9add694a98`.
-- Pesan commit: `test: cover pricing engine and calculator UI integration`.
-- Tanggal commit: 2026-11-23.
-- Catatan penting: nilai di atas adalah HEAD terakhir yang diketahui dari sesi audit, bukan klaim bahwa itu pasti HEAD aktual branch saat dokumen ini dibaca. Setiap sesi baru wajib memeriksa HEAD aktual terlebih dahulu.
+- Commit kode terakhir yang menjadi acuan audit: `d70724cffba86dc755b838855d9d5c9add694a98` (`test: cover pricing engine and calculator UI integration`).
+- Commit dokumentasi terbaru yang dibuat dalam sesi ini: `e219a6a39afde61f63d81a3afbe3146acb1ebd70` (`docs: record browser test CI coverage gap`), tanggal 2026-11-23.
+- Commit dokumentasi sebelumnya: `6674a276ff5de045e0fc7d0082351f6bc4c6cadc`.
+- Catatan penting: commit dokumentasi terbaru adalah commit terakhir yang dibuat melalui sesi audit ini, tetapi pointer HEAD aktual branch belum dapat dibaca secara independen oleh alat yang tersedia. Setiap sesi baru wajib memeriksa HEAD aktual terlebih dahulu.
 
 ## 7. Tahapan audit berikutnya
 
@@ -92,3 +98,17 @@ Pengguna cukup menulis:
 **Lanjutkan proyek Kalkulator Material dari tahap terakhir.**
 
 Maknanya: baca dokumen ini, periksa repository/branch/HEAD aktual, ambil pekerjaan dari temuan terbuka, dan jangan mengulang tahap yang telah selesai tanpa alasan teknis.
+
+## 9. Prosedur penyelamatan jika percakapan penuh
+
+Jika percakapan berakhir sebelum dokumen ini sempat diperbarui:
+
+1. Pada percakapan baru, gunakan kalimat: **Lanjutkan proyek Kalkulator Material dari tahap terakhir.**
+2. Periksa branch, HEAD, commit terbaru, dan status working tree/repository terlebih dahulu.
+3. Baca dokumen ini dan bandingkan dengan perubahan repository terbaru.
+4. Cari catatan ringkasan/serah-terima terakhir yang tersedia pada percakapan sebelumnya jika konteks itu dapat diakses.
+5. Jika ada pekerjaan yang belum tercatat, susun ulang hanya dari bukti yang tersedia (commit, file, hasil pengujian, dan catatan). Tandai bagian yang belum pasti; jangan mengarang status.
+6. Jangan mengulang audit selesai kecuali kode berubah atau ada alasan teknis.
+
+Pada akhir setiap tahap besar, perbarui dokumen ini. Jika belum sempat memperbarui, berikan pengguna catatan penyelamatan singkat yang memuat: branch, commit terakhir yang diketahui, file yang diperiksa/diubah, hasil sementara, temuan terbuka, dan langkah berikutnya.
+

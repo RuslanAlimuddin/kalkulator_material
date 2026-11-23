@@ -46,7 +46,7 @@ async function main() {
     await page.goto("http://127.0.0.1:" + PORT + "/");
     await addInventoryScripts(page);
 
-    const planId = await page.evaluate(async () => {
+    const planIds = await page.evaluate(async () => {
       const now = "2026-11-18T14:30:00.000Z";
       const storage = MaterialInventoryStorage.createStorage({ allowUnsafeInventoryWrites: true });
       await storage.open();
@@ -81,8 +81,29 @@ async function main() {
         material: { id: "MAT-BROWSER", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },
         timestamp: now
       });
+      await storage.add("remainders", {
+        id: "BROWSER-COMPLETE-REM", materialId: "MAT-BROWSER",
+        widthCm: 36, heightCm: 28, thicknessMm: 8,
+        grainDirection: "none", motif: "plain", rotationAllowed: true,
+        condition: "good", status: "available", originJobId: "JOB-OLD",
+        sourceSheetId: "SHEET-BROWSER-2", createdAt: now, updatedAt: now, version: 1
+      });
+      const reservedForCompletion = await engine.reservePlan({
+        plan: {
+          inventoryUsage: [{ remainderId: "BROWSER-COMPLETE-REM", placedCount: 1 }],
+          usableRemainders: [],
+          sheets: [{
+            id: "INVENTORY-0-BROWSER-COMPLETE-REM",
+            source: "inventory", remainderId: "BROWSER-COMPLETE-REM",
+            width: 36, height: 28
+          }]
+        },
+        jobId: "JOB-BROWSER-RECOVERY",
+        material: { id: "MAT-BROWSER", thicknessMm: 8, motif: "plain", rotationPolicy: "free" },
+        timestamp: now
+      });
       await storage.close();
-      return reserved.planId;
+      return { cancelPlanId: reserved.planId, completePlanId: reservedForCompletion.planId };
     });
 
     await context.close();
@@ -93,25 +114,44 @@ async function main() {
     await page.goto("http://127.0.0.1:" + PORT + "/");
     await addInventoryScripts(page);
 
-    const recovered = await page.evaluate(async id => {
+    const recovered = await page.evaluate(async ids => {
       const storage = MaterialInventoryStorage.createStorage();
       await storage.open();
       const engine = MaterialInventoryEngine.createInventoryEngine({ storage });
-      const plan = await engine.restorePlan(id);
-      const reservationCount = plan.reservations.length;
-      await engine.cancelPlan({ reservedPlan: plan });
-      const saved = await storage.get("plans", id);
-      const remainder = await storage.get("remainders", "BROWSER-RECOVERY-REM");
+
+      const cancelPlan = await engine.restorePlan(ids.cancelPlanId);
+      const cancelReservationCount = cancelPlan.reservations.length;
+      await engine.cancelPlan({ reservedPlan: cancelPlan });
+      const cancelled = await storage.get("plans", ids.cancelPlanId);
+      const releasedSource = await storage.get("remainders", "BROWSER-RECOVERY-REM");
+
+      const completePlan = await engine.restorePlan(ids.completePlanId);
+      const completeReservationCount = completePlan.reservations.length;
+      await engine.consumePlan({
+        reservedPlan: completePlan,
+        sourceSheetIdPrefix: "BROWSER-RECOVERED-COMPLETE",
+        timestamp: "2026-11-18T14:31:00.000Z"
+      });
+      const completed = await storage.get("plans", ids.completePlanId);
+      const consumedSource = await storage.get("remainders", "BROWSER-COMPLETE-REM");
       await storage.close();
-      return { reservationCount, planStatus: saved.status, remainderStatus: remainder.status };
-    }, planId);
+      return {
+        cancelReservationCount, cancelPlanStatus: cancelled.status,
+        releasedSourceStatus: releasedSource.status,
+        completeReservationCount, completePlanStatus: completed.status,
+        consumedSourceStatus: consumedSource.status
+      };
+    }, planIds);
 
     assert.deepEqual(recovered, {
-      reservationCount: 1,
-      planStatus: "cancelled",
-      remainderStatus: "available"
+      cancelReservationCount: 1,
+      cancelPlanStatus: "cancelled",
+      releasedSourceStatus: "available",
+      completeReservationCount: 1,
+      completePlanStatus: "completed",
+      consumedSourceStatus: "consumed"
     });
-    console.log("LULUS: snapshot dan reservasi tetap dapat dipulihkan setelah Chromium benar-benar ditutup dan dibuka kembali.");
+    console.log("LULUS: snapshot dan reservasi dapat dipulihkan setelah Chromium ditutup; pembatalan dan penyelesaian keduanya berhasil.");
   } finally {
     if (context) await context.close();
     await new Promise(resolve => server.close(resolve));

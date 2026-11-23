@@ -245,7 +245,7 @@
       const bundle = JSON.parse(await file.text());
       const mode = $("importMode").value;
       const warning = mode === "replace"
-        ? "GANTI seluruh data inventaris lokal dengan isi file?"
+        ? "PERINGATAN: Mode Ganti seluruh data akan MENGGANTI seluruh data inventaris lokal dengan isi file, termasuk katalog material, pekerjaan, stok sisa, reservasi, rencana pemotongan, dan riwayat pergerakan. Data lokal saat ini akan tertimpa. Pastikan Anda sudah membuat cadangan jika masih membutuhkannya. Lanjutkan?"
         : "Gabungkan data file ke inventaris lokal? ID yang bentrok akan ditolak.";
       if (!confirm(warning)) return;
       const result = await storage.importJSON(bundle, mode);

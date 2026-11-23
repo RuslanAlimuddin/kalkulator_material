@@ -25,6 +25,9 @@
       if (!Array.isArray(plan.sheets)) {
         throw new Error("Geometri snapshot rencana tidak valid: daftar lembar bukan array.");
       }
+      if (!Array.isArray(plan.usableRemainders)) {
+        throw new Error("Geometri snapshot rencana tidak memiliki daftar sisa layak.");
+      }
       const epsilon = 0.000001;
       const sheetById = new Map();
       const overlaps = (a, b) =>

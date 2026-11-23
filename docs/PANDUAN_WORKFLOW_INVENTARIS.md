@@ -50,11 +50,12 @@ await workflow.complete(reservedPlan, {
 });
 ```
 
-Penyelesaian ini mengonsumsi sumber inventaris yang sudah dipesan dan membuat sisa turunan dari lembar inventaris tersebut. Sisa dari lembar baru fallback belum termasuk dalam transaksi ini; dukungan itu harus ditambahkan sebelum integrasi UI akhir agar seluruh sumber dapat dicatat konsisten.
+Penyelesaian ini mengonsumsi seluruh sumber inventaris yang sudah dipesan, mencatat sisa dari lembar inventaris, dan mencatat sisa layak dari lembar baru fallback. Semua perubahan dilakukan melalui satu transaksi konsumsi multi-sumber agar stok, reservasi, rencana, dan riwayat tetap konsisten.
 
 ## Batas penting
 
 - `calculateAndReserve()` mengubah status stok hanya setelah planner menghasilkan rencana dan reservasi berhasil.
 - Planner tetap dapat digunakan sendiri untuk simulasi tanpa mengubah inventaris.
-- Workflow belum terhubung ke tombol atau tampilan aplikasi.
-- Data browser nyata tetap perlu diuji pada tahap integrasi UI.
+- Workflow sudah terhubung ke panel pratinjau pada `index.html` melalui `inventory-preview-ui.js` dan `inventory-app-bridge.js`.
+- Panel mendukung pratinjau tanpa mutasi stok, persetujuan/reservasi, pemulihan setelah reload, pembatalan, dan penyelesaian pemotongan.
+- Pengujian Chromium untuk alur tersebut tersedia pada `tests/browser/inventory-preview.test.js` dan dijalankan oleh workflow `browser-indexeddb.yml`.

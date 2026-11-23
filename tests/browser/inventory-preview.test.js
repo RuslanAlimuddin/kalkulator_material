@@ -255,6 +255,24 @@ async function main() {
     assert.match(await packageRows.nth(1).textContent(), /1 kemasan/);
     assert.match(await packageRows.nth(1).textContent(), /sisa utuh 1 lembar/);
 
+    // Perubahan isi kemasan saat pratinjau terbuka memperbarui kedua estimasi.
+    await page.locator("#isiKemasan").fill("2");
+    const resizedPackages = page.locator("#inventoryPreviewPricing .inventory-price-row");
+    assert.match(await resizedPackages.nth(0).textContent(), /Rp\s*1\.200\.000/);
+    assert.match(await resizedPackages.nth(1).textContent(), /Rp\s*800\.000/);
+    await page.locator("#isiKemasan").fill("4");
+    const restoredPackages = page.locator("#inventoryPreviewPricing .inventory-price-row");
+    assert.match(await restoredPackages.nth(0).textContent(), /Rp\s*800\.000/);
+    assert.match(await restoredPackages.nth(1).textContent(), /Rp\s*400\.000/);
+
+    // Isi kemasan tidak valid hanya menonaktifkan estimasi; pratinjau tetap tampil.
+    await page.locator("#isiKemasan").fill("0");
+    assert.match(await page.locator("#inventoryPreviewPricing").textContent(), /Isi kemasan harus bilangan bulat/);
+    await page.locator("#isiKemasan").fill("4");
+    await page.locator("#harga").fill("-1000");
+    assert.match(await page.locator("#inventoryPreviewPricing").textContent(), /Harga tidak boleh negatif/);
+    await page.locator("#harga").fill("400000");
+
     // Uji seluruh kebutuhan tertutup inventaris: pembelian baru harus Rp0.
     await page.evaluate(async () => {
       const storage = MaterialInventoryStorage.createStorage({

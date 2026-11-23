@@ -230,7 +230,9 @@
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url; link.download = "inventaris-material-" + new Date().toISOString().slice(0,10) + ".json";
-      link.click(); URL.revokeObjectURL(url);
+      link.click();
+      // Biarkan browser memulai unduhan sebelum URL sementara dicabut.
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       notify("Cadangan JSON berhasil disiapkan.");
     } catch (error) { notify(error.message || "Ekspor gagal.", true); }
   });

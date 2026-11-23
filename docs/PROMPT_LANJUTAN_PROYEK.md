@@ -122,11 +122,11 @@ Catatan ini memperbarui urutan kerja pada bagian 7 berdasarkan audit terbaru. Se
 - HEAD kode terakhir yang diperiksa: `90474607e9f93fa48c83e49c4d72b4b3f82eee42`.
 - Audit terbaru memperbaiki penghitungan ganda pada pemberitahuan pemulihan dan memperjelas konfirmasi impor `replace`.
 - Tes browser ditambahkan untuk kedua perilaku tersebut.
-- Status terakhir saat dokumen ini diperbarui: `batch-reservation`, `inventory-and-regression`, dan `test` telah lulus; `browser-indexeddb` masih berjalan pada tahap pemasangan Chromium. Jangan menganggap CI lengkap sebelum memeriksa hasil akhirnya.
+- Seluruh empat CI pada HEAD dokumentasi `448513763d61948edfc76d2a16ebf187f73bb71d` telah diverifikasi `completed/success`: `batch-reservation`, `inventory-and-regression`, `test`, dan `browser-indexeddb`. Workflow browser selesai sukses termasuk tes Chromium baru.
 - Checklist uji manual inventaris/harga telah diperluas. Setelah semua CI lulus, pengguna perlu menjalankannya pada salinan data.
 
 Langkah berikutnya:
-1. Verifikasi ulang empat workflow terhadap HEAD aktual; bila branch bergerak karena pembaruan dokumen, pastikan CI pada HEAD baru juga selesai.
-2. Jika semuanya hijau, serahkan checklist manual untuk dijalankan pada salinan database.
-3. Tunggu hasil uji manual pengguna, catat temuan aktual, lalu perbaiki hanya bila ada bukti cacat.
+1. Minta pengguna menjalankan checklist manual pada salinan database; jangan memakai database inventaris utama.
+2. Tunggu hasil aktual, termasuk browser/perangkat, skenario, dan kesalahan yang muncul. Catat hasilnya; jangan menganggap pengujian manual sudah dilakukan.
+3. Perbaiki hanya bila hasil manual menunjukkan cacat yang dapat direproduksi, lalu tambah tes regresi dan verifikasi CI.
 4. Jangan mengulang audit import/replace, validasi snapshot, atau integrasi kalkulator yang sudah selesai kecuali muncul bukti baru.

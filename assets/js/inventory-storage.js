@@ -34,8 +34,26 @@
   }
 
   function ensureValidJobRecord(record) {
-    if (!record || !JOB_STATUSES.includes(record.status)) {
+    if (!record || typeof record !== "object" || Array.isArray(record)) {
+      throw new Error("Data pekerjaan tidak valid.");
+    }
+    if (!JOB_STATUSES.includes(record.status)) {
       throw new Error("Status pekerjaan harus open, completed, atau archived.");
+    }
+    if (typeof record.name !== "string" || !record.name.trim()) {
+      throw new Error("Nama pekerjaan wajib diisi.");
+    }
+    if (!isValidIsoUtcTimestamp(record.createdAt)) {
+      throw new Error("Waktu pembuatan pekerjaan harus berupa tanggal ISO 8601 UTC yang valid.");
+    }
+    if (record.closedAt !== null && !isValidIsoUtcTimestamp(record.closedAt)) {
+      throw new Error("Waktu penutupan pekerjaan harus null atau tanggal ISO 8601 UTC yang valid.");
+    }
+    if (record.closedAt !== null && Date.parse(record.closedAt) < Date.parse(record.createdAt)) {
+      throw new Error("Waktu penutupan pekerjaan tidak boleh mendahului waktu pembuatannya.");
+    }
+    if (record.status === "open" && record.closedAt !== null) {
+      throw new Error("Pekerjaan berstatus open harus memiliki closedAt null.");
     }
   }
 
@@ -444,9 +462,6 @@
       if (!id || !changes || typeof changes !== "object" || Array.isArray(changes)) {
         throw new Error("ID dan objek perubahan wajib diisi.");
       }
-      if (storeName === "jobs" && Object.prototype.hasOwnProperty.call(changes, "status")) {
-        ensureValidJobRecord({ status: changes.status });
-      }
       const database = await db();
       const transactionStores = storeName === "materials"
         ? ["materials", "remainders"]
@@ -465,6 +480,12 @@
             return;
           }
           if (storeName === "jobs") {
+            try {
+              ensureValidJobRecord(updated);
+            } catch (_) {
+              tx.abort();
+              return;
+            }
             const activeReservations = tx.objectStore("reservations").index("jobId").getAll(id);
             const activePlans = tx.objectStore("plans").index("jobId").getAll(id);
             let pending = 2;

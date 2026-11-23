@@ -216,6 +216,66 @@ async function main() {
     assert.ok(finalState.completedPlans.length >= 1);
     assert.ok(finalState.consumedReservations.length >= 1);
 
+    // Uji ambang kemasan: kebutuhan bruto 5 lembar, inventaris memenuhi 2,
+    // sehingga pembelian baru 3 lembar. Isi kemasan 4 menghasilkan 2 vs 1 pack.
+    await page.evaluate(async () => {
+      const storage = MaterialInventoryStorage.createStorage({
+        validator: MaterialInventoryValidator
+      });
+      for (let i = 1; i <= 2; i += 1) {
+        await storage.createRemainder({
+          id: "REM-PACK-" + i,
+          materialId: "MAT-PREVIEW",
+          originJobId: "JOB-PREVIEW",
+          sourceSheetId: "JOB-PREVIEW-PACK-SHEET-" + i,
+          widthCm: 220, heightCm: 110, thicknessMm: 12,
+          grainDirection: "none", motif: "plain", rotationAllowed: true,
+          condition: "good", createdAt: "2026-11-18T12:00:00.000Z"
+        });
+      }
+      await storage.close();
+    });
+    await chooseInputs();
+    await page.locator("#w").fill("11");
+    await page.locator("#hargaPer").selectOption("kemasan");
+    await page.locator("#harga").fill("400000");
+    await page.locator("#isiKemasan").fill("4");
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+    const packageRows = page.locator("#inventoryPreviewPricing .inventory-price-row");
+    assert.match(await page.locator("#inventoryPreviewSummary").textContent(), /Lembar baru: 3/);
+    assert.match(await packageRows.nth(0).textContent(), /Rp\\s*800\\.000/);
+    assert.match(await packageRows.nth(0).textContent(), /2 kemasan/);
+    assert.match(await packageRows.nth(1).textContent(), /Rp\\s*400\\.000/);
+    assert.match(await packageRows.nth(1).textContent(), /1 kemasan/);
+    assert.match(await packageRows.nth(1).textContent(), /sisa utuh 1 lembar/);
+
+    // Uji seluruh kebutuhan tertutup inventaris: pembelian baru harus Rp0.
+    await page.evaluate(async () => {
+      const storage = MaterialInventoryStorage.createStorage({
+        validator: MaterialInventoryValidator
+      });
+      for (let i = 3; i <= 5; i += 1) {
+        await storage.createRemainder({
+          id: "REM-PACK-" + i,
+          materialId: "MAT-PREVIEW",
+          originJobId: "JOB-PREVIEW",
+          sourceSheetId: "JOB-PREVIEW-PACK-SHEET-" + i,
+          widthCm: 220, heightCm: 110, thicknessMm: 12,
+          grainDirection: "none", motif: "plain", rotationAllowed: true,
+          condition: "good", createdAt: "2026-11-18T12:00:00.000Z"
+        });
+      }
+      await storage.close();
+    });
+    await page.locator("#inventoryRefreshCatalog").click();
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+    assert.match(await page.locator("#inventoryPreviewSummary").textContent(), /Lembar baru: 0/);
+    const fullyCoveredRows = page.locator("#inventoryPreviewPricing .inventory-price-row");
+    assert.match(await fullyCoveredRows.nth(0).textContent(), /Rp\\s*800\\.000/);
+    assert.match(await fullyCoveredRows.nth(1).textContent(), /Rp\\s*0/);
+
     // Temuan referensi yang sebelumnya hanya ada di laporan audit storage
     // wajib memunculkan peringatan pada antarmuka utama.
     await page.evaluate(async () => {

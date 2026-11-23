@@ -36,6 +36,7 @@ Dokumen ini adalah daftar uji singkat untuk pemeriksaan penggunaan nyata setelah
 - [ ] Pastikan sumber lama dikonsumsi dan sisa hasil pemotongan dicatat sebagai sisa inventaris baru.
 - [ ] Periksa peringatan audit inventaris dan kartu pemulihan. Jika snapshot tidak cocok dengan material/pekerjaan katalog, pastikan sistem menjelaskan alasan pemblokiran dan tidak mengubah stok.
 - [ ] Ekspor cadangan saat ada rencana aktif, lalu impor `replace` hanya pada database uji kosong. Pastikan snapshot, reservasi, sumber, material, dan pekerjaan pulih secara utuh.
+- [ ] Saat memilih impor `replace`, baca dialog konfirmasi. Pastikan dialog menyebut katalog material, pekerjaan, stok sisa, reservasi, rencana pemotongan, riwayat pergerakan, serta mengingatkan bahwa data lokal akan tertimpa dan perlu dicadangkan. Batalkan sekali untuk memastikan tidak ada data yang berubah.
 - [ ] Uji impor paket dengan snapshot aktif yang spesifikasi materialnya berbeda dari katalog. Pastikan paket ditolak tanpa mengubah database tujuan.
 
 ## Catatan hasil

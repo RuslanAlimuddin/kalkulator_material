@@ -1111,4 +1111,19 @@ test("sisa rusak tidak otomatis dianggap data valid-tersedia tanpa peringatan", 
   assert.ok(result.warnings.some(w => /matcher tetap harus mengecualikannya/.test(w.message)));
 });
 
+test("versi record sisa harus aman dan masih dapat dinaikkan", () => {
+  for (const version of [0, -1, 1.5, Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER + 1, Infinity, NaN]) {
+    const data = validBundle();
+    data.remainders.remainders[0].version = version;
+    const result = validate(data);
+    assert.ok(result.errors.some(error =>
+      error.path === "remainders.remainders[0].version"
+    ), "Versi tidak aman harus ditolak: " + String(version));
+  }
+
+  const valid = validBundle();
+  valid.remainders.remainders[0].version = Number.MAX_SAFE_INTEGER - 1;
+  assert.equal(validate(valid).valid, true);
+});
+
 console.log("Semua pengujian validator inventaris selesai.");

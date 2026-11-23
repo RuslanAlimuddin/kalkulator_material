@@ -269,7 +269,7 @@
             thicknessMm: Number(material.thicknessMm),
             grainDirection: input.grainDirection || reservedPlan.grainDirection || "none",
             motif: input.motif || reservedPlan.motif || material.motif || "plain",
-            rotationAllowed: rotationPolicy !== "fixed"
+            rotationAllowed: rotationPolicy !== "fixed" && material.grainRequired !== true
           };
         });
       return storage.consumeReservations({

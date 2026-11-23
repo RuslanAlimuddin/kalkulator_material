@@ -78,7 +78,7 @@ Pemeriksaan seluruh direktori `.github/workflows` menemukan `.github/workflows/b
 
 ## 7. Tahapan audit berikutnya
 
-Ikuti urutan rinci dalam `docs/STATUS_AUDIT_TERKINI.md`. Secara ringkas: lanjutkan validasi input lintas modul, audit jalur kegagalan/pemulihan yang belum tercakup, lalu selesaikan definisi estimasi biaya vs penggunaan inventaris. Jangan mengulang verifikasi workflow browser atau empat CI pada SHA yang sama tanpa alasan; periksa lagi setelah commit baru.
+Ikuti urutan rinci dalam `docs/STATUS_AUDIT_TERKINI.md`. Validasi batas adapter sudah diperbaiki dan empat CI lulus pada commit `f3dfe56c3e13ee8794d5ac57cfa64b4db66c9816`. Berikutnya lanjutkan validasi input UI/katalog/arah serat, audit jalur kegagalan/pemulihan yang belum tercakup, lalu selesaikan definisi estimasi biaya vs penggunaan inventaris. Jangan mengulang verifikasi yang sudah selesai tanpa perubahan atau alasan teknis.
 
 ## 8. Kalimat pemicu percakapan baru
 

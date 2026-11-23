@@ -77,6 +77,30 @@ async function main() {
     await page.locator("#movementTable").getByText("Sisa dicatat").waitFor();
     await page.locator("#movementTable").getByText("Kondisi diubah").waitFor();
 
+    // Cadangan valid dengan peringatan harus tetap diimpor, tetapi peringatannya
+    // wajib terlihat agar pengguna tidak mengira paket sepenuhnya bersih.
+    const warningBundle = await page.evaluate(async () => {
+      const backupStorage = MaterialInventoryStorage.createStorage({
+        validator: MaterialInventoryValidator
+      });
+      const bundle = await backupStorage.exportJSON();
+      await backupStorage.close();
+      bundle.jobs.jobs[0].status = "completed";
+      bundle.jobs.jobs[0].closedAt = null;
+      return JSON.stringify(bundle);
+    });
+    page.once("dialog", dialog => dialog.accept());
+    await page.locator("#importMode").selectOption("replace");
+    await page.locator("#importFile").setInputFiles({
+      name: "cadangan-dengan-peringatan.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(warningBundle)
+    });
+    await page.waitForFunction(() =>
+      document.querySelector("#notice").textContent.includes("Peringatan (")
+    );
+    assert.match(await page.locator("#notice").textContent(), /Peringatan \(/);
+
     assert.deepEqual(errors,[]);
     console.log("LULUS: UI inventaris dapat membuat material, pekerjaan, dan sisa; memperbarui kondisi; serta mempertahankan data dan riwayat setelah reload.");
   } finally {

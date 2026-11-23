@@ -711,8 +711,13 @@
     }
 
     async function reserveRemainders(input) {
-      if (!input || !input.jobId || !Array.isArray(input.remainderIds)) {
-        throw new Error("jobId dan daftar remainderIds wajib diisi untuk reservasi massal.");
+      if (!input || typeof input.jobId !== "string" || !input.jobId.trim() ||
+          !Array.isArray(input.remainderIds)) {
+        throw new Error("jobId dan daftar remainderIds wajib diisi dengan ID yang valid.");
+      }
+      if (input.planId != null &&
+          (typeof input.planId !== "string" || !input.planId.trim())) {
+        throw new Error("planId jika diberikan harus berupa teks yang tidak kosong.");
       }
       const remainderIds = input.remainderIds.slice();
       if (remainderIds.some(id => typeof id !== "string" || !id.trim()) || new Set(remainderIds).size !== remainderIds.length) {
@@ -892,6 +897,10 @@
       if (!input || !Array.isArray(input.reservationIds) ||
           input.reservationIds.length === 0) {
         throw new Error("Daftar reservationIds wajib diisi untuk pelepasan massal.");
+      }
+      if (input.planId != null &&
+          (typeof input.planId !== "string" || !input.planId.trim())) {
+        throw new Error("planId jika diberikan harus berupa teks yang tidak kosong.");
       }
       const reservationIds = input.reservationIds.slice();
       if (reservationIds.some(id => typeof id !== "string" || !id.trim()) ||
@@ -1102,6 +1111,10 @@
       if (!input || !Array.isArray(input.reservations) ||
           !Array.isArray(input.newSheetRemainders)) {
         throw new Error("reservations dan newSheetRemainders harus berupa array.");
+      }
+      if (input.planId != null &&
+          (typeof input.planId !== "string" || !input.planId.trim())) {
+        throw new Error("planId jika diberikan harus berupa teks yang tidak kosong.");
       }
       const timestamp = resolveTimestamp(input.timestamp);
       const batches = input.reservations.map((item, index) => {

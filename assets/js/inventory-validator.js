@@ -315,6 +315,32 @@
       if (!["reserved", "cancelled", "completed", "legacy_recovery"].includes(item.status)) {
         error(p + ".status", "Status snapshot rencana tidak dikenal.");
       }
+      // Snapshot aktif yang menyertakan spesifikasi material harus tetap cocok
+      // dengan katalog. Snapshot lama tanpa material tetap diterima untuk
+      // kompatibilitas; snapshot modern tidak boleh dipulihkan dengan katalog
+      // yang hilang, nonaktif, atau berubah secara fisik.
+      if (item.status === "reserved" && item.material != null) {
+        if (!isObject(item.material)) {
+          error(p + ".material", "Snapshot material harus berupa objek.");
+        } else {
+          requireString(item.material.id, p + ".material.id");
+          const catalogMaterial = materialById.get(item.material.id);
+          if (!catalogMaterial) {
+            error(p + ".material.id", "Material snapshot tidak ditemukan pada katalog.");
+          } else {
+            if (catalogMaterial.active === false ||
+                (item.material.thicknessMm != null &&
+                 Number(item.material.thicknessMm) !== Number(catalogMaterial.thicknessMm)) ||
+                (item.material.motif != null && item.material.motif !== catalogMaterial.motif) ||
+                (item.material.rotationPolicy != null &&
+                 item.material.rotationPolicy !== catalogMaterial.rotationPolicy) ||
+                (item.material.grainRequired != null &&
+                 (item.material.grainRequired === true) !== (catalogMaterial.grainRequired === true))) {
+              error(p + ".material", "Spesifikasi material snapshot tidak cocok dengan katalog aktif.");
+            }
+          }
+        }
+      }
       if (!Array.isArray(item.reservationIds)) {
         error(p + ".reservationIds", "Daftar ID reservasi harus berupa array.");
       } else {

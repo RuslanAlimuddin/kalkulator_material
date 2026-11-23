@@ -134,6 +134,26 @@ test("snapshot rencana menolak sisa yang menimpa potongan dan bidang di luar lem
   assert.ok(result.errors.some(item => /di luar batas lembar/.test(item.message)));
 });
 
+test("snapshot rencana menolak satu bidang sisa layak yang dicatat dua kali", () => {
+  const data = validPlanBundle();
+  const leftover = { x: 20, y: 0, width: 22.5, height: 31 };
+  data.plans.plans[0].plan = {
+    geometryVersion: 1,
+    inventoryUsage: [{ remainderId: "REM-001" }],
+    sheets: [{
+      id: "INVENTORY-0-REM-001", width: 42.5, height: 31,
+      placements: [{ x: 0, y: 0, width: 20, height: 20 }],
+      leftovers: [leftover]
+    }],
+    usableRemainders: [
+      { sheetId: "INVENTORY-0-REM-001", ...leftover },
+      { sheetId: "INVENTORY-0-REM-001", ...leftover }
+    ]
+  };
+  const result = validate(data);
+  assert.ok(result.errors.some(item => /lebih dari sekali/.test(item.message)));
+});
+
 test("geometri sisa layak harus cocok dengan bidang leftovers pada lembar asal", () => {
   const data = validPlanBundle();
   data.plans.plans[0].plan = {

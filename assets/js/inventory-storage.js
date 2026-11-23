@@ -1771,7 +1771,37 @@
       const jobIds = new Set(jobs.map(item => item.id));
       const jobById = new Map(jobs.map(item => [item.id, item]));
       const materialIds = new Set(materials.map(item => item.id));
+      const materialByIdForAudit = new Map(materials.map(item => [item.id, item]));
       const plansWithoutJob = plans.filter(item => !jobIds.has(item.jobId));
+      const planCatalogIssues = [];
+      plans.filter(item => item && item.status === "reserved").forEach(plan => {
+        const job = jobById.get(plan.jobId);
+        if (!job || job.status !== "open") {
+          planCatalogIssues.push({
+            severity: "error", type: "active_job_not_open",
+            planId: plan.id, jobId: plan.jobId || null,
+            message: "Rencana aktif terhubung ke pekerjaan yang tidak ditemukan atau tidak terbuka."
+          });
+        }
+        if (plan.material != null) {
+          const snapshot = plan.material;
+          const material = snapshot && materialByIdForAudit.get(snapshot.id);
+          if (!snapshot || !snapshot.id || !material || material.active === false ||
+              (snapshot.thicknessMm != null &&
+               Number(snapshot.thicknessMm) !== Number(material.thicknessMm)) ||
+              (snapshot.motif != null && snapshot.motif !== material.motif) ||
+              (snapshot.rotationPolicy != null &&
+               snapshot.rotationPolicy !== material.rotationPolicy) ||
+              (snapshot.grainRequired != null &&
+               (snapshot.grainRequired === true) !== (material.grainRequired === true))) {
+            planCatalogIssues.push({
+              severity: "error", type: "material_snapshot_mismatch",
+              planId: plan.id, materialId: snapshot && snapshot.id || null,
+              message: "Spesifikasi material snapshot rencana aktif tidak cocok dengan katalog."
+            });
+          }
+        }
+      });
       const movementHistoryIssues = [];
       const remainderReferenceIssues = [];
       const reservationReferenceIssues = [];
@@ -2363,6 +2393,7 @@
         activePlans,
         activeReservations,
         plansWithoutJob,
+        planCatalogIssues,
         legacyReservationsWithoutPlan,
         orphanedReservations,
         orphanedRemainders,

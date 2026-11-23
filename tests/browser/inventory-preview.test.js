@@ -249,9 +249,9 @@ async function main() {
     await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
     const packageRows = page.locator("#inventoryPreviewPricing .inventory-price-row");
     assert.match(await page.locator("#inventoryPreviewSummary").textContent(), /Lembar baru: 3/);
-    assert.match(await packageRows.nth(0).textContent(), /Rp\\s*800\\.000/);
+    assert.match(await packageRows.nth(0).textContent(), /Rp\s*800\.000/);
     assert.match(await packageRows.nth(0).textContent(), /2 kemasan/);
-    assert.match(await packageRows.nth(1).textContent(), /Rp\\s*400\\.000/);
+    assert.match(await packageRows.nth(1).textContent(), /Rp\s*400\.000/);
     assert.match(await packageRows.nth(1).textContent(), /1 kemasan/);
     assert.match(await packageRows.nth(1).textContent(), /sisa utuh 1 lembar/);
 
@@ -278,8 +278,8 @@ async function main() {
     await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
     assert.match(await page.locator("#inventoryPreviewSummary").textContent(), /Lembar baru: 0/);
     const fullyCoveredRows = page.locator("#inventoryPreviewPricing .inventory-price-row");
-    assert.match(await fullyCoveredRows.nth(0).textContent(), /Rp\\s*800\\.000/);
-    assert.match(await fullyCoveredRows.nth(1).textContent(), /Rp\\s*0/);
+    assert.match(await fullyCoveredRows.nth(0).textContent(), /Rp\s*800\.000/);
+    assert.match(await fullyCoveredRows.nth(1).textContent(), /Rp\s*0/);
 
     // Temuan referensi yang sebelumnya hanya ada di laporan audit storage
     // wajib memunculkan peringatan pada antarmuka utama.

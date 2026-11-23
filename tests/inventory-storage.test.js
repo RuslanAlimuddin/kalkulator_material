@@ -809,6 +809,57 @@ async function main() {
     }
   });
 
+  await test("konsumsi massal menolak ID sisa turunan dan lembar sumber dengan tipe tidak valid", async () => {
+    await storage.importJSON(bundle("CONSUME-INVALID-OPTIONAL-IDS"), "merge");
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-CONSUME-INVALID-OPTIONAL-IDS",
+      jobId: "JOB-CONSUME-INVALID-OPTIONAL-IDS",
+      timestamp: now
+    });
+
+    await assert.rejects(storage.consumeReservations({
+      reservations: [{
+        reservationId: reservation.id,
+        remainders: [{ id: 123, widthCm: 10, heightCm: 8 }]
+      }],
+      newSheetRemainders: [],
+      timestamp: "2026-11-18T12:01:00.000Z"
+    }), /ID sisa turunan/);
+
+    await assert.rejects(storage.consumeReservations({
+      reservations: [{
+        reservationId: reservation.id,
+        sourceSheetId: 123,
+        remainders: []
+      }],
+      newSheetRemainders: [],
+      timestamp: "2026-11-18T12:01:00.000Z"
+    }), /ID lembar sumber/);
+
+    const newSheetBase = {
+      materialId: "MAT-A", originJobId: "JOB-A",
+      sourceSheetId: "SHEET-INVALID-OPTIONAL-ID",
+      widthCm: 20, heightCm: 15, thicknessMm: 8,
+      grainDirection: "none", motif: "plain", rotationAllowed: true
+    };
+    await assert.rejects(storage.consumeReservations({
+      reservations: [],
+      newSheetRemainders: [{ ...newSheetBase, id: 123 }],
+      timestamp: "2026-11-18T12:01:00.000Z"
+    }));
+
+    assert.equal(
+      (await storage.get("remainders", "REM-CONSUME-INVALID-OPTIONAL-IDS")).status,
+      "reserved"
+    );
+    assert.equal((await storage.get("reservations", reservation.id)).status, "active");
+    assert.equal(
+      (await storage.getByIndex("remainders", "sourceRemainderId", "REM-CONSUME-INVALID-OPTIONAL-IDS")).length,
+      0
+    );
+    assert.equal(await storage.get("remainders", 123), null);
+  });
+
   await test("sisa turunan tidak boleh melebihi ukuran sumber dan rotasi tetap diizinkan", async () => {
     await storage.importJSON(bundle("CHILD-TOO-LARGE-SINGLE"), "merge");
     const single = await storage.reserveRemainder({

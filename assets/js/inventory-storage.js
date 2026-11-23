@@ -40,18 +40,26 @@
   }
 
   function isValidMaterialRecord(record) {
-    return Boolean(record && typeof record === "object" && !Array.isArray(record) &&
-      typeof record.name === "string" && record.name.trim() &&
-      typeof record.category === "string" && record.category.trim() &&
-      typeof record.thicknessMm === "number" && Number.isFinite(record.thicknessMm) &&
-      record.thicknessMm > 0 &&
-      typeof record.grainRequired === "boolean" &&
-      typeof record.motif === "string" && record.motif.trim() &&
-      ["free", "quarter_turn", "fixed"].includes(record.rotationPolicy) &&
-      typeof record.active === "boolean" &&
-      (record.surface == null ||
-       (typeof record.surface === "string" && record.surface.trim()))
-    );
+    if (!record || typeof record !== "object" || Array.isArray(record)) return false;
+    // CRUD katalog lama mengizinkan record minimal (mis. hanya id dan name).
+    // Validasi ini menjaga setiap field skema yang disediakan tanpa memutus
+    // kompatibilitas tersebut; impor/ekspor tetap memakai validator bundle penuh.
+    if (record.name != null &&
+        (typeof record.name !== "string" || !record.name.trim())) return false;
+    if (record.category != null &&
+        (typeof record.category !== "string" || !record.category.trim())) return false;
+    if (record.thicknessMm != null &&
+        (typeof record.thicknessMm !== "number" ||
+         !Number.isFinite(record.thicknessMm) || record.thicknessMm <= 0)) return false;
+    if (record.grainRequired != null && typeof record.grainRequired !== "boolean") return false;
+    if (record.motif != null &&
+        (typeof record.motif !== "string" || !record.motif.trim())) return false;
+    if (record.rotationPolicy != null &&
+        !["free", "quarter_turn", "fixed"].includes(record.rotationPolicy)) return false;
+    if (record.active != null && typeof record.active !== "boolean") return false;
+    if (record.surface != null &&
+        (typeof record.surface !== "string" || !record.surface.trim())) return false;
+    return true;
   }
 
   function ensureValidMaterialRecord(record) {

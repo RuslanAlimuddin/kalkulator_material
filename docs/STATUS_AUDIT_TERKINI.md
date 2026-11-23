@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `9c8fdd9cd44e4c53fabe494aa9d08f0b95c027ca` (`test: cover recovered plan completion after browser restart`). Perubahan ini memperluas tes browser pemulihan rencana setelah restart, mencakup pembatalan dan penyelesaian. Empat CI pada SHA ini sudah diverifikasi `completed/success`.
+- HEAD kode terbaru yang sudah diverifikasi: `c5970257d3415029ea70b537d6d70e73486df10a` (`test: restore recovery fixtures after corruption checks`). Perubahan ini menambah tes fail-closed saat snapshot dan status sumber tidak konsisten, serta memulihkan fixture setelah simulasi kerusakan. Empat CI pada SHA ini sudah diverifikasi `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -134,6 +134,33 @@ Empat check-run pada commit tersebut semuanya `completed/success`:
 
 Batas kesimpulan: pengujian ini membuktikan persistensi dan pemulihan setelah browser ditutup secara normal, bukan simulasi pemadaman listrik atau penghentian proses paksa di setiap instruksi transaksi. Atomicity transaksi IndexedDB tetap ditopang oleh tes rollback yang sudah ada.
 
+### 4B. Snapshot tidak konsisten dan kegagalan pemulihan — pengujian diperluas, seluruh CI lulus
+File:
+- `tests/inventory-engine-cancel-plan.test.js`
+- `tests/inventory-plan-recovery.test.js`
+- Implementasi yang diaudit: `assets/js/inventory-engine.js`, `assets/js/inventory-storage.js`
+
+Temuan:
+- Jalur `restorePlan()` memverifikasi snapshot aktif, daftar ID reservasi, relasi reservasi-pekerjaan-sumber, status sumber `reserved`, kondisi sumber `good`, dan kecocokan material.
+- Tes pemulihan yang sudah ada juga menguji sumber hilang, status sumber salah, hubungan pekerjaan salah, snapshot historis yang tidak cocok, orphan, ketidaksesuaian movement, migrasi database lama, serta pemulihan multi-sumber.
+- Jalur pembatalan/penyelesaian memakai validasi ulang di dalam transaksi storage; tes rollback sebelumnya sudah membuktikan kegagalan satu item tidak menyisakan perubahan parsial.
+
+Perluasan regresi baru:
+- Snapshot dengan daftar `reservationIds` yang tidak cocok ditolak oleh `restorePlan()` dan `cancelPlan()`.
+- Sumber yang statusnya tidak lagi `reserved` ditolak oleh pemulihan dan pembatalan.
+- Kedua kegagalan tidak mengubah status rencana atau reservasi dan tidak melakukan pelepasan stok tambahan.
+- Fixture (data uji) dipulihkan setelah simulasi korupsi sehingga ekspor bundle berikutnya tetap valid.
+
+Catatan pengujian:
+- Commit awal pengujian gagal karena fixture yang sengaja dirusak tidak dipulihkan sebelum tes ekspor cadangan. Ini kegagalan pada kebersihan data uji, bukan cacat aplikasi.
+- Fixture diperbaiki; log CI menunjukkan tes baru lulus.
+- Commit final: `c5970257d3415029ea70b537d6d70e73486df10a`.
+- Keempat check-run pada HEAD final `completed/success`: `test`, `inventory-and-regression`, `batch-reservation`, dan `browser-indexeddb`.
+
+Kesimpulan:
+- Belum ditemukan cacat implementasi baru pada pemulihan snapshot dan pembatalan yang diuji.
+- Tidak perlu mengubah kode produksi pada tahap ini. Fokus berikutnya beralih ke validasi batas API untuk record transaksi (reservasi, rencana, movement, dan sisa material), tanpa mengulang pemeriksaan CRUD material/pekerjaan yang sudah selesai.
+
 ### 5. Perbaikan validasi adapter — selesai dan CI lulus
 - Commit: `f3dfe56c3e13ee8794d5ac57cfa64b4db66c9816`.
 - File kode: `assets/js/cutting-adapter.js`.
@@ -162,7 +189,7 @@ Batas kesimpulan: pengujian ini membuktikan persistensi dan pemulihan setelah br
 
 ## Pekerjaan berikutnya — urutan wajib
 1. Audit validasi CRUD katalog material dan record pekerjaan sudah diperbaiki serta lulus seluruh CI. Lanjutkan audit batas API lain yang belum diperiksa, terutama field/record transaksi dan nilai ekstrem, tanpa mengulang CRUD material/pekerjaan.
-2. Lanjutkan audit kegagalan dan pemulihan yang belum tercakup, khususnya pemulihan ketika snapshot/relasi data tidak konsisten dan hasil pembatalan/penyelesaian gagal. Pemulihan normal setelah restart kini sudah diuji untuk cancel dan complete.
+2. Audit validasi batas API untuk record transaksi (reservasi, rencana, movement, sisa material) dan nilai ekstrem. Audit pemulihan snapshot tidak konsisten, pembatalan, serta penyelesaian sudah diperluas dan seluruh CI lulus; jangan mengulang skenario yang telah tercakup tanpa alasan.
 3. Kembali ke keputusan makna estimasi biaya: pisahkan konsep nilai kebutuhan vs biaya pembelian baru setelah inventaris. Jangan meminta keputusan pengguna sebelum menyajikan ringkasan opsi yang konkret dan konsekuensinya.
 4. Jika ditemukan cacat nyata, tambahkan tes regresi dan perbaiki hanya di branch kerja.
 5. Setelah tahap audit/perubahan, perbarui dokumen ini dan verifikasi CI pada HEAD terbaru.

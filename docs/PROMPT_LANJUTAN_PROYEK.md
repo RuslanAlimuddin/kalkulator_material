@@ -56,7 +56,7 @@ Implementasi pada branch kerja:
 - `inventory-preview-ui.js` menghitung dan menampilkan kedua estimasi menggunakan `MaterialPricingEngine`, termasuk pembulatan kemasan.
 - Perubahan harga/jenis harga/isi kemasan memperbarui estimasi tanpa mengulang pratinjau geometri.
 - Perhitungan baseline hanya membaca/menghitung; tidak membuat reservasi atau mengubah stok.
-- Tes unit workflow, tes bridge, dan tes browser memeriksa baseline tanpa inventaris serta contoh kebutuhan 2 lembar dibanding pembelian 1 lembar setelah inventaris.
+- Tes unit workflow, tes bridge, dan tes browser memeriksa baseline tanpa inventaris, contoh kebutuhan 2 lembar dibanding pembelian 1 lembar, kebutuhan bruto 5 lembar dibanding pembelian 3 lembar pada kemasan isi 4, serta kondisi seluruh kebutuhan tertutup inventaris (pembelian baru Rp0). Perubahan harga ketika pratinjau terbuka juga diuji.
 
 Jangan menyamakan satu unit sisa inventaris dengan satu lembar utuh untuk menilai kebutuhan bruto. Baseline bruto dihitung ulang tanpa inventaris menggunakan planner yang sama, sedangkan angka pembelian baru berasal dari `plan.newSheetCount`.
 
@@ -64,7 +64,7 @@ Jangan menyamakan satu unit sisa inventaris dengan satu lembar utuh untuk menila
 
 Pada pemeriksaan terakhir, commit `d70724cffba86dc755b838855d9d5c9add694a98` berhasil ditemukan dan dibaca. Branch `pengembangan-mesin-hitung` juga berhasil ditemukan, dan file-file pada branch tersebut dapat diambil.
 
-Pada HEAD kode `6fce40f234c41d4b0954ca83f0e2400e98bdc854`, empat check-run GitHub diverifikasi langsung dan semuanya `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`. SHA dokumentasi setelah pembaruan harus diperiksa ulang karena setiap commit baru memicu CI baru.
+Pada HEAD kode `07f4cec90056d63d92c34654c8e731c2e5e84401`, empat check-run GitHub diverifikasi langsung dan semuanya `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`. SHA dokumentasi setelah pembaruan harus diperiksa ulang karena setiap commit baru memicu CI baru.
 
 ### D. Audit awal transaksi reservasi dan konsumsi
 
@@ -84,7 +84,7 @@ Pemeriksaan seluruh direktori `.github/workflows` menemukan `.github/workflows/b
 
 ## 7. Tahapan audit berikutnya
 
-Ikuti urutan rinci dalam `docs/STATUS_AUDIT_TERKINI.md`. Validasi batas adapter, input UI/katalog, CRUD material/pekerjaan, pemulihan snapshot, ID transaksi tunggal/massal, `planId`, ID pelepasan reservasi, dan nilai versi numerik inventaris telah diaudit/diperbaiki. Pemisahan estimasi kebutuhan bruto dan pembelian baru setelah inventaris juga sudah diimplementasikan dan diuji. Pada HEAD kode `6fce40f234c41d4b0954ca83f0e2400e98bdc854`, empat CI telah diverifikasi `completed/success`. Berikutnya audit integrasi biaya lebih lanjut, terutama perubahan input harga/kemasan, hasil nol lembar baru, dan konsistensi angka harga satuan/kemasan pada skenario inventaris berbeda. Jangan mengulang verifikasi yang sudah selesai tanpa perubahan atau alasan teknis.
+Ikuti urutan rinci dalam `docs/STATUS_AUDIT_TERKINI.md`. Validasi batas adapter, input UI/katalog, CRUD material/pekerjaan, pemulihan snapshot, ID transaksi tunggal/massal, `planId`, ID pelepasan reservasi, dan nilai versi numerik inventaris telah diaudit/diperbaiki. Pemisahan estimasi kebutuhan bruto dan pembelian baru setelah inventaris juga sudah diimplementasikan dan diuji. Pada HEAD kode `07f4cec90056d63d92c34654c8e731c2e5e84401`, empat CI telah diverifikasi `completed/success`. Berikutnya audit validasi input harga/kemasan yang tidak valid, tampilan ketika harga belum diisi, serta konsistensi pembaruan saat isi kemasan berubah. Skenario nol lembar baru dan ambang pembulatan kemasan sudah diuji. Jangan mengulang verifikasi yang sudah selesai tanpa perubahan atau alasan teknis.
 
 ## 8. Kalimat pemicu percakapan baru
 

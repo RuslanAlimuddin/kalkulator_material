@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `e62bd9f98458887b6a70c91ff5db352970c7ee7b` (`test: cover inventory preview invalidation for all input groups`). Tes browser kini mencakup invalidasi pratinjau pada perubahan kelompok input material, pekerjaan, arah serat, orientasi, jarak nat, dan ambang sisa; seluruh empat CI pada HEAD ini `completed/success`.
+- HEAD kode terbaru yang sudah diverifikasi: `385d51429107cbac47b6f40554f5b9d47f1bace8` (`test: invalidate preview after material or job catalog changes`). Tes browser kini mencakup invalidasi pratinjau pada perubahan input serta refresh katalog material/pekerjaan; seluruh empat CI pada HEAD ini `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -502,3 +502,23 @@ Pekerjaan berikutnya:
 1. Periksa perubahan `mn` (nama material bebas pada kalkulator lama) serta perubahan harga/kemasan setelah kalkulator utama dihitung ulang, agar nilai yang terlihat tidak berasal dari input yang berbeda dengan pratinjau.
 2. Pastikan perubahan katalog saat pratinjau aktif (refresh katalog, material dinonaktifkan, atau pekerjaan ditutup) tidak memungkinkan konfirmasi snapshot yang sudah tidak sah.
 3. Setelah dua kasus tersebut diaudit, susun checklist uji manual singkat.
+### 4M. Refresh katalog membatalkan pratinjau jika material/pekerjaan berubah — diuji, seluruh CI lulus
+File: `tests/browser/inventory-preview.test.js`.
+
+Audit menunjukkan `refreshCatalog()` membaca ulang material dan pekerjaan, membangun ulang pilihan, lalu menjalankan `clearPreview()`. Jadi perubahan status katalog tidak dapat mempertahankan tombol persetujuan untuk snapshot lama setelah pengguna menekan Refresh.
+
+Tes browser kini memverifikasi:
+- Material yang sedang dipilih dinonaktifkan melalui storage, lalu Refresh dijalankan: pratinjau dan tombol persetujuan hilang.
+- Material diaktifkan kembali, dipilih ulang, dan pratinjau dibuat ulang.
+- Pekerjaan yang sedang dipilih diubah menjadi `completed` dengan `closedAt` valid, lalu Refresh dijalankan: pratinjau dan tombol persetujuan hilang.
+- Pekerjaan dibuka kembali, dipilih ulang, dan pratinjau baru dapat dibuat.
+
+Tidak ditemukan cacat implementasi pada mekanisme refresh katalog; yang kurang sebelumnya adalah tes eksplisit untuk status katalog yang berubah ketika pratinjau masih terbuka.
+
+Commit tes: `385d51429107cbac47b6f40554f5b9d47f1bace8`.
+Seluruh empat CI pada HEAD `385d51429107cbac47b6f40554f5b9d47f1bace8` telah diverifikasi `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`.
+
+Pekerjaan berikutnya:
+1. Audit perubahan nama material (`mn`) dan sinkronisasi harga: harga/kemasan yang diubah setelah kalkulasi utama memang memperbarui pratinjau, tetapi hasil kalkulator utama tetap menampilkan snapshot perhitungan terakhir sampai tombol Hitung ditekan. Pastikan label dan perilaku ini jelas dan tidak membingungkan.
+2. Periksa apakah input nama material kalkulator lama perlu memengaruhi identitas material inventaris; jangan menyamakan nama bebas (`mn`) dengan katalog `inventoryMaterial` tanpa keputusan desain.
+3. Setelah audit ini, susun checklist uji manual yang ringkas.

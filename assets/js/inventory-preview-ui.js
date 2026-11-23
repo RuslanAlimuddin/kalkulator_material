@@ -442,7 +442,8 @@
     const notice = $("inventoryRecoveryNotice");
     if (problems || movementWarnings) {
       const parts = [];
-      if (problems) parts.push(problems + " ketidaksesuaian yang perlu diperiksa");
+      const otherProblems = problems - planCatalogErrors;
+      if (otherProblems) parts.push(otherProblems + " ketidaksesuaian yang perlu diperiksa");
       if (planCatalogErrors) parts.push(planCatalogErrors + " snapshot rencana tidak cocok dengan katalog material/pekerjaan");
       if (movementWarnings) parts.push(movementWarnings + " peringatan riwayat (mungkin data lama/ambigu)");
       notice.textContent = "Peringatan audit inventaris: ditemukan " + parts.join(" dan ") +

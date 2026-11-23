@@ -44,21 +44,27 @@ Pengujian browser yang telah ditambahkan mencakup: kalkulasi harga satuan, pembe
 
 ## 5. Temuan yang belum selesai
 
-### A. Sinkronisasi estimasi biaya dengan penggunaan inventaris
+### A. Sinkronisasi estimasi biaya dengan penggunaan inventaris — implementasi selesai
 
-Pratinjau inventaris dapat membagi kebutuhan menjadi lembar yang dipenuhi dari sisa inventaris dan lembar baru yang harus disediakan. Namun, estimasi harga kalkulator saat ini dihitung dari jumlah lembar hasil kalkulasi pemotongan biasa.
+Makna bisnis ditetapkan dengan memisahkan dua angka:
+- **Nilai kebutuhan material (tanpa inventaris):** estimasi pembelian untuk seluruh kebutuhan lembar menurut kalkulasi normal.
+- **Estimasi pembelian baru (setelah inventaris):** estimasi pembelian untuk lembar baru yang masih diperlukan setelah sisa inventaris yang cocok digunakan.
 
-Belum dipastikan apakah estimasi harga yang tampil dimaksudkan sebagai:
-- biaya pembelian material baru setelah inventaris digunakan; atau
-- nilai total material yang dibutuhkan, termasuk material yang sudah tersedia di inventaris.
+Implementasi pada branch kerja:
+- `inventory-workflow.preview()` dapat menghitung baseline kedua menggunakan planner dan adapter pemotongan yang sama, dengan daftar inventaris kosong.
+- `inventory-app-bridge.js` meneruskan opsi baseline tersebut.
+- `inventory-preview-ui.js` menghitung dan menampilkan kedua estimasi menggunakan `MaterialPricingEngine`, termasuk pembulatan kemasan.
+- Perubahan harga/jenis harga/isi kemasan memperbarui estimasi tanpa mengulang pratinjau geometri.
+- Perhitungan baseline hanya membaca/menghitung; tidak membuat reservasi atau mengubah stok.
+- Tes unit workflow, tes bridge, dan tes browser memeriksa baseline tanpa inventaris serta contoh kebutuhan 2 lembar dibanding pembelian 1 lembar setelah inventaris.
 
-Jangan mengubah perilaku harga sebelum makna bisnis ini ditetapkan. Audit berikutnya harus menelusuri aliran data dari hasil pratinjau inventaris ke tampilan harga dan menentukan apakah perbedaan tersebut merupakan bug atau memang dua jenis estimasi yang berbeda.
+Jangan menyamakan satu unit sisa inventaris dengan satu lembar utuh untuk menilai kebutuhan bruto. Baseline bruto dihitung ulang tanpa inventaris menggunakan planner yang sama, sedangkan angka pembelian baru berasal dari `plan.newSheetCount`.
 
 ### B. Verifikasi status CI dan HEAD
 
 Pada pemeriksaan terakhir, commit `d70724cffba86dc755b838855d9d5c9add694a98` berhasil ditemukan dan dibaca. Branch `pengembangan-mesin-hitung` juga berhasil ditemukan, dan file-file pada branch tersebut dapat diambil.
 
-Pada HEAD `35f3d4dfbba54f936bcea0165ce30c2f91d7ec6a`, empat check-run GitHub berhasil diverifikasi langsung dan semuanya `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`. Status ini berlaku untuk SHA tersebut; periksa ulang setelah commit baru.
+Pada HEAD kode `6fce40f234c41d4b0954ca83f0e2400e98bdc854`, empat check-run GitHub diverifikasi langsung dan semuanya `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`. SHA dokumentasi setelah pembaruan harus diperiksa ulang karena setiap commit baru memicu CI baru.
 
 ### D. Audit awal transaksi reservasi dan konsumsi
 
@@ -78,7 +84,7 @@ Pemeriksaan seluruh direktori `.github/workflows` menemukan `.github/workflows/b
 
 ## 7. Tahapan audit berikutnya
 
-Ikuti urutan rinci dalam `docs/STATUS_AUDIT_TERKINI.md`. Validasi batas adapter, input UI/katalog, CRUD material/pekerjaan, pemulihan snapshot, ID transaksi tunggal/massal, `planId`, ID pelepasan reservasi, dan nilai versi numerik inventaris telah diaudit/diperbaiki sesuai catatan `docs/STATUS_AUDIT_TERKINI.md`. Pada HEAD kode `4747f76dbcc9267da0822e35fa6210ea0d2c7165`, empat CI telah diverifikasi `completed/success`. Berikutnya tuntaskan penetapan makna estimasi biaya vs penggunaan inventaris; jangan mengubah formula sebelum konsekuensi kedua jenis estimasi dijelaskan. Jangan mengulang verifikasi yang sudah selesai tanpa perubahan atau alasan teknis.
+Ikuti urutan rinci dalam `docs/STATUS_AUDIT_TERKINI.md`. Validasi batas adapter, input UI/katalog, CRUD material/pekerjaan, pemulihan snapshot, ID transaksi tunggal/massal, `planId`, ID pelepasan reservasi, dan nilai versi numerik inventaris telah diaudit/diperbaiki. Pemisahan estimasi kebutuhan bruto dan pembelian baru setelah inventaris juga sudah diimplementasikan dan diuji. Pada HEAD kode `6fce40f234c41d4b0954ca83f0e2400e98bdc854`, empat CI telah diverifikasi `completed/success`. Berikutnya audit integrasi biaya lebih lanjut, terutama perubahan input harga/kemasan, hasil nol lembar baru, dan konsistensi angka harga satuan/kemasan pada skenario inventaris berbeda. Jangan mengulang verifikasi yang sudah selesai tanpa perubahan atau alasan teknis.
 
 ## 8. Kalimat pemicu percakapan baru
 

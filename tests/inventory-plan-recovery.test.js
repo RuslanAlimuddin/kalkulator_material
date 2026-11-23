@@ -187,6 +187,10 @@ async function main() {
   // Pemulihan juga harus memeriksa katalog saat ini, bukan hanya ID sumber.
   const originalMaterial = await storage.get("materials", "MAT-RECOVERY");
   await rawPut(storage, "materials", { ...originalMaterial, active: false });
+  const staleMaterialReport = await storage.getRecoveryReport();
+  assert.ok(staleMaterialReport.planCatalogIssues.some(item =>
+    item.planId === reserved.planId && item.type === "material_snapshot_mismatch"
+  ));
   await assert.rejects(
     recoveredEngine.restorePlan(reserved.planId),
     /Spesifikasi material snapshot/
@@ -196,6 +200,10 @@ async function main() {
   await rawPut(storage, "jobs", {
     ...originalJobForRecovery, status: "completed", closedAt: now
   });
+  const staleJobReport = await storage.getRecoveryReport();
+  assert.ok(staleJobReport.planCatalogIssues.some(item =>
+    item.planId === reserved.planId && item.type === "active_job_not_open"
+  ));
   await assert.rejects(
     recoveredEngine.restorePlan(reserved.planId),
     /Pekerjaan pada snapshot/

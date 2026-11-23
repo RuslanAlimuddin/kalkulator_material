@@ -543,6 +543,34 @@ async function main() {
     assert.equal(await storage.get("plans", " "), null);
   });
 
+  await test("pelepasan reservasi tunggal menolak ID dengan tipe atau isi tidak valid", async () => {
+    await storage.importJSON(bundle("RELEASE-INVALID-ID"), "merge");
+    const reservation = await storage.reserveRemainder({
+      remainderId: "REM-RELEASE-INVALID-ID",
+      jobId: "JOB-RELEASE-INVALID-ID",
+      timestamp: now
+    });
+    for (const reservationId of [123, "", "   ", null, undefined]) {
+      await assert.rejects(
+        storage.releaseReservation(reservationId, { timestamp: now }),
+        /ID reservasi/
+      );
+    }
+    assert.equal(
+      (await storage.get("reservations", reservation.id)).status,
+      "active"
+    );
+    assert.equal(
+      (await storage.get("remainders", "REM-RELEASE-INVALID-ID")).status,
+      "reserved"
+    );
+    assert.equal(
+      (await storage.getByIndex("movements", "remainderId", "REM-RELEASE-INVALID-ID"))
+        .filter(item => item.type === "reservation_released").length,
+      0
+    );
+  });
+
   await test("reservasi massal mengunci semua unit dalam satu transaksi", async () => {
     await storage.importJSON(bundle("BATCH-1"), "merge");
     await storage.importJSON(bundle("BATCH-2"), "merge");

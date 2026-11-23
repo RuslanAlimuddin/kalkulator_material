@@ -94,6 +94,39 @@ test("versi paket utama yang didukung diterima dan versi tidak dikenal ditolak",
   }
 });
 
+test("impor menolak snapshot rencana aktif yang materialnya hilang, nonaktif, atau berubah spesifikasi", () => {
+  const base = validPlanBundle();
+  base.plans.plans[0].material = {
+    id: "MAT-001", thicknessMm: 8, motif: "plain",
+    rotationPolicy: "free", grainRequired: false, active: true
+  };
+  assert.equal(validate(base).valid, true);
+
+  const changedThickness = structuredClone(base);
+  changedThickness.plans.plans[0].material.thicknessMm = 10;
+  let result = validate(changedThickness);
+  assert.ok(result.errors.some(item =>
+    item.path === "plans.plans[0].material" &&
+    /tidak cocok dengan katalog aktif/.test(item.message)
+  ));
+
+  const inactiveMaterial = structuredClone(base);
+  inactiveMaterial.materials.materials[0].active = false;
+  result = validate(inactiveMaterial);
+  assert.ok(result.errors.some(item =>
+    item.path === "plans.plans[0].material" &&
+    /tidak cocok dengan katalog aktif/.test(item.message)
+  ));
+
+  const missingMaterial = structuredClone(base);
+  missingMaterial.materials.materials = [];
+  result = validate(missingMaterial);
+  assert.ok(result.errors.some(item =>
+    item.path === "plans.plans[0].material.id" &&
+    /tidak ditemukan pada katalog/.test(item.message)
+  ));
+});
+
 test("snapshot rencana dengan geometri bidang yang terpisah diterima", () => {
   const data = validPlanBundle();
   data.plans.plans[0].plan = {

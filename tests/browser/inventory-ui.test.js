@@ -113,6 +113,9 @@ async function main() {
     await page.locator("#importMode").selectOption("replace");
     await page.locator("#importFile").setInputFiles(backupPath);
     await page.getByText(/Impor selesai:/).waitFor();
+    // Impor dilakukan saat tab Riwayat aktif; kembali ke Daftar Stok sebelum
+    // memeriksa tabel yang memang tersembunyi pada tab lain.
+    await page.locator("[data-tab=stock]").click();
     await page.locator("#stockTable").getByText("80 × 45 cm").waitFor();
     await page.locator("[data-tab=history]").click();
     await page.locator("#movementTable").getByText("Kondisi diubah").waitFor();

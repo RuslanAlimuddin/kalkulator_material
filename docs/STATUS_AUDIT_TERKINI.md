@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `385d51429107cbac47b6f40554f5b9d47f1bace8` (`test: invalidate preview after material or job catalog changes`). Tes browser mencakup invalidasi pratinjau pada perubahan input serta refresh katalog material/pekerjaan; seluruh empat CI pada HEAD kode ini `completed/success`. Dokumen checklist manual ditambahkan setelah audit teknis.
+- HEAD kode terbaru yang sudah diverifikasi: `6a7e273494a190d06cd0c6116d0e142a6a85ae6f` (`test: protect material catalog while plans are pending`). CRUD material kini menjaga snapshot rencana aktif, termasuk rencana yang belum memakai sisa inventaris; seluruh empat CI pada HEAD kode ini `completed/success`. Dokumen checklist manual diperbarui.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -538,3 +538,36 @@ Pekerjaan berikutnya:
 1. Periksa seluruh CI pada HEAD dokumentasi terakhir setelah penambahan checklist.
 2. Setelah CI lulus, audit teknis harga/inventaris pada sisa area yang belum tercakup atau siapkan sesi uji manual bila pengguna menghendaki.
 3. Jangan mengubah rumus lama atau menghubungkan nama bebas `mn` ke identitas katalog tanpa kebutuhan desain yang jelas.
+### 4P. Spesifikasi katalog material dilindungi selama rencana masih aktif — cacat ditemukan, diperbaiki, dan CI lulus
+File:
+- `assets/js/inventory-storage.js`
+- `tests/inventory-storage.test.js`
+- `docs/CHECKLIST_UJI_MANUAL_INVENTARIS_DAN_HARGA.md`
+
+Temuan:
+- Reservasi rencana bisa dibuat dengan `inventoryUsage: []` ketika seluruh kebutuhan berasal dari lembar baru. Rencana tersebut tetap menyimpan snapshot `material` untuk dipakai saat penyelesaian dan pencatatan sisa lembar baru.
+- Jalur update/put material sebelumnya hanya memeriksa sisa inventaris yang sudah tersimpan. Jika rencana aktif belum menggunakan sisa inventaris, perubahan `active`, ketebalan, motif, kebijakan rotasi, atau kebutuhan serat dapat lolos meskipun snapshot rencana masih bergantung pada spesifikasi lama.
+- Penghapusan/clear katalog material juga belum memeriksa referensi snapshot pada store `plans`. Akibatnya material yang masih dibutuhkan rencana aktif dapat hilang atau menjadi tidak cocok sebelum penyelesaian.
+- `consumeReservations()` memang memvalidasi ulang material saat mencatat sisa lembar baru. Validasi itu mencegah data sisa tidak konsisten, tetapi baru menggagalkan penyelesaian setelah rencana telanjur dibuat; alur ini dapat meninggalkan rencana tertunda yang sulit diselesaikan.
+
+Perbaikan:
+- Menambahkan pemeriksaan snapshot material pada rencana berstatus `reserved` di jalur `put()` dan `update()` dalam transaksi yang sama dengan perubahan katalog.
+- Perubahan status aktif, ketebalan, motif, kebijakan rotasi, atau `grainRequired` yang tidak cocok dengan snapshot rencana ditolak sampai rencana selesai atau dibatalkan.
+- Perubahan nama tampilan tetap diizinkan karena tidak mengubah spesifikasi fisik yang digunakan rencana.
+- Penghapusan satu material dan pengosongan katalog material kini memeriksa referensi material di seluruh snapshot rencana, termasuk riwayat, selain referensi sisa inventaris.
+- Pemeriksaan dilakukan atomik dalam transaksi IndexedDB bersama store `plans`, sehingga tidak ada celah antara membaca snapshot dan menulis katalog.
+
+Tes regresi:
+- Membuat rencana `reserved` dengan `inventoryUsage: []` dan snapshot material.
+- Memastikan update/put menolak penonaktifan, perubahan ketebalan, motif, kebijakan rotasi, dan `grainRequired`.
+- Memastikan remove dan clear katalog material ditolak selama snapshot masih dirujuk.
+- Memastikan nama material masih dapat diubah.
+- Memastikan record material dan status rencana tidak berubah ketika operasi yang tidak kompatibel ditolak.
+
+Commit kode dan tes: `5268aabb387ec3481973f6de5f72b2866f5f8eb9` dan `6a7e273494a190d06cd0c6116d0e142a6a85ae6f`.
+Seluruh empat CI pada HEAD kode `6a7e273494a190d06cd0c6116d0e142a6a85ae6f` telah diverifikasi `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`.
+
+Pekerjaan berikutnya:
+1. Audit jalur impor/ekspor dan pemulihan ketika ada rencana aktif, terutama pastikan impor `replace` yang mengganti seluruh database tidak meninggalkan kombinasi snapshot, material, pekerjaan, dan reservasi yang saling tidak cocok.
+2. Periksa apakah restore/recovery memvalidasi snapshot material serta pekerjaan terhadap katalog saat ini, dan apakah UI menjelaskan kondisi yang tidak dapat dipulihkan.
+3. Setelah audit transaksi pemulihan selesai, rapikan checklist manual dan evaluasi apakah sudah waktunya uji manual dengan salinan data.

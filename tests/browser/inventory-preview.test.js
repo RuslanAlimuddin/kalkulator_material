@@ -191,8 +191,28 @@ async function main() {
     assert.ok(finalState.childRemainders.length >= 1);
     assert.ok(finalState.completedPlans.length >= 1);
     assert.ok(finalState.consumedReservations.length >= 1);
+
+    // Temuan referensi yang sebelumnya hanya ada di laporan audit storage
+    // wajib memunculkan peringatan pada antarmuka utama.
+    await page.evaluate(async () => {
+      const storage = MaterialInventoryStorage.createStorage({
+        validator: MaterialInventoryValidator,
+        allowUnsafeInventoryWrites: true
+      });
+      await storage.add("remainders", {
+        id: "REM-AUDIT-UI-ORPHAN",
+        materialId: "MAT-AUDIT-UI-MISSING",
+        originJobId: "JOB-AUDIT-UI-MISSING"
+      });
+      await storage.close();
+    });
+    await page.reload();
+    const recoveryNotice = page.locator("#inventoryRecoveryNotice");
+    await recoveryNotice.waitFor({ state: "visible" });
+    assert.match(await recoveryNotice.textContent(), /2 ketidaksesuaian/);
+
     assert.deepEqual(errors, []);
-    console.log("LULUS: pratinjau tidak mengubah stok; persetujuan mengunci sumber; reservasi pulih setelah reload; pembatalan melepas stok; penyelesaian mengonsumsi sumber dan mencatat sisa baru; tombol Hitung lama tetap bekerja.");
+    console.log("LULUS: pratinjau tidak mengubah stok; persetujuan mengunci sumber; reservasi pulih setelah reload; pembatalan melepas stok; penyelesaian mengonsumsi sumber dan mencatat sisa baru; tombol Hitung lama tetap bekerja; seluruh temuan referensi audit ditampilkan.");
   } finally {
     if (context) await context.close();
     await new Promise(resolve => server.close(resolve));

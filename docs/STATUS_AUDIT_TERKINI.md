@@ -651,3 +651,38 @@ Pekerjaan berikutnya:
 1. Audit akhir konsistensi laporan audit terhadap semua kategori masalah snapshot aktif dan pastikan tidak ada penghitungan ganda pada UI.
 2. Periksa skenario backup/restore `replace` di halaman inventaris secara manual pada database uji kosong; pastikan konfirmasi dan pesan hasil mudah dipahami.
 3. Setelah audit UI selesai, lakukan uji manual pada salinan data menggunakan `docs/CHECKLIST_UJI_MANUAL_INVENTARIS_DAN_HARGA.md`.
+
+### 4T. Audit akhir hitungan laporan dan konfirmasi penggantian data — perbaikan dibuat, CI sedang diverifikasi
+
+File:
+- `assets/js/inventory-preview-ui.js`
+- `assets/js/inventory-ui.js`
+- `tests/browser/inventory-preview.test.js`
+- `tests/browser/inventory-ui.test.js`
+
+Temuan:
+- Satu rencana dengan pekerjaan yang hilang masuk ke `plansWithoutJob` sekaligus `inconsistentPlans`; pemberitahuan UI sebelumnya menjumlahkannya dua kali.
+- Ketika pekerjaan yang masih dirujuk rencana aktif sudah tidak berstatus `open`, masalah tercatat pada `planCatalogIssues` dan juga pada referensi reservasi aktif. Pemberitahuan UI dapat menghitung akar masalah yang sama lebih dari sekali.
+- Konfirmasi impor mode `replace` sebelumnya hanya menyebut “seluruh data inventaris lokal”, tanpa menjelaskan kelompok data yang akan ditimpa. Pengguna belum diberi perincian eksplisit bahwa katalog, pekerjaan, stok, reservasi, rencana, dan riwayat ikut diganti.
+
+Perbaikan:
+- Penghitungan UI tidak lagi menambahkan ulang rencana yang sudah dihitung dalam `plansWithoutJob` ketika menghitung `inconsistentPlans`.
+- Error referensi reservasi `active_job_not_open` tidak dihitung lagi sebagai masalah terpisah jika pekerjaan yang sama sudah tercatat pada `planCatalogIssues`.
+- Konfirmasi `replace` kini menyebut katalog material, pekerjaan, stok sisa, reservasi, rencana pemotongan, dan riwayat pergerakan, serta mengingatkan pengguna untuk membuat cadangan karena data lokal akan tertimpa.
+- Mekanisme impor dan transaksi tidak diubah; yang diperbaiki adalah kejelasan konfirmasi dan perhitungan pesan audit.
+
+Tes regresi:
+- Tes browser pratinjau menambahkan rencana dengan pekerjaan yang hilang dan memastikan masalah itu dihitung satu kali.
+- Tes browser halaman inventaris memeriksa bahwa dialog konfirmasi `replace` menyebut seluruh kelompok data dan pengingat cadangan.
+- Workflow `batch-reservation`, `inventory-and-regression`, dan `test` pada HEAD kode terbaru telah menyelesaikan langkah pengujian dengan sukses. Workflow `browser-indexeddb` masih menjalankan pemasangan Chromium saat catatan ini ditulis; hasil akhir wajib diperiksa sebelum menyatakan seluruh CI lulus.
+
+Commit:
+- `5526f502a098d2547d1e173a5b6f37f966469054` — tes hitungan laporan audit.
+- `1f83ea285a5ee11d6360eda72d1e06d7ce2e1784` — tes konfirmasi replace.
+- `0cffa8f8403577c5f7e7aa1187dd31d7c354c7fb` — perbaikan hitungan laporan UI.
+- `90474607e9f93fa48c83e49c4d72b4b3f82eee42` — perincian konfirmasi replace.
+
+Pekerjaan berikutnya:
+1. Pastikan empat CI pada HEAD kode terbaru `90474607e9f93fa48c83e49c4d72b4b3f82eee42` berstatus `completed/success`, khususnya `browser-indexeddb` yang menjalankan tes browser baru.
+2. Setelah CI hijau, minta pengguna menjalankan `docs/CHECKLIST_UJI_MANUAL_INVENTARIS_DAN_HARGA.md` pada salinan data, bukan database inventaris utama.
+3. Catat hasil manual yang benar-benar dilaporkan pengguna; jangan mengklaim uji manual sudah dilakukan sebelum ada hasilnya.

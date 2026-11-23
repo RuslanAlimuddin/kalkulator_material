@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `6c25192ae57f79b8ffa07a46b5085c3f3044c8ce` (`test: match precise unrounded surface unit cost`). Pratinjau inventaris kini menampilkan harga material per m² dan estimasi biaya per m² bidang untuk estimasi bruto/neto; seluruh empat CI pada HEAD ini `completed/success`.
+- HEAD kode terbaru yang sudah diverifikasi: `e62bd9f98458887b6a70c91ff5db352970c7ee7b` (`test: cover inventory preview invalidation for all input groups`). Tes browser kini mencakup invalidasi pratinjau pada perubahan kelompok input material, pekerjaan, arah serat, orientasi, jarak nat, dan ambang sisa; seluruh empat CI pada HEAD ini `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -482,3 +482,23 @@ Pekerjaan berikutnya:
 1. Lanjutkan pemeriksaan integrasi inventaris pada hasil lama: pastikan label, rincian, dan nilai kebutuhan tetap konsisten pada mode harga satuan/kemasan, termasuk setelah input kalkulator diubah dan dihitung ulang.
 2. Tinjau skenario pratinjau yang sudah usang (ukuran, pola, material, pekerjaan, harga, dan kemasan berubah) agar tombol persetujuan tidak memakai hasil geometri lama. Input harga/kemasan boleh memperbarui estimasi tanpa mengubah geometri, sedangkan input geometri harus membatalkan pratinjau.
 3. Setelah audit integrasi UI selesai, susun checklist uji manual yang ringkas untuk validasi penggunaan nyata.
+### 4L. Cakupan invalidasi pratinjau usang — diperluas, seluruh CI lulus
+File: `tests/browser/inventory-preview.test.js`.
+
+Audit event listener pada `assets/js/inventory-preview-ui.js` dan pemicu di `index.html` menunjukkan mekanisme invalidasi telah tersedia:
+- Pilihan material, pekerjaan, dan arah serat menghapus pratinjau aktif.
+- Ukuran bidang/material, orientasi, jarak nat, nama material kalkulator, dan batas minimum sisa menghapus pratinjau aktif.
+- Pola, arah pola, alignment, dan mode mengirim event `inventory:inputs-changed` yang juga menghapus pratinjau.
+- Harga, satuan harga, dan isi kemasan hanya memperbarui estimasi harga ketika pratinjau masih aktif; tidak mengubah geometri atau mereset snapshot stok.
+
+Tidak ditemukan cacat implementasi baru pada mekanisme tersebut. Kekurangan yang ditemukan adalah cakupan tes browser belum secara eksplisit memeriksa seluruh kelompok input. Tes diperluas untuk mengosongkan/memilih ulang material dan pekerjaan, mengubah arah serat, orientasi, jarak nat, serta lebar/tinggi minimum sisa. Setiap perubahan harus menyembunyikan hasil pratinjau dan tombol persetujuan; pratinjau harus dibuat ulang sebelum dapat disetujui.
+
+Tes yang sudah ada tetap mencakup perubahan pola, alignment, mode, dan ukuran bidang, serta memastikan perubahan harga/kemasan memperbarui estimasi tanpa menghapus pratinjau.
+
+Commit tes: `e62bd9f98458887b6a70c91ff5db352970c7ee7b`.
+Seluruh empat CI pada HEAD `e62bd9f98458887b6a70c91ff5db352970c7ee7b` telah diverifikasi `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`.
+
+Pekerjaan berikutnya:
+1. Periksa perubahan `mn` (nama material bebas pada kalkulator lama) serta perubahan harga/kemasan setelah kalkulator utama dihitung ulang, agar nilai yang terlihat tidak berasal dari input yang berbeda dengan pratinjau.
+2. Pastikan perubahan katalog saat pratinjau aktif (refresh katalog, material dinonaktifkan, atau pekerjaan ditutup) tidak memungkinkan konfirmasi snapshot yang sudah tidak sah.
+3. Setelah dua kasus tersebut diaudit, susun checklist uji manual singkat.

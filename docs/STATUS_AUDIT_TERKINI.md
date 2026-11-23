@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `4747f76dbcc9267da0822e35fa6210ea0d2c7165` (`test: reject unsafe inventory versions during import`). Validasi versi record inventaris diperketat; seluruh empat CI pada HEAD ini sudah diverifikasi `completed/success`.
+- HEAD kode terbaru yang sudah diverifikasi: `6fce40f234c41d4b0954ca83f0e2400e98bdc854` (`test: verify baseline option passes through inventory bridge`). Integrasi estimasi kebutuhan bruto dan pembelian setelah inventaris telah diterapkan; seluruh empat CI pada HEAD ini sudah diverifikasi `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -35,7 +35,7 @@ Pada HEAD dokumentasi sebelum perbaikan, empat check-run GitHub semuanya `comple
 
 Jadi, dugaan lama bahwa tes browser belum terhubung ke CI adalah keliru dan telah dikoreksi. Tidak perlu menambah workflow Playwright atau dependensi Playwright ke `package.json` hanya untuk tujuan itu. Pengujian browser sudah dijalankan oleh workflow khusus.
 
-### 2. Audit alur harga dan inventaris — ditelusuri, makna bisnis masih terbuka
+### 2. Audit alur harga dan inventaris — dua estimasi terpisah telah diimplementasikan dan diuji
 File yang diperiksa:
 - `index.html`
 - `assets/js/pricing-engine.js`
@@ -51,11 +51,15 @@ Temuan:
 - `inventory-app-bridge.js` membangun input geometri dan meneruskan rencana ke workflow inventaris, tetapi tidak mengirim `newSheetCount` ke mesin harga dan tidak memperbarui kotak estimasi biaya kalkulator.
 - Tes browser memang menguji kalkulator harga dan pemanfaatan sisa inventaris pada pratinjau, tetapi tidak menguji bahwa estimasi biaya berubah mengikuti jumlah lembar baru setelah inventaris dipakai.
 
-Kesimpulan sementara:
-- Kedua jalur memang belum terhubung untuk menghasilkan satu angka biaya yang memperhitungkan inventaris.
-- Belum dapat dinyatakan sebagai bug sebelum definisi angka pada UI ditetapkan: apakah biaya pembelian material baru setelah stok sisa digunakan, atau nilai total kebutuhan material tanpa memperhitungkan stok yang telah dimiliki.
-- Label UI saat ini adalah “Estimasi Total Biaya Material”, sedangkan detail menyebut kebutuhan lembar dari kalkulasi utama. Ada potensi ambiguitas bagi pengguna.
-- Jangan mengubah kode sebelum makna biaya disepakati. Rancangan yang layak dipertimbangkan adalah memisahkan “nilai kebutuhan material” dan “estimasi pembelian baru setelah inventaris”, bukan mencampur dua konsep tersebut.
+Kesimpulan dan implementasi:
+- Makna bisnis dipisahkan menjadi (1) nilai kebutuhan material tanpa inventaris dan (2) estimasi pembelian baru setelah inventaris.
+- `inventory-workflow.preview()` kini dapat menghitung `baselinePlan` dengan planner/adapter yang sama dan daftar inventaris kosong. Ini menghindari kesalahan menilai setiap unit sisa inventaris sebagai satu lembar utuh.
+- `inventory-app-bridge.js` meneruskan opsi `includeBaseline`.
+- `inventory-preview-ui.js` menampilkan kedua estimasi di area hasil pratinjau dengan mesin harga yang sama, termasuk pembelian kemasan utuh.
+- Harga, jenis harga, dan isi kemasan dapat diubah ketika pratinjau masih aktif; angka estimasi diperbarui tanpa mengulang perhitungan geometri.
+- Pengujian browser memeriksa skenario 2 lembar kebutuhan bruto dan 1 lembar pembelian baru setelah satu sisa inventaris digunakan. Pengujian workflow/bridge memeriksa opsi baseline dan memastikan perhitungan tetap terpisah dari reservasi.
+- Tidak ada mutasi stok pada saat menghitung baseline atau menampilkan estimasi. Reservasi tetap hanya terjadi ketika pengguna menekan tombol persetujuan.
+- Perhitungan harga kalkulator lama tetap dipertahankan; tidak diubah menjadi angka neto secara diam-diam.
 
 ### 3. Validasi input antarmodul — sebagian diperbaiki, audit lanjutan tetap terbuka
 Pemeriksaan awal:
@@ -316,3 +320,47 @@ Kesimpulan:
 - Paket cadangan tidak lagi dapat memasukkan versi sisa yang tidak aman atau tidak dapat dinaikkan.
 - Penolakan impor terjadi sebelum transaksi mengganti data lokal.
 - Tidak ada perubahan pada rumus kalkulasi material atau estimasi harga pada tahap ini.
+
+### 4G. Pemisahan estimasi kebutuhan bruto dan pembelian baru setelah inventaris — implementasi selesai, seluruh CI lulus
+File yang diubah:
+- `assets/js/inventory-workflow.js`
+- `assets/js/inventory-app-bridge.js`
+- `assets/js/inventory-preview-ui.js`
+- `index.html`
+- `tests/inventory-workflow.test.js`
+- `tests/inventory-app-bridge.test.js`
+- `tests/browser/inventory-preview.test.js`
+
+Keputusan bisnis:
+1. **Nilai kebutuhan material (tanpa inventaris):** jumlah lembar yang dibutuhkan menurut planner tanpa stok inventaris, dinilai dengan harga satuan/kemasan yang dipilih.
+2. **Estimasi pembelian baru (setelah inventaris):** jumlah lembar baru yang tersisa setelah planner menggunakan inventaris yang cocok, dinilai dengan aturan harga yang sama.
+
+Implementasi teknis:
+- Workflow menerima opsi `includeBaseline: true`. Bila aktif, workflow menjalankan planner kedua dengan `remainders: []` untuk menghasilkan `baselinePlan`.
+- Planner dan cutting adapter yang sama dipakai untuk kedua hitungan. Baseline tidak menganggap satu sisa inventaris sebagai satu lembar utuh dan tidak memakai rumus hitungan terpisah.
+- Bridge meneruskan opsi baseline dari UI.
+- UI pratinjau menampilkan dua angka berdampingan dan menghitung harga melalui `MaterialPricingEngine`.
+- Untuk harga kemasan, pembulatan kemasan utuh, jumlah lembar dibeli, dan sisa lembar mengikuti mesin harga yang sudah ada.
+- Perubahan input harga, jenis harga, atau isi kemasan memperbarui tampilan estimasi jika pratinjau masih berlaku. Perubahan geometri/katalog tetap membatalkan pratinjau seperti sebelumnya.
+- Baseline hanya menghitung; tidak menyimpan, memesan, atau mengubah status inventaris.
+
+Pengujian:
+- `inventory-workflow.test.js`: memastikan baseline tanpa inventaris dihitung terpisah dari plan inventaris.
+- `inventory-app-bridge.test.js`: memastikan opsi baseline diteruskan ke workflow.
+- `inventory-preview.test.js`: skenario browser membuktikan kebutuhan bruto 2 lembar (Rp200.000) dibanding pembelian baru 1 lembar (Rp100.000), dengan harga satuan Rp100.000/lembar.
+- Seluruh empat CI pada HEAD kode `6fce40f234c41d4b0954ca83f0e2400e98bdc854` diverifikasi `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`.
+
+Commit kode utama tahap ini:
+- Workflow baseline: `02e5c1d2518e63cd7216a4e9d3344ea6ed50e922`.
+- Bridge baseline: `fd3d013994bc767fb6d6fb84402f6458e60dd6e2`.
+- Tes workflow: `3b2e5ea52998690d212d119425bb3c0dfb94bd9a`.
+- UI harga: `4569cd6bbc20d3e04056dbbf78414daabebb3922`.
+- Tampilan kalkulator: `656058b3bf171d7fa9ebf46b50c289ba28ef5bd2`.
+- Tes browser: `0023305f2a12e44dd3f7cd7d3ad09f7083a9113c`.
+- Tes bridge: `6fce40f234c41d4b0954ca83f0e2400e98bdc854`.
+
+Pekerjaan berikutnya:
+1. Audit skenario seluruh inventaris mencukupi sehingga `newSheetCount = 0`; estimasi pembelian baru harus tampil Rp0, sementara nilai kebutuhan bruto tetap sesuai baseline.
+2. Audit harga kemasan saat inventaris mengurangi kebutuhan melintasi batas kemasan (contoh gross 5 lembar, net 3 lembar, isi 4/kemasan).
+3. Pastikan perubahan harga/kemasan memperbarui dua angka dan perubahan geometri membatalkan pratinjau.
+4. Setelah skenario tersebut teruji, audit integrasi biaya lebih lanjut dan siapkan daftar uji manual yang relevan.

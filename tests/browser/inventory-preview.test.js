@@ -125,7 +125,7 @@ async function main() {
     assert.match(previewPricing, /Rp\s*200\.000/);
     assert.match(previewPricing, /Estimasi pembelian baru \(setelah inventaris\)/);
     assert.match(previewPricing, /Rp\s*100\.000/);
-    assert.match(previewPricing, /Harga material: Rp\s*41\.322 per m²/);
+    assert.match(previewPricing, /Harga material: Rp\s*41\.322(?:,\d+)? per m²/);
     assert.match(previewPricing, /Estimasi biaya per m² bidang: Rp\s*50\.000/);
     assert.match(previewPricing, /Estimasi biaya per m² bidang: Rp\s*25\.000/);
     await page.locator("#harga").fill("");
@@ -264,7 +264,7 @@ async function main() {
     assert.match(await packageRows.nth(1).textContent(), /Rp\s*400\.000/);
     assert.match(await packageRows.nth(1).textContent(), /1 kemasan/);
     assert.match(await packageRows.nth(1).textContent(), /sisa utuh 1 lembar/);
-    assert.match(await packageRows.nth(0).textContent(), /Harga material: Rp\s*41\.322 per m²/);
+    assert.match(await packageRows.nth(0).textContent(), /Harga material: Rp\s*41\.322(?:,\d+)? per m²/);
     assert.match(await packageRows.nth(0).textContent(), /Estimasi biaya per m² bidang: Rp\s*72\.727/);
     assert.match(await packageRows.nth(1).textContent(), /Estimasi biaya per m² bidang: Rp\s*36\.364/);
 
@@ -311,7 +311,7 @@ async function main() {
     const fullyCoveredRows = page.locator("#inventoryPreviewPricing .inventory-price-row");
     assert.match(await fullyCoveredRows.nth(0).textContent(), /Rp\s*800\.000/);
     assert.match(await fullyCoveredRows.nth(1).textContent(), /Rp\s*0/);
-    assert.match(await fullyCoveredRows.nth(1).textContent(), /Harga material: Rp\s*41\.322 per m²/);
+    assert.match(await fullyCoveredRows.nth(1).textContent(), /Harga material: Rp\s*41\.322(?:,\d+)? per m²/);
     assert.match(await fullyCoveredRows.nth(1).textContent(), /Estimasi biaya per m² bidang: Rp\s*0/);
 
     // Temuan referensi yang sebelumnya hanya ada di laporan audit storage

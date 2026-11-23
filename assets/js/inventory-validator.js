@@ -302,6 +302,9 @@
       requireString(item.jobId, p + ".jobId");
       if (!jobById.has(item.jobId)) {
         error(p + ".jobId", "Pekerjaan snapshot dengan ID " + item.jobId + " tidak ditemukan.");
+      } else if ((item.status === "reserved" || item.status === "legacy_recovery") &&
+          jobById.get(item.jobId).status !== "open") {
+        error(p + ".jobId", "Rencana yang masih aktif hanya boleh terhubung ke pekerjaan berstatus open.");
       }
       if (!["reserved", "cancelled", "completed", "legacy_recovery"].includes(item.status)) {
         error(p + ".status", "Status snapshot rencana tidak dikenal.");

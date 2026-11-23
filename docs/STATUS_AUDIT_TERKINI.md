@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `b3d0f33bb2a86704db913dd176aa53f1f6479af9` (`fix: preserve minimal material CRUD compatibility`). Ini mencakup validasi field katalog material pada jalur CRUD umum dan mempertahankan dukungan record minimal. Empat CI pada SHA ini sudah diverifikasi `completed/success`.
+- HEAD kode terbaru yang sudah diverifikasi: `d4caf68c053369afd1c46b8584a25b188a5188fa` (`fix: separate job status and record validation`). Ini mencakup validasi lengkap record pekerjaan pada jalur CRUD umum. Empat CI pada SHA ini sudah diverifikasi `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -82,6 +82,30 @@ Temuan:
 
 Percobaan CI pertama pada implementasi yang terlalu ketat gagal karena memutus kontrak CRUD minimal yang sudah diuji. Implementasi kemudian dilonggarkan secara tepat agar mempertahankan kompatibilitas. Pada commit final `b3d0f33bb2a86704db913dd176aa53f1f6479af9`, empat check-run semuanya `completed/success`: `browser-indexeddb`, `batch-reservation`, `test`, dan `inventory-and-regression`.
 
+### 3B. CRUD pekerjaan — cacat ditemukan, diperbaiki, dan CI lulus
+File:
+- `assets/js/inventory-storage.js`
+- `tests/inventory-storage.test.js`
+- Pembanding skema: `assets/js/inventory-validator.js`
+
+Temuan:
+- Sebelum perbaikan, `add()` dan `put()` untuk store `jobs` hanya memeriksa status pekerjaan.
+- `update()` hanya memvalidasi status jika field itu diubah. Nama dan timestamp tidak divalidasi pada jalur CRUD umum.
+- Validator bundle sebenarnya mewajibkan nama pekerjaan tidak kosong, `createdAt` berupa ISO UTC yang valid, `closedAt` null atau ISO UTC valid, `closedAt` tidak mendahului `createdAt`, dan pekerjaan `open` harus memiliki `closedAt: null`.
+- Ini berarti record invalid dapat ditulis melalui CRUD lalu ditolak saat ekspor/impor bundle atau pemeriksaan integritas berikutnya.
+
+Perbaikan:
+- Tambah dan put sekarang memvalidasi record pekerjaan lengkap sesuai aturan di atas.
+- Update menggabungkan perubahan parsial dengan record lama, lalu memvalidasi hasil akhirnya sebelum menyimpan; transaksi dibatalkan bila tidak valid.
+- Pemeriksaan status dipisahkan dari pemeriksaan record lengkap agar kontrak error lama tetap terjaga dan validasi penutupan dengan reservasi/rencana tertunda tetap berjalan.
+- Tes regresi menguji nama kosong/whitespace, tanggal tidak valid, tanggal kalender mustahil, urutan tanggal terbalik, dan status open dengan closedAt terisi. Add/put/update harus menolak dan tidak menyimpan perubahan.
+
+CI pada commit `d4caf68c053369afd1c46b8584a25b188a5188fa`:
+- `inventory-and-regression` — completed/success
+- `test` — completed/success
+- `browser-indexeddb` — completed/success
+- `batch-reservation` — completed/success
+
 ### 4. Transaksi inventaris — pemeriksaan statis sebelumnya
 Pemeriksaan statis sebelumnya pada `inventory-storage.js`, `inventory-engine.js`, `inventory-workflow.js` dan tes terkait menunjukkan reservasi/konsumsi multi-sumber memakai transaksi IndexedDB `readwrite`; ada tes rollback, konflik penggunaan sumber, dan kegagalan konsumsi agar data tidak berubah sebagian. Ini adalah temuan statis dan cakupan tes; jangan menyebutnya sebagai eksekusi ulang tes kecuali CI terbaru memang diperiksa.
 
@@ -112,7 +136,7 @@ Pemeriksaan statis sebelumnya pada `inventory-storage.js`, `inventory-engine.js`
 - `tests/browser/inventory-preview.test.js`
 
 ## Pekerjaan berikutnya — urutan wajib
-1. Audit validasi input lintas modul pada katalog material melalui CRUD umum sudah diperbaiki dan lulus CI. Lanjutkan audit nilai ekstrem/field lainnya pada batas API, terutama record pekerjaan dan perubahan parsial, dengan tetap menjaga kontrak CRUD minimal yang telah ada.
+1. Audit validasi CRUD katalog material dan record pekerjaan sudah diperbaiki serta lulus seluruh CI. Lanjutkan audit batas API lain yang belum diperiksa, terutama field/record transaksi dan nilai ekstrem, tanpa mengulang CRUD material/pekerjaan.
 2. Telusuri jalur penyimpanan, transaksi, pemulihan, dan kegagalan di titik yang belum ter-cover; audit transaksi dasar yang sudah diperiksa tidak perlu diulang.
 3. Kembali ke keputusan makna estimasi biaya: pisahkan konsep nilai kebutuhan vs biaya pembelian baru setelah inventaris. Jangan meminta keputusan pengguna sebelum menyajikan ringkasan opsi yang konkret dan konsekuensinya.
 4. Jika ditemukan cacat nyata, tambahkan tes regresi dan perbaiki hanya di branch kerja.

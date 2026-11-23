@@ -51,6 +51,37 @@ check("Alignment tengah membatasi potongan tepi", {...base, pattern:"stack", ali
 });
 assert.throws(() => calculateGeometry({...base, wallW:0}), /lebih dari 0/);
 assert.throws(() => calculateGeometry({...base, gap:-1}), /tidak boleh negatif/);
+
+for (const direction of ["horizontal", "vertikal"]) {
+  for (const pattern of ["stack", "running", "third"]) {
+    const result = calculateGeometry({
+      wallW: 617, wallH: 483, matW: 110, matH: 70,
+      gap: 0, pattern, direction, alignment: "MC"
+    });
+    const rowGroups = new Map();
+    const columnGroups = new Map();
+    for (const cell of result.cells) {
+      assert.ok(Number.isInteger(cell.row) && cell.row >= 0,
+        "Indeks baris harus bilangan bulat nonnegatif");
+      assert.ok(Number.isInteger(cell.column) && cell.column >= 0,
+        "Indeks kolom harus bilangan bulat nonnegatif");
+      if (!rowGroups.has(cell.row)) rowGroups.set(cell.row, []);
+      if (!columnGroups.has(cell.column)) columnGroups.set(cell.column, []);
+      rowGroups.get(cell.row).push(cell);
+      columnGroups.get(cell.column).push(cell);
+    }
+    for (const cells of rowGroups.values()) {
+      const ys = new Set(cells.map(cell => cell.sourceY));
+      assert.equal(ys.size, 1, pattern + " " + direction + ": satu indeks baris harus satu posisi sumber Y");
+    }
+    for (const cells of columnGroups.values()) {
+      const xs = new Set(cells.map(cell => cell.sourceX));
+      assert.equal(xs.size, 1, pattern + " " + direction + ": satu indeks kolom harus satu posisi sumber X");
+    }
+  }
+}
+console.log("LULUS: metadata indeks baris dan kolom konsisten untuk semua pola dan arah.");
+
 console.log("Semua pengujian geometri selesai.");
 
 for (const pattern of ["stack","running","third"]) {

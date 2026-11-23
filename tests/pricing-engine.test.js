@@ -76,7 +76,7 @@ test("jumlah lembar dan isi kemasan harus berupa integer aman", () => {
 
 test("overflow pada jumlah lembar dibeli atau hasil uang ditolak", () => {
   assert.throws(() => calculatePricing({
-    totalSheets: Number.MAX_SAFE_INTEGER - 1,
+    totalSheets: Number.MAX_SAFE_INTEGER,
     areaMaterialM2: 1, areaSurfaceM2: 2,
     price: 100, per: "package", packageSize: 2
   }), /melewati batas angka yang aman/);

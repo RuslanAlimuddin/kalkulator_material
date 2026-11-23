@@ -136,6 +136,17 @@ async function main() {
   const validation = Validator.validateInventoryBundle(exported);
   assert.equal(validation.valid, true, JSON.stringify(validation.errors));
   assert.ok(exported.plans.plans.some(item => item.id === reserved.planId));
+
+  // Impor replace yang snapshot materialnya tidak cocok harus ditolak
+  // sebelum transaksi menghapus atau mengganti database lokal.
+  const invalidReplacement = structuredClone(exported);
+  invalidReplacement.plans.plans.find(item => item.id === reserved.planId)
+    .material.thicknessMm = 99;
+  await assert.rejects(storage.importJSON(invalidReplacement, "replace"),
+    /Paket inventaris tidak valid/);
+  assert.equal((await storage.get("plans", reserved.planId)).status, "reserved");
+  assert.equal((await storage.get("materials", "MAT-RECOVERY")).thicknessMm, 8);
+  assert.equal((await storage.get("remainders", "REC-REM-1")).status, "reserved");
   assert.equal((await storage.get("remainders", "REC-REM-1")).status, "reserved");
   assert.equal((await storage.get("remainders", "REC-REM-2")).status, "reserved");
   const reportBeforeReload = await storage.getRecoveryReport();

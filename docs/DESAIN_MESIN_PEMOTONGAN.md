@@ -71,9 +71,9 @@ Kebijakan sementara:
 - Rotasi tidak dilakukan diam-diam; adapter hanya mengizinkannya pada mode ekonomis yang memintanya.
 - Kerf mengurangi ruang bebas. Celah lebih kecil daripada kerf tidak diklaim sebagai sisa pakai.
 - Sisa tercatat masih berupa persegi panjang. Belum ada batas ukuran minimum untuk menentukan apakah sisa benar-benar berguna bagi pekerjaan berikutnya.
-- Belum ada dukungan arah serat, motif, permukaan, atau batasan mesin potong.
+- Integrasi inventaris sudah memeriksa identitas material, ketebalan, motif, arah serat, kondisi sisa, dan kebijakan rotasi. Pencocokan permukaan serta batasan mesin potong khusus belum tersedia.
 - Belum ada diagram khusus tata letak potongan pada lembar sumber; visualisasi yang ada tetap menggambarkan posisi pemasangan pada bidang.
-- Stok awal, pembelian kemasan, dan penyimpanan sisa potongan sebagai inventaris belum terhubung ke mesin pemotongan.
+- Sisa inventaris lintas pekerjaan sudah terhubung melalui matcher, planner, reservasi, dan penyelesaian. Kalkulator harga utama tetap menghitung kebutuhan lembar tanpa mengurangi pembelian berdasarkan stok inventaris; pembelian kemasan juga belum terhubung ke transaksi inventaris.
 - `makeStok()` lama masih berada di `index.html` sebagai cadangan, tetapi kalkulasi utama sudah tidak memanggilnya. Jangan hapus sebelum tes regresi UI selesai.
 
 ## Pengujian
@@ -119,7 +119,7 @@ Teks antarmuka perlu menyebut `reuseCount` sebagai potongan tambahan pada lembar
 
 ### Batasan yang sudah dikonfirmasi
 - Belum ada stok awal, pengurangan pembelian oleh stok, atau inventaris sisa yang disimpan.
-- Belum ada ukuran minimum sisa yang dianggap layak pakai.
+- Ukuran minimum sisa sudah tersedia melalui `minRemainderW` dan `minRemainderH`. Klasifikasi ini hanya berdasarkan dimensi; belum menjamin kecocokan untuk pekerjaan berikutnya.
 - Kerf UI masih 0 cm.
 - Belum ada aturan serat/motif dan pembatasan rotasi per material.
 - Algoritma guillotine best-fit bersifat heuristik.

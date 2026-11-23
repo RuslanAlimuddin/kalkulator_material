@@ -641,7 +641,7 @@ function getInfoHarga(totalSheets,areaMaterialM2,areaBidangM2){
   const per=document.getElementById('hargaPer').value;
   const isiRaw=document.getElementById('isiKemasan').value;
   try {
-    return MaterialPricingEngine.calculatePricing({
+    const result=MaterialPricingEngine.calculatePricing({
       totalSheets,
       areaMaterialM2,
       areaSurfaceM2:areaBidangM2,
@@ -649,6 +649,20 @@ function getInfoHarga(totalSheets,areaMaterialM2,areaBidangM2){
       per:per==='kemasan'?'package':'sheet',
       packageSize:isiRaw===''?NaN:Number(isiRaw)
     });
+    if (!result) return null;
+
+    // Pertahankan nama properti yang digunakan oleh tampilan kalkulator lama.
+    return {
+      ...result,
+      harga:result.price,
+      hargaPerLembar:result.pricePerSheet,
+      hargaPerM2:result.pricePerM2,
+      hargaTotal:result.totalPrice,
+      jumlahKemasan:result.packageCount,
+      lembarDibeli:result.sheetsPurchased,
+      sisaLembar:result.unusedSheets,
+      biayaPerM2Bidang:result.costPerM2Surface
+    };
   } catch (error) {
     alert(error.message);
     return null;

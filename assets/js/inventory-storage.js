@@ -380,6 +380,7 @@
       ensureStore(storeName);
       ensureGenericWriteAllowed(storeName, opts);
       if (storeName === "jobs") ensureValidJobRecord(record);
+      if (storeName === "materials") ensureValidMaterialRecord(record);
       const key = storeName === "meta" ? record && record.key : record && record.id;
       if (!record || typeof record !== "object" || key == null || key === "") {
         throw new Error("Record harus memiliki " + (storeName === "meta" ? "key." : "id."));

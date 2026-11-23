@@ -1164,7 +1164,7 @@ async function main() {
 
       assert.equal(await storage.get("remainders", "REM-NEW-" + suffix), null);
       assert.equal(
-        (await storage.getByIndex("movements", "remainderId", "REM-" + suffix)).length,
+        (await storage.getByIndex("movements", "remainderId", "REM-NEW-" + suffix)).length,
         0
       );
     }

@@ -160,7 +160,7 @@ async function main() {
   }), /bertumpuk/);
   assert.equal((await storage.get("remainders", "CONSUME-GEOMETRY-OVERLAP")).status, "available");
   assert.equal((await storage.getByIndex("reservations", "remainderId", "CONSUME-GEOMETRY-OVERLAP")).length, 0);
-  assert.equal(await storage.get("plans", "PLAN-GEOMETRY-OVERLAP"), undefined);
+  assert.equal(await storage.get("plans", "PLAN-GEOMETRY-OVERLAP"), null);
   console.log("LULUS: geometri sisa yang bertumpuk ditolak sebelum reservasi stok.");
 
   const newOnlyPlan = await engine.reservePlan({

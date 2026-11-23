@@ -203,6 +203,45 @@ async function main() {
     await page.locator("#inventoryPreviewButton").click();
     await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
 
+    // Refresh katalog membatalkan pratinjau jika material dinonaktifkan atau pekerjaan ditutup.
+    await page.evaluate(async () => {
+      const storage = MaterialInventoryStorage.createStorage({ validator: MaterialInventoryValidator });
+      await storage.update("materials", "MAT-PREVIEW", { active: false });
+      await storage.close();
+    });
+    await page.locator("#inventoryRefreshCatalog").click();
+    await page.locator("#inventoryPreviewResult").waitFor({ state: "hidden" });
+    assert.equal(await page.locator("#inventoryConfirmButton").isVisible(), false);
+    await page.evaluate(async () => {
+      const storage = MaterialInventoryStorage.createStorage({ validator: MaterialInventoryValidator });
+      await storage.update("materials", "MAT-PREVIEW", { active: true });
+      await storage.close();
+    });
+    await page.locator("#inventoryRefreshCatalog").click();
+    await page.locator("#inventoryMaterial").selectOption("MAT-PREVIEW");
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+
+    await page.evaluate(async () => {
+      const storage = MaterialInventoryStorage.createStorage({ validator: MaterialInventoryValidator });
+      await storage.update("jobs", "JOB-PREVIEW", {
+        status: "completed", closedAt: "2026-11-23T08:00:00.000Z"
+      });
+      await storage.close();
+    });
+    await page.locator("#inventoryRefreshCatalog").click();
+    await page.locator("#inventoryPreviewResult").waitFor({ state: "hidden" });
+    assert.equal(await page.locator("#inventoryConfirmButton").isVisible(), false);
+    await page.evaluate(async () => {
+      const storage = MaterialInventoryStorage.createStorage({ validator: MaterialInventoryValidator });
+      await storage.update("jobs", "JOB-PREVIEW", { status: "open", closedAt: null });
+      await storage.close();
+    });
+    await page.locator("#inventoryRefreshCatalog").click();
+    await page.locator("#inventoryJob").selectOption("JOB-PREVIEW");
+    await page.locator("#inventoryPreviewButton").click();
+    await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
+
     // Persetujuan mengunci sumber yang sama persis dengan hasil pratinjau.
     await page.locator("#inventoryConfirmButton").click();
     await page.locator('#inventoryActivePlans [data-plan-id]').waitFor();

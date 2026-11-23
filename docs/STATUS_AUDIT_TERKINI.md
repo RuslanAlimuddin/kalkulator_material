@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `fa2254a9aac32dd69cfb5bfe262ddb40ec32b568` (`test: guard single inventory transaction identifiers`). Perbaikan memvalidasi ID dan referensi pada jalur transaksi tunggal; empat CI pada commit ini sudah diverifikasi `completed/success`.
+- HEAD kode terbaru yang sudah diverifikasi: `4747f76dbcc9267da0822e35fa6210ea0d2c7165` (`test: reject unsafe inventory versions during import`). Validasi versi record inventaris diperketat; seluruh empat CI pada HEAD ini sudah diverifikasi `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -240,9 +240,9 @@ Kesimpulan:
 - `tests/browser/inventory-preview.test.js`
 
 ## Pekerjaan berikutnya — urutan wajib
-1. Audit validasi CRUD katalog material dan record pekerjaan sudah diperbaiki serta lulus seluruh CI. Lanjutkan audit batas API lain yang belum diperiksa, terutama field/record transaksi dan nilai ekstrem, tanpa mengulang CRUD material/pekerjaan.
-2. Lanjutkan audit validasi batas API untuk record transaksi, terutama `planId`, konsistensi snapshot, dan field referensi pada operasi pelepasan. Validasi ID transaksi tunggal dan massal yang sudah diuji tidak perlu diulang. Kemudian kembali ke keputusan makna estimasi biaya.
-3. Kembali ke keputusan makna estimasi biaya: pisahkan konsep nilai kebutuhan vs biaya pembelian baru setelah inventaris. Jangan meminta keputusan pengguna sebelum menyajikan ringkasan opsi yang konkret dan konsekuensinya.
+1. Audit nilai ekstrem pada field transaksi telah menemukan dan memperbaiki validasi `version` yang sebelumnya menerima bilangan bulat tidak aman atau tidak lagi dapat dinaikkan. Tes validator dan tes integrasi impor memastikan nilai tersebut ditolak sebelum data lokal berubah.
+2. Pemeriksaan angka dimensi, luas turunan, timestamp, `schemaVersion`, `geometryVersion`, serta validasi ID transaksi tidak menemukan cacat tambahan yang cukup terbukti untuk mengubah kode. Perhitungan luas yang dapat overflow sudah ditangani dengan pemeriksaan `Number.isFinite` pada jalur transaksi; validasi snapshot geometri memeriksa angka finite dan batas lembar.
+3. Fokus berikutnya adalah menuntaskan definisi bisnis estimasi biaya vs penggunaan inventaris. Telusuri ulang aliran data UI dan mesin harga hanya untuk memastikan opsi implementasi, lalu sajikan perbandingan konkret: (a) nilai total kebutuhan material, dan (b) estimasi pembelian baru setelah stok inventaris dipakai. Jangan mengubah formula atau tampilan sebelum makna bisnis diputuskan.
 4. Jika ditemukan cacat nyata, tambahkan tes regresi dan perbaiki hanya di branch kerja.
 5. Setelah tahap audit/perubahan, perbarui dokumen ini dan verifikasi CI pada HEAD terbaru.
 6. Setelah audit teknis selesai, baru berikan daftar uji manual yang benar-benar perlu dilakukan pengguna.
@@ -283,3 +283,36 @@ Kesimpulan:
 - Validasi ID pada jalur pelepasan tunggal kini konsisten dengan jalur transaksi tunggal lainnya.
 - Tidak ada perubahan pada perilaku bisnis untuk input yang valid.
 - Belum ditemukan alasan untuk mengubah algoritma pelepasan atau snapshot; audit berikutnya beralih ke validasi nilai ekstrem/field transaksi tersisa, lalu keputusan makna estimasi biaya.
+
+
+### 4F. Batas versi numerik inventaris — cacat ditemukan, diperbaiki, dan CI lulus
+File:
+- `assets/js/inventory-validator.js`
+- `tests/inventory-validator.test.js`
+- `tests/inventory-storage.test.js`
+
+Temuan:
+- Validasi sebelumnya hanya mensyaratkan `version` sebagai bilangan bulat minimal 1.
+- Nilai `Number.MAX_SAFE_INTEGER` dan angka integer yang lebih besar tetap diterima, walaupun JavaScript tidak dapat menjamin kenaikan versi berikutnya tetap akurat.
+- Operasi reservasi, pelepasan, dan konsumsi menaikkan `version`; karena itu, menerima nilai yang tidak aman dapat merusak fungsi penghitung versi.
+
+Perbaikan:
+- Validator kini mensyaratkan `Number.isSafeInteger(version)`, minimal 1, dan lebih kecil dari `Number.MAX_SAFE_INTEGER` agar satu kenaikan berikutnya masih dapat dilakukan dengan aman.
+- Tes validator mencakup nol, negatif, pecahan, `Infinity`, `NaN`, batas maksimum aman, angka di atas batas, serta nilai aman tepat di bawah batas.
+- Tes storage memastikan impor dengan versi ekstrem ditolak sebelum data lokal diubah atau record dari paket invalid tersimpan.
+
+Commit:
+- Implementasi validator: `5c3ed5937770696be66ca42eebcf4dbe7423681f`.
+- Tes validator: `95583d1ed6a2f27808144b8190ec3777f07ad303`.
+- Tes integrasi impor dan HEAD kode tahap ini: `4747f76dbcc9267da0822e35fa6210ea0d2c7165`.
+
+Empat check-run pada HEAD `4747f76dbcc9267da0822e35fa6210ea0d2c7165` telah diverifikasi `completed/success`:
+- `test`
+- `inventory-and-regression`
+- `batch-reservation`
+- `browser-indexeddb`
+
+Kesimpulan:
+- Paket cadangan tidak lagi dapat memasukkan versi sisa yang tidak aman atau tidak dapat dinaikkan.
+- Penolakan impor terjadi sebelum transaksi mengganti data lokal.
+- Tidak ada perubahan pada rumus kalkulasi material atau estimasi harga pada tahap ini.

@@ -171,6 +171,9 @@
         error(path + ".sheets", "Daftar lembar geometri harus berupa array.");
         return;
       }
+      if (!Array.isArray(plan.usableRemainders)) {
+        error(path + ".usableRemainders", "Snapshot geometri wajib memiliki daftar sisa layak.");
+      }
       const sheetById = new Map();
       const epsilon = 0.000001;
       const overlaps = (a, b) =>

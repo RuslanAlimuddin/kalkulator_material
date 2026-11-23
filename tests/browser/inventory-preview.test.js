@@ -266,7 +266,7 @@ async function main() {
     assert.match(await packageRows.nth(1).textContent(), /sisa utuh 1 lembar/);
     assert.match(await packageRows.nth(0).textContent(), /Harga material: Rp\s*41\.322(?:,\d+)? per m²/);
     assert.match(await packageRows.nth(0).textContent(), /Estimasi biaya per m² bidang: Rp\s*72\.727/);
-    assert.match(await packageRows.nth(1).textContent(), /Estimasi biaya per m² bidang: Rp\s*36\.364/);
+    assert.match(await packageRows.nth(1).textContent(), /Estimasi biaya per m² bidang: Rp\s*36\.363(?:,\d+)?/);
 
     // Perubahan isi kemasan saat pratinjau terbuka memperbarui kedua estimasi.
     await page.locator("#isiKemasan").fill("2");

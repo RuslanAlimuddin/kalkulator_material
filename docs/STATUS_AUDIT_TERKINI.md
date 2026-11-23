@@ -652,7 +652,7 @@ Pekerjaan berikutnya:
 2. Periksa skenario backup/restore `replace` di halaman inventaris secara manual pada database uji kosong; pastikan konfirmasi dan pesan hasil mudah dipahami.
 3. Setelah audit UI selesai, lakukan uji manual pada salinan data menggunakan `docs/CHECKLIST_UJI_MANUAL_INVENTARIS_DAN_HARGA.md`.
 
-### 4T. Audit akhir hitungan laporan dan konfirmasi penggantian data — perbaikan dibuat, CI sedang diverifikasi
+### 4T. Audit akhir hitungan laporan dan konfirmasi penggantian data — selesai, seluruh CI lulus
 
 File:
 - `assets/js/inventory-preview-ui.js`
@@ -674,7 +674,7 @@ Perbaikan:
 Tes regresi:
 - Tes browser pratinjau menambahkan rencana dengan pekerjaan yang hilang dan memastikan masalah itu dihitung satu kali.
 - Tes browser halaman inventaris memeriksa bahwa dialog konfirmasi `replace` menyebut seluruh kelompok data dan pengingat cadangan.
-- Workflow `batch-reservation`, `inventory-and-regression`, dan `test` pada HEAD kode terbaru telah menyelesaikan langkah pengujian dengan sukses. Workflow `browser-indexeddb` masih menjalankan pemasangan Chromium saat catatan ini ditulis; hasil akhir wajib diperiksa sebelum menyatakan seluruh CI lulus.
+- Seluruh empat CI pada HEAD dokumentasi `448513763d61948edfc76d2a16ebf187f73bb71d` telah diverifikasi `completed/success`: `batch-reservation`, `inventory-and-regression`, `test`, dan `browser-indexeddb`. Job browser selesai sukses, termasuk pemasangan Chromium dan seluruh tes browser IndexedDB, pemulihan rencana, UI inventaris, serta pratinjau kalkulator.
 
 Commit:
 - `5526f502a098d2547d1e173a5b6f37f966469054` — tes hitungan laporan audit.
@@ -683,6 +683,6 @@ Commit:
 - `90474607e9f93fa48c83e49c4d72b4b3f82eee42` — perincian konfirmasi replace.
 
 Pekerjaan berikutnya:
-1. Pastikan empat CI pada HEAD kode terbaru `90474607e9f93fa48c83e49c4d72b4b3f82eee42` berstatus `completed/success`, khususnya `browser-indexeddb` yang menjalankan tes browser baru.
-2. Setelah CI hijau, minta pengguna menjalankan `docs/CHECKLIST_UJI_MANUAL_INVENTARIS_DAN_HARGA.md` pada salinan data, bukan database inventaris utama.
+1. Tahap audit kode dan CI otomatis untuk konsistensi laporan pemulihan serta konfirmasi `replace` sudah selesai.
+2. Minta pengguna menjalankan `docs/CHECKLIST_UJI_MANUAL_INVENTARIS_DAN_HARGA.md` pada salinan data, bukan database inventaris utama.
 3. Catat hasil manual yang benar-benar dilaporkan pengguna; jangan mengklaim uji manual sudah dilakukan sebelum ada hasilnya.

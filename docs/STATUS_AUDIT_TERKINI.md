@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `d4caf68c053369afd1c46b8584a25b188a5188fa` (`fix: separate job status and record validation`). Ini mencakup validasi lengkap record pekerjaan pada jalur CRUD umum. Empat CI pada SHA ini sudah diverifikasi `completed/success`.
+- HEAD kode terbaru yang sudah diverifikasi: `9c8fdd9cd44e4c53fabe494aa9d08f0b95c027ca` (`test: cover recovered plan completion after browser restart`). Perubahan ini memperluas tes browser pemulihan rencana setelah restart, mencakup pembatalan dan penyelesaian. Empat CI pada SHA ini sudah diverifikasi `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -109,6 +109,31 @@ CI pada commit `d4caf68c053369afd1c46b8584a25b188a5188fa`:
 ### 4. Transaksi inventaris — pemeriksaan statis sebelumnya
 Pemeriksaan statis sebelumnya pada `inventory-storage.js`, `inventory-engine.js`, `inventory-workflow.js` dan tes terkait menunjukkan reservasi/konsumsi multi-sumber memakai transaksi IndexedDB `readwrite`; ada tes rollback, konflik penggunaan sumber, dan kegagalan konsumsi agar data tidak berubah sebagian. Ini adalah temuan statis dan cakupan tes; jangan menyebutnya sebagai eksekusi ulang tes kecuali CI terbaru memang diperiksa.
 
+### 4A. Pemulihan rencana setelah browser ditutup — cakupan diperluas, seluruh CI lulus
+File:
+- `tests/browser/inventory-plan-recovery.test.js`
+- Jalur implementasi yang diverifikasi: `assets/js/inventory-engine.js`, `assets/js/inventory-storage.js`
+
+Temuan audit:
+- Tes browser sebelumnya membuat reservasi, menutup seluruh persistent Chromium context, membuka ulang profil browser yang sama, memulihkan snapshot, lalu membatalkan rencana.
+- Tes unit konsumsi rencana sudah menguji konsumsi dan rollback, tetapi belum membuktikan jalur konsumsi melalui snapshot yang dipulihkan setelah browser benar-benar ditutup.
+- Ini merupakan kekurangan cakupan pengujian, bukan bukti cacat implementasi.
+
+Perluasan:
+- Satu skenario browser kini menyiapkan dua rencana tersimpan sebelum browser ditutup.
+- Setelah browser dibuka kembali menggunakan profil persisten yang sama, rencana pertama dipulihkan dan dibatalkan; status rencana menjadi `cancelled`, stok sumber kembali `available`.
+- Rencana kedua dipulihkan dan diselesaikan; status rencana menjadi `completed`, stok sumber menjadi `consumed`.
+- Log CI mengonfirmasi pesan lulus tes pemulihan, pembatalan, dan penyelesaian setelah restart.
+
+Commit tes: `9c8fdd9cd44e4c53fabe494aa9d08f0b95c027ca`.
+Empat check-run pada commit tersebut semuanya `completed/success`:
+- `browser-indexeddb`
+- `batch-reservation`
+- `inventory-and-regression`
+- `test`
+
+Batas kesimpulan: pengujian ini membuktikan persistensi dan pemulihan setelah browser ditutup secara normal, bukan simulasi pemadaman listrik atau penghentian proses paksa di setiap instruksi transaksi. Atomicity transaksi IndexedDB tetap ditopang oleh tes rollback yang sudah ada.
+
 ### 5. Perbaikan validasi adapter — selesai dan CI lulus
 - Commit: `f3dfe56c3e13ee8794d5ac57cfa64b4db66c9816`.
 - File kode: `assets/js/cutting-adapter.js`.
@@ -137,7 +162,7 @@ Pemeriksaan statis sebelumnya pada `inventory-storage.js`, `inventory-engine.js`
 
 ## Pekerjaan berikutnya — urutan wajib
 1. Audit validasi CRUD katalog material dan record pekerjaan sudah diperbaiki serta lulus seluruh CI. Lanjutkan audit batas API lain yang belum diperiksa, terutama field/record transaksi dan nilai ekstrem, tanpa mengulang CRUD material/pekerjaan.
-2. Telusuri jalur penyimpanan, transaksi, pemulihan, dan kegagalan di titik yang belum ter-cover; audit transaksi dasar yang sudah diperiksa tidak perlu diulang.
+2. Lanjutkan audit kegagalan dan pemulihan yang belum tercakup, khususnya pemulihan ketika snapshot/relasi data tidak konsisten dan hasil pembatalan/penyelesaian gagal. Pemulihan normal setelah restart kini sudah diuji untuk cancel dan complete.
 3. Kembali ke keputusan makna estimasi biaya: pisahkan konsep nilai kebutuhan vs biaya pembelian baru setelah inventaris. Jangan meminta keputusan pengguna sebelum menyajikan ringkasan opsi yang konkret dan konsekuensinya.
 4. Jika ditemukan cacat nyata, tambahkan tes regresi dan perbaiki hanya di branch kerja.
 5. Setelah tahap audit/perubahan, perbarui dokumen ini dan verifikasi CI pada HEAD terbaru.

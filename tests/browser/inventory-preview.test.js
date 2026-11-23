@@ -109,6 +109,8 @@ async function main() {
     assert.match(await page.locator("#hargaTotalDetail").textContent(), /Sisa lembar utuh: 2 lembar/);
 
     // Pratinjau menggabungkan sisa inventaris dan lembar baru tanpa mutasi stok.
+    await page.locator("#hargaPer").selectOption("satuan");
+    await page.locator("#harga").fill("100000");
     await page.locator("#inventoryPreviewButton").click();
     await page.locator("#inventoryPreviewResult:not([hidden])").waitFor();
     const summary = await page.locator("#inventoryPreviewSummary").textContent();
@@ -116,6 +118,11 @@ async function main() {
     assert.match(summary, /Lembar baru: 1/);
     await page.locator("#inventoryPreviewSources").getByText(/REM-PREVIEW/).waitFor();
     await page.locator("#inventoryPreviewSources").getByText(/Lembar baru/).waitFor();
+    const previewPricing = await page.locator("#inventoryPreviewPricing").textContent();
+    assert.match(previewPricing, /Nilai kebutuhan material \(tanpa inventaris\)/);
+    assert.match(previewPricing, /Rp\s*200\.000/);
+    assert.match(previewPricing, /Estimasi pembelian baru \(setelah inventaris\)/);
+    assert.match(previewPricing, /Rp\s*100\.000/);
     assert.equal(await readStatus(), "available", "Pratinjau tidak boleh mengubah status stok.");
 
     // Perubahan pola, posisi pemasangan, mode, atau ukuran membatalkan pratinjau lama.

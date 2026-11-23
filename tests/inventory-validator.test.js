@@ -76,6 +76,7 @@ test("paket inventaris valid diterima", () => {
 test("snapshot rencana dengan geometri bidang yang terpisah diterima", () => {
   const data = validPlanBundle();
   data.plans.plans[0].plan = {
+    geometryVersion: 1,
     inventoryUsage: [{ remainderId: "REM-001" }],
     sheets: [{
       id: "INVENTORY-0-REM-001", source: "inventory",
@@ -95,6 +96,7 @@ test("snapshot rencana dengan geometri bidang yang terpisah diterima", () => {
 test("snapshot rencana menolak dua sisa yang saling bertumpuk", () => {
   const data = validPlanBundle();
   data.plans.plans[0].plan = {
+    geometryVersion: 1,
     inventoryUsage: [{ remainderId: "REM-001" }],
     sheets: [{
       id: "INVENTORY-0-REM-001", width: 42.5, height: 31,
@@ -113,6 +115,7 @@ test("snapshot rencana menolak dua sisa yang saling bertumpuk", () => {
 test("snapshot rencana menolak sisa yang menimpa potongan dan bidang di luar lembar", () => {
   const data = validPlanBundle();
   data.plans.plans[0].plan = {
+    geometryVersion: 1,
     inventoryUsage: [{ remainderId: "REM-001" }],
     sheets: [{
       id: "INVENTORY-0-REM-001", width: 42.5, height: 31,
@@ -134,6 +137,7 @@ test("snapshot rencana menolak sisa yang menimpa potongan dan bidang di luar lem
 test("geometri sisa layak harus cocok dengan bidang leftovers pada lembar asal", () => {
   const data = validPlanBundle();
   data.plans.plans[0].plan = {
+    geometryVersion: 1,
     inventoryUsage: [{ remainderId: "REM-001" }],
     sheets: [{
       id: "INVENTORY-0-REM-001", width: 42.5, height: 31,

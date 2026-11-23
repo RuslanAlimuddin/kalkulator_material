@@ -123,6 +123,11 @@ async function main() {
     assert.match(previewPricing, /Rp\s*200\.000/);
     assert.match(previewPricing, /Estimasi pembelian baru \(setelah inventaris\)/);
     assert.match(previewPricing, /Rp\s*100\.000/);
+    await page.locator("#harga").fill("200000");
+    const updatedPricing = await page.locator("#inventoryPreviewPricing").textContent();
+    assert.match(updatedPricing, /Rp\s*400\.000/);
+    assert.match(updatedPricing, /Rp\s*200\.000/);
+    await page.locator("#harga").fill("100000");
     assert.equal(await readStatus(), "available", "Pratinjau tidak boleh mengubah status stok.");
 
     // Perubahan pola, posisi pemasangan, mode, atau ukuran membatalkan pratinjau lama.

@@ -177,8 +177,20 @@
     title.textContent = "Estimasi biaya material";
     root.appendChild(title);
 
-    if (!Number.isFinite(price) || price <= 0) {
+    if (priceRaw === "") {
       appendText(root, "p", "Masukkan harga material di bagian Harga Material untuk melihat kedua estimasi.", "inventory-preview-muted");
+      return;
+    }
+    if (!Number.isFinite(price)) {
+      appendText(root, "p", "Harga harus berupa angka yang valid.", "inventory-preview-warning");
+      return;
+    }
+    if (price < 0) {
+      appendText(root, "p", "Harga tidak boleh negatif.", "inventory-preview-warning");
+      return;
+    }
+    if (price === 0) {
+      appendText(root, "p", "Masukkan harga lebih dari nol untuk melihat kedua estimasi.", "inventory-preview-muted");
       return;
     }
 

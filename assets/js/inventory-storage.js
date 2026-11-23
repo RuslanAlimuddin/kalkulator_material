@@ -627,8 +627,10 @@
     }
 
     async function reserveRemainder(input) {
-      if (!input || !input.remainderId || !input.jobId) {
-        throw new Error("remainderId dan jobId wajib diisi untuk reservasi.");
+      if (!input || typeof input.remainderId !== "string" || !input.remainderId.trim() ||
+          typeof input.jobId !== "string" || !input.jobId.trim() ||
+          (input.id != null && (typeof input.id !== "string" || !input.id.trim()))) {
+        throw new Error("remainderId, jobId, dan ID reservasi jika diberikan harus berupa teks yang tidak kosong.");
       }
       const database = await db();
       const timestamp = resolveTimestamp(input.timestamp);
@@ -999,8 +1001,11 @@
     }
 
     async function consumeReservation(input) {
-      if (!input || !input.reservationId || !Array.isArray(input.remainders)) {
-        throw new Error("reservationId dan daftar sisa turunan wajib diisi.");
+      if (!input || typeof input.reservationId !== "string" || !input.reservationId.trim() ||
+          !Array.isArray(input.remainders) ||
+          (input.sourceSheetId != null &&
+           (typeof input.sourceSheetId !== "string" || !input.sourceSheetId.trim()))) {
+        throw new Error("reservationId, daftar sisa turunan, dan sourceSheetId jika diberikan harus valid.");
       }
       const database = await db();
       const timestamp = resolveTimestamp(input.timestamp);
@@ -1008,6 +1013,9 @@
         if (!item || !Number.isFinite(item.widthCm) || item.widthCm <= 0 ||
             !Number.isFinite(item.heightCm) || item.heightCm <= 0) {
           throw new Error("Ukuran setiap sisa turunan harus lebih dari 0 cm.");
+        }
+        if (item.id != null && (typeof item.id !== "string" || !item.id.trim())) {
+          throw new Error("ID sisa turunan harus berupa teks yang tidak kosong.");
         }
         return { id: item.id || makeId("REM"), widthCm: item.widthCm, heightCm: item.heightCm };
       });
@@ -1374,6 +1382,9 @@
         );
       }
       const timestamp = resolveTimestamp(record.createdAt);
+      if (record.id != null && (typeof record.id !== "string" || !record.id.trim())) {
+        throw new Error("ID sisa material jika diberikan harus berupa teks yang tidak kosong.");
+      }
       const remainder = {
         ...record,
         id: record.id || makeId("REM"),
@@ -1451,6 +1462,10 @@
         allowed.status = "discarded";
       }
       if (!Object.keys(allowed).length) throw new Error("Tidak ada perubahan status/kondisi.");
+      if (input.referenceId != null &&
+          (typeof input.referenceId !== "string" || !input.referenceId.trim())) {
+        throw new Error("referenceId jika diisi harus berupa teks yang tidak kosong.");
+      }
       const requestedJobId = input.jobId == null ? null : input.jobId;
       if (requestedJobId !== null &&
           (typeof requestedJobId !== "string" || !requestedJobId.trim())) {

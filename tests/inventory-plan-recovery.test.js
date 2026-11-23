@@ -23,6 +23,17 @@ function deleteDatabase() {
     request.onblocked = () => reject(new Error("Database masih digunakan."));
   });
 }
+async function rawPut(storage, storeName, record) {
+  const db = await storage.open();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction([storeName], "readwrite");
+    tx.objectStore(storeName).put(record);
+    tx.oncomplete = resolve;
+    tx.onabort = () => reject(tx.error || new Error("Transaksi uji mentah dibatalkan."));
+    tx.onerror = () => reject(tx.error || new Error("Transaksi uji mentah gagal."));
+  });
+}
+
 function createVersionOneDatabase() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(Storage.DB_NAME, 1);
@@ -172,6 +183,24 @@ async function main() {
   assert.equal(recovered.planId, reserved.planId);
   assert.equal(recovered.reservations.length, 2);
   assert.equal(recovered.inventoryUsage[0].reservationId, reserved.reservations[0].id);
+
+  // Pemulihan juga harus memeriksa katalog saat ini, bukan hanya ID sumber.
+  const originalMaterial = await storage.get("materials", "MAT-RECOVERY");
+  await rawPut(storage, "materials", { ...originalMaterial, active: false });
+  await assert.rejects(
+    recoveredEngine.restorePlan(reserved.planId),
+    /Spesifikasi material snapshot/
+  );
+  await rawPut(storage, "materials", originalMaterial);
+  const originalJobForRecovery = await storage.get("jobs", "JOB-RECOVERY");
+  await rawPut(storage, "jobs", {
+    ...originalJobForRecovery, status: "completed", closedAt: now
+  });
+  await assert.rejects(
+    recoveredEngine.restorePlan(reserved.planId),
+    /Pekerjaan pada snapshot/
+  );
+  await rawPut(storage, "jobs", originalJobForRecovery);
 
   // Laporan harus mendeteksi reservasi aktif yang tertinggal pada rencana batal.
   const originalPlan = await storage.get("plans", reserved.planId);

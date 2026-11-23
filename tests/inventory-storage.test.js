@@ -510,6 +510,39 @@ async function main() {
     assert.equal((await storage.getAll("remainders")).some(item => item.id === 123), false);
   });
 
+  await test("batas API transaksi menolak planId dan jobId massal yang tidak valid", async () => {
+    await storage.importJSON(bundle("PLAN-ID-GUARD"), "merge");
+    for (const planId of [123, "", "   "]) {
+      await assert.rejects(storage.reserveRemainders({
+        remainderIds: ["REM-PLAN-ID-GUARD"],
+        jobId: "JOB-PLAN-ID-GUARD",
+        planId,
+        planSnapshot: {
+          plan: { inventoryUsage: [{ remainderId: "REM-PLAN-ID-GUARD" }] }
+        },
+        timestamp: now
+      }), /planId/);
+    }
+    await assert.rejects(storage.reserveRemainders({
+      remainderIds: ["REM-PLAN-ID-GUARD"],
+      jobId: 123,
+      timestamp: now
+    }), /jobId/);
+    await assert.rejects(storage.releaseReservations({
+      reservationIds: ["RSV-NOT-WRITTEN"], planId: 123, timestamp: now
+    }), /planId/);
+    await assert.rejects(storage.consumeReservations({
+      reservations: [], newSheetRemainders: [], planId: "   ", timestamp: now
+    }), /planId/);
+    assert.equal((await storage.get("remainders", "REM-PLAN-ID-GUARD")).status, "available");
+    assert.deepEqual(
+      await storage.getByIndex("reservations", "remainderId", "REM-PLAN-ID-GUARD"),
+      []
+    );
+    assert.equal(await storage.get("plans", 123), null);
+    assert.equal(await storage.get("plans", " "), null);
+  });
+
   await test("reservasi massal mengunci semua unit dalam satu transaksi", async () => {
     await storage.importJSON(bundle("BATCH-1"), "merge");
     await storage.importJSON(bundle("BATCH-2"), "merge");

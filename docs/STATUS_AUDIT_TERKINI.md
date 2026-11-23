@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD kode terbaru yang sudah diverifikasi: `3a141a6e66091e1a353e1bc8265aac039ddd5b45` (`test: block recovery when material or job catalog is stale`). CRUD, validasi impor, dan pemulihan rencana kini memeriksa konsistensi snapshot material/pekerjaan; seluruh empat CI pada HEAD kode ini `completed/success`.
+- HEAD kode terbaru yang sudah diverifikasi: `53436559f1ea360aed001861b8e0c26ca30994dd` (`test: reject stale replacement imports without altering local data`). CRUD, validasi impor, pemulihan rencana, dan laporan audit UI kini memeriksa konsistensi snapshot material/pekerjaan; seluruh empat CI pada HEAD kode ini `completed/success`.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -609,3 +609,45 @@ Pekerjaan berikutnya:
 1. Audit apakah laporan pemulihan (`getRecoveryReport`) perlu melaporkan snapshot material aktif yang tidak cocok secara eksplisit, bukan hanya menampilkan alasan pada kartu rencana ketika restore gagal.
 2. Periksa skenario impor `replace` terhadap database lokal yang masih memiliki rencana aktif. Pastikan perilaku penggantian seluruh database jelas dan tidak ada penggabungan parsial yang menimbulkan data yatim.
 3. Setelah audit impor/pemulihan selesai, selesaikan checklist uji manual dan siapkan uji pada salinan data.
+### 4R. Laporan audit menandai snapshot aktif yang tidak cocok dengan katalog — selesai, seluruh CI lulus
+File:
+- `assets/js/inventory-storage.js`
+- `assets/js/inventory-preview-ui.js`
+- `tests/inventory-plan-recovery.test.js`
+- `tests/browser/inventory-preview.test.js`
+
+Perbaikan:
+- `getRecoveryReport()` kini menghasilkan `planCatalogIssues` untuk rencana `reserved` yang pekerjaannya tidak lagi terbuka atau spesifikasi material snapshotnya hilang, nonaktif, atau tidak cocok.
+- UI pratinjau inventaris memasukkan masalah tersebut ke pemberitahuan audit umum dan menyebutkan bahwa snapshot rencana tidak cocok dengan katalog material/pekerjaan.
+- Kartu rencana tetap menampilkan alasan spesifik `Pemulihan diblokir` dari `restorePlan()`; tidak ada tindakan stok otomatis.
+- Penghitungan pemberitahuan menghindari penghitungan ganda antara masalah katalog dan jumlah ketidaksesuaian umum.
+
+Tes:
+- Tes pemulihan memverifikasi `planCatalogIssues` untuk material nonaktif dan pekerjaan tertutup.
+- Tes browser membuat snapshot aktif dengan spesifikasi material usang, lalu memastikan pemberitahuan audit dan kartu rencana menampilkan pemblokiran yang benar.
+
+Commit: `1549b689258b125849dbde399b71ff92f223e36e`, `948cb8ac5b9e91dc232b99b53966df28a162f5d1`, `01b08daf4037c119c269bc270d35dc1e9dd13961`, `ddffb400630d463bea162e0fa8ab9c7a8da2e4c1`, `9227f7823caa5c0039a3f2dae3a2bba81fa8a3bb`, dan `22f710f6d3a3d19d19935d728bce34559f27343f`.
+
+### 4S. Impor replace yang tidak cocok ditolak tanpa mengubah database lokal — selesai, seluruh CI lulus
+File: `tests/inventory-plan-recovery.test.js`.
+
+Tes regresi kini:
+- Mengekspor database yang memiliki rencana aktif dan snapshot material valid.
+- Mengubah ketebalan material pada salinan paket ekspor sehingga tidak cocok dengan katalog.
+- Menjalankan impor mode `replace` dan memastikan validasi menolak paket sebelum transaksi penggantian dimulai.
+- Memastikan snapshot lokal tetap `reserved`, material lokal tetap pada ketebalan semula, dan sumber inventaris lokal tetap `reserved`.
+- Setelah itu, pengujian pemulihan normal tetap mengimpor paket valid ke database kosong dan memulihkan rencana.
+
+Commit tes: `53436559f1ea360aed001861b8e0c26ca30994dd`.
+Seluruh empat CI pada HEAD `53436559f1ea360aed001861b8e0c26ca30994dd` telah diverifikasi `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`.
+
+Kesimpulan audit impor/pemulihan tahap ini:
+- Mode `replace` memang mengganti seluruh isi database lokal, tetapi pengguna mendapat konfirmasi eksplisit di UI dan penulisan dilakukan dalam satu transaksi. Paket invalid ditolak sebelum penghapusan dimulai.
+- Mode `merge` memvalidasi paket sebelum transaksi dan penambahan record memakai primary key; konflik membatalkan transaksi, bukan menghasilkan impor setengah jadi.
+- Snapshot modern yang memiliki material kini diperiksa terhadap katalog saat impor dan pemulihan. Snapshot lama tanpa objek material tetap memiliki jalur kompatibilitas.
+- Jika snapshot rusak/tidak cocok karena perubahan di luar jalur normal, kartu rencana menjelaskan pemulihan diblokir dan laporan audit ikut menandainya. Stok tidak diubah.
+
+Pekerjaan berikutnya:
+1. Audit akhir konsistensi laporan audit terhadap semua kategori masalah snapshot aktif dan pastikan tidak ada penghitungan ganda pada UI.
+2. Periksa skenario backup/restore `replace` di halaman inventaris secara manual pada database uji kosong; pastikan konfirmasi dan pesan hasil mudah dipahami.
+3. Setelah audit UI selesai, lakukan uji manual pada salinan data menggunakan `docs/CHECKLIST_UJI_MANUAL_INVENTARIS_DAN_HARGA.md`.

@@ -148,6 +148,40 @@ async function main() {
     await guarded.close();
   });
 
+  await test("CRUD katalog material menolak record tidak valid pada add, put, dan update", async () => {
+    const invalidRecords = [
+      { thicknessMm: 0 },
+      { thicknessMm: -1 },
+      { thicknessMm: Infinity },
+      { grainRequired: "false" },
+      { rotationPolicy: "diagonal" },
+      { active: "true" },
+      { motif: "   " },
+      { category: "" },
+      { name: "   " },
+      { surface: "" }
+    ];
+    const valid = {
+      id: "MAT-CRUD-VALIDATION", name: "Material valid", category: "uji",
+      thicknessMm: 8, surface: null, grainRequired: false, motif: "plain",
+      rotationPolicy: "free", active: true
+    };
+
+    for (let i = 0; i < invalidRecords.length; i++) {
+      const invalid = { ...valid, ...invalidRecords[i], id: "MAT-CRUD-INVALID-" + i };
+      await assert.rejects(storage.add("materials", invalid));
+      assert.equal(await storage.get("materials", invalid.id), null);
+      await assert.rejects(storage.put("materials", invalid));
+      assert.equal(await storage.get("materials", invalid.id), null);
+    }
+
+    const original = await storage.get("materials", "MAT-A");
+    for (const changes of invalidRecords) {
+      await assert.rejects(storage.update("materials", "MAT-A", changes));
+      assert.deepEqual(await storage.get("materials", "MAT-A"), original);
+    }
+  });
+
   await test("CRUD mendukung meta dengan key sebagai primary key", async () => {
     await storage.put("meta", { key: "test-key", value: "aktif" });
     assert.deepEqual(await storage.get("meta", "test-key"), {

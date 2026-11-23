@@ -252,3 +252,34 @@ Jika percakapan terputus mendadak, cukup mulai percakapan baru dengan:
 > Lanjutkan proyek Kalkulator Material Bangunan. Baca `docs/PROMPT_LANJUTAN_PROYEK.md` dan `docs/STATUS_AUDIT_TERKINI.md`, verifikasi branch serta HEAD aktual di GitHub, lalu lanjutkan dari bagian “Pekerjaan berikutnya” tanpa mengulang audit yang sudah selesai.
 
 Jika dokumen ini belum sempat diperbarui, rekonstruksi posisi dari commit, file, hasil CI, dan catatan yang tersedia. Tandai ketidakpastian secara terbuka; jangan menebak.
+
+
+### 4E. Validasi planId dan ID pelepasan reservasi — diperbaiki, seluruh CI lulus
+File:
+- `assets/js/inventory-storage.js`
+- `tests/inventory-storage.test.js`
+
+Temuan dan perbaikan:
+- `reserveRemainders()` kini menolak `jobId` yang bukan teks tidak kosong dan `planId` opsional yang bukan teks tidak kosong.
+- `releaseReservations()` dan `consumeReservations()` kini memvalidasi `planId` opsional sebelum transaksi berjalan.
+- Tes regresi memastikan ID rencana invalid ditolak dan tidak membuat reservasi, perubahan stok, atau record rencana.
+- Audit jalur pelepasan tunggal menemukan `releaseReservation()` belum memvalidasi tipe/isi `reservationId`. Fungsi kini menolak angka, teks kosong/spasi, `null`, dan `undefined` sebelum membuka transaksi.
+- Tes regresi memastikan kegagalan validasi ID pelepasan tidak mengubah status reservasi/sumber maupun menambah movement.
+- Pemeriksaan statis tambahan pada `releaseReservations()` memastikan seluruh ID reservasi dalam satu rencana harus dilepas bersama, sumber tidak boleh memiliki reservasi aktif lain, daftar `reservationIds` harus cocok dengan snapshot, dan `inventoryUsage` rencana modern harus cocok dengan sumber yang dilepas. Pemeriksaan tersebut sudah ada dan tidak perlu diubah.
+
+Commit:
+- Validasi `planId` dan tes massal: `68ef724814b5eaddfa62d7ee585dfc11304587c6`.
+- Validasi ID pelepasan tunggal: `7277af7a64eb235a7eaeae4ba57a6f08d604ee2a`.
+- Tes regresi pelepasan tunggal dan HEAD akhir tahap: `de0e8c7769bea3a9cd76b9c4884502f0a5fdfc0f`.
+
+Empat check-run pada HEAD akhir `de0e8c7769bea3a9cd76b9c4884502f0a5fdfc0f` telah diverifikasi `completed/success`:
+- `inventory-and-regression`
+- `batch-reservation`
+- `test`
+- `browser-indexeddb`
+
+Kesimpulan:
+- Validasi batas `planId` pada reservasi massal, pelepasan massal, dan konsumsi massal telah diperkuat.
+- Validasi ID pada jalur pelepasan tunggal kini konsisten dengan jalur transaksi tunggal lainnya.
+- Tidak ada perubahan pada perilaku bisnis untuk input yang valid.
+- Belum ditemukan alasan untuk mengubah algoritma pelepasan atau snapshot; audit berikutnya beralih ke validasi nilai ekstrem/field transaksi tersisa, lalu keputusan makna estimasi biaya.

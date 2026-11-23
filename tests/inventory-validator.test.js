@@ -518,6 +518,29 @@ test("snapshot pemulihan tanpa pekerjaan induk ditolak", () => {
   ));
 });
 
+test("snapshot rencana aktif tanpa reservasi tetap memerlukan pekerjaan open", () => {
+  for (const status of ["reserved", "legacy_recovery"]) {
+    const data = validBundle();
+    data.jobs.jobs[0].status = "completed";
+    data.jobs.jobs[0].closedAt = now;
+    data.plans = {
+      schemaVersion: 1,
+      plans: [{
+        id: "PLAN-PENDING-" + status,
+        jobId: "JOB-A",
+        plan: status === "reserved" ? { inventoryUsage: [] } : null,
+        reservationIds: [],
+        status,
+        legacy: status === "legacy_recovery"
+      }]
+    };
+    const result = validate(data);
+    assert.ok(result.errors.some(e =>
+      e.path === "plans.plans[0].jobId" && /hanya boleh terhubung ke pekerjaan berstatus open/.test(e.message)
+    ), "Status " + status + " pada pekerjaan tertutup harus ditolak.");
+  }
+});
+
 test("reservasi dengan jobId berbeda dari snapshot rencana ditolak", () => {
   const data = validPlanBundle();
   data.reservations.reservations[0].jobId = "JOB-B";

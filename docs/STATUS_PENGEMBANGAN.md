@@ -1,5 +1,7 @@
 # Status Pengembangan — Mesin Geometri
 
+> **Catatan:** Dokumen ini adalah catatan tahap awal pembentukan mesin geometri, bukan status terkini seluruh proyek. Status terbaru mencakup mesin pemotongan dan integrasi inventaris yang dijelaskan pada dokumen desain serta panduan workflow.
+
 Cabang: `pengembangan-mesin-hitung`
 
 ## Yang sudah dikerjakan

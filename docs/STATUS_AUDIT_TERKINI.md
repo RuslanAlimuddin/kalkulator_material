@@ -6,7 +6,7 @@
 - Repository: https://github.com/RuslanAlimuddin/kalkulator_material
 - Branch wajib: `pengembangan-mesin-hitung`
 - Jangan mengubah `main`; jangan merge tanpa persetujuan eksplisit.
-- HEAD saat catatan ini disusun: `35f3d4dfbba54f936bcea0165ce30c2f91d7ec6a` (`docs: clarify handoff revision history`). Ini adalah HEAD yang berhasil dibaca langsung sebelum pembaruan dokumen ini; setelah commit catatan ini, HEAD akan berubah. Selalu baca pointer branch terbaru, jangan memakai SHA statis ini sebagai patokan selamanya.
+- HEAD kode terbaru yang sudah diverifikasi setelah perbaikan: `f3dfe56c3e13ee8794d5ac57cfa64b4db66c9816` (`fix: validate cutting adapter boundary inputs`). Pembaruan dokumen status/serah-terima setelahnya akan menghasilkan commit dokumentasi baru. Selalu baca pointer branch terbaru, jangan memakai SHA statis ini sebagai patokan selamanya.
 
 ## Aturan kerja
 - Jangan mengulang audit yang telah tuntas tanpa perubahan kode atau alasan teknis.
@@ -27,7 +27,7 @@ Direktori `.github/workflows` memiliki empat workflow:
 3. `.github/workflows/inventory-regression.yml` — menjalankan `npm run test:inventory` dan `npm run test:regression`.
 4. `.github/workflows/test.yml` — menjalankan rangkaian tes inventaris dan regresi yang sama.
 
-Pada HEAD tersebut, empat check-run GitHub semuanya berstatus `completed` dengan kesimpulan `success`:
+Pada HEAD dokumentasi sebelum perbaikan, empat check-run GitHub semuanya `completed/success`. Setelah perbaikan validasi adapter pada commit `f3dfe56c3e13ee8794d5ac57cfa64b4db66c9816`, keempat check-run kembali diverifikasi `completed/success`:
 - `browser-indexeddb`
 - `batch-reservation`
 - `inventory-and-regression`
@@ -57,7 +57,7 @@ Kesimpulan sementara:
 - Label UI saat ini adalah “Estimasi Total Biaya Material”, sedangkan detail menyebut kebutuhan lembar dari kalkulasi utama. Ada potensi ambiguitas bagi pengguna.
 - Jangan mengubah kode sebelum makna biaya disepakati. Rancangan yang layak dipertimbangkan adalah memisahkan “nilai kebutuhan material” dan “estimasi pembelian baru setelah inventaris”, bukan mencampur dua konsep tersebut.
 
-### 3. Validasi input antarmodul — pemeriksaan awal, belum selesai
+### 3. Validasi input antarmodul — sebagian diperbaiki, audit lanjutan tetap terbuka
 Pemeriksaan awal:
 - `pricing-engine.js` memvalidasi jumlah lembar bilangan bulat nonnegatif, luas material positif, luas bidang nonnegatif, harga nonnegatif, satuan harga yang dikenal, dan isi kemasan bilangan bulat minimal satu.
 - Input harga UI memakai `type="number"`, `min="0"`, dan `step="1000"`; isi kemasan memakai `type="number"`, `min="1"`, dan `step="1"`.
@@ -65,10 +65,19 @@ Pemeriksaan awal:
 - `engine.js` memvalidasi ukuran positif, gap nonnegatif, pola, arah, dan alignment.
 - `cutting-adapter.js` dan `cutting-engine.js` memvalidasi ukuran lembar/potongan positif, kerf dan ukuran minimum sisa nonnegatif, serta kuantitas potongan bulat positif.
 
-Belum ditemukan cacat yang cukup kuat untuk membenarkan perubahan kode pada pemeriksaan awal ini. Lanjutkan audit lintas batas untuk nilai kosong, string numerik, nilai ekstrem, ketidaksesuaian aturan UI dan mesin, serta validasi material/arah serat. Jangan menganggap pemeriksaan awal ini sebagai audit validasi final.
+Temuan konkret pada `cutting-adapter.js`: mode tidak dikenal diam-diam diperlakukan seperti mode Presisi, dan jalur geometri kosong mengembalikan hasil sebelum memvalidasi kerf serta batas minimum sisa. Keduanya diperbaiki pada commit `f3dfe56c3e13ee8794d5ac57cfa64b4db66c9816`; tes regresi ditambahkan pada `tests/cutting-adapter.test.js`. Empat CI pada commit perbaikan semuanya lulus, termasuk tes regresi dan browser. Audit lintas batas belum selesai: lanjutkan untuk nilai kosong, string numerik, nilai ekstrem, ketidaksesuaian aturan UI dan mesin, serta validasi material/arah serat.
 
 ### 4. Transaksi inventaris — pemeriksaan statis sebelumnya
 Pemeriksaan statis sebelumnya pada `inventory-storage.js`, `inventory-engine.js`, `inventory-workflow.js` dan tes terkait menunjukkan reservasi/konsumsi multi-sumber memakai transaksi IndexedDB `readwrite`; ada tes rollback, konflik penggunaan sumber, dan kegagalan konsumsi agar data tidak berubah sebagian. Ini adalah temuan statis dan cakupan tes; jangan menyebutnya sebagai eksekusi ulang tes kecuali CI terbaru memang diperiksa.
+
+### 5. Perbaikan validasi adapter — selesai dan CI lulus
+- Commit: `f3dfe56c3e13ee8794d5ac57cfa64b4db66c9816`.
+- File kode: `assets/js/cutting-adapter.js`.
+- File tes: `tests/cutting-adapter.test.js`.
+- Adapter kini menolak mode selain `presisi`/`ekonomis`.
+- Validasi kerf dan ukuran minimum sisa berjalan sebelum jalur cepat geometri kosong.
+- Keempat check-run pada SHA perbaikan: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test` — semuanya `completed/success`.
+- Perilaku hitung normal tidak diubah; `main` tidak disentuh.
 
 ## File yang diperiksa pada tahap terakhir
 - `.github/workflows/browser-indexeddb.yml`
@@ -88,7 +97,7 @@ Pemeriksaan statis sebelumnya pada `inventory-storage.js`, `inventory-engine.js`
 - `tests/browser/inventory-preview.test.js`
 
 ## Pekerjaan berikutnya — urutan wajib
-1. Lanjutkan audit validasi input lintas modul; fokus pada kasus batas dan ketidaksesuaian yang belum tercakup tes. Hindari tes duplikat yang sudah ada.
+1. Lanjutkan audit validasi input lintas modul pada jalur UI, katalog material, arah serat/motif, dan nilai ekstrem; perbaikan adapter di atas sudah selesai. Hindari tes duplikat yang sudah ada.
 2. Telusuri jalur penyimpanan, transaksi, pemulihan, dan kegagalan di titik yang belum ter-cover; audit transaksi dasar yang sudah diperiksa tidak perlu diulang.
 3. Kembali ke keputusan makna estimasi biaya: pisahkan konsep nilai kebutuhan vs biaya pembelian baru setelah inventaris. Jangan meminta keputusan pengguna sebelum menyajikan ringkasan opsi yang konkret dan konsekuensinya.
 4. Jika ditemukan cacat nyata, tambahkan tes regresi dan perbaiki hanya di branch kerja.

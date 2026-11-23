@@ -95,6 +95,12 @@
       return { valid: false, errors, warnings };
     }
 
+    // Versi utama opsional untuk kompatibilitas paket lama, tetapi jika
+    // dicantumkan harus termasuk versi yang benar-benar didukung.
+    if (bundle.schemaVersion != null && ![1, 2].includes(bundle.schemaVersion)) {
+      error("schemaVersion", "Versi skema paket yang didukung adalah 1 atau 2.");
+    }
+
     // Meta bersifat opsional agar cadangan versi lama tetap dapat diimpor.
     // Jika tersedia, setiap record harus memiliki key unik untuk object store.
     if (bundle.meta != null) {

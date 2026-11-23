@@ -640,14 +640,19 @@ function getInfoHarga(totalSheets,areaMaterialM2,areaBidangM2){
   const harga=parseFloat(document.getElementById('harga').value)||0;
   const per=document.getElementById('hargaPer').value;
   const isiRaw=document.getElementById('isiKemasan').value;
-  return MaterialPricingEngine.calculatePricing({
-    totalSheets,
-    areaMaterialM2,
-    areaSurfaceM2:areaBidangM2,
-    price:harga,
-    per:per==='kemasan'?'package':'sheet',
-    packageSize:isiRaw===''?NaN:Number(isiRaw)
-  });
+  try {
+    return MaterialPricingEngine.calculatePricing({
+      totalSheets,
+      areaMaterialM2,
+      areaSurfaceM2:areaBidangM2,
+      price:harga,
+      per:per==='kemasan'?'package':'sheet',
+      packageSize:isiRaw===''?NaN:Number(isiRaw)
+    });
+  } catch (error) {
+    alert(error.message);
+    return null;
+  }
 }
 
 // ============================================================

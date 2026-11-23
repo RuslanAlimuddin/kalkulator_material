@@ -39,6 +39,27 @@
     }
   }
 
+  function isValidMaterialRecord(record) {
+    return Boolean(record && typeof record === "object" && !Array.isArray(record) &&
+      typeof record.name === "string" && record.name.trim() &&
+      typeof record.category === "string" && record.category.trim() &&
+      typeof record.thicknessMm === "number" && Number.isFinite(record.thicknessMm) &&
+      record.thicknessMm > 0 &&
+      typeof record.grainRequired === "boolean" &&
+      typeof record.motif === "string" && record.motif.trim() &&
+      ["free", "quarter_turn", "fixed"].includes(record.rotationPolicy) &&
+      typeof record.active === "boolean" &&
+      (record.surface == null ||
+       (typeof record.surface === "string" && record.surface.trim()))
+    );
+  }
+
+  function ensureValidMaterialRecord(record) {
+    if (!isValidMaterialRecord(record)) {
+      throw new Error("Data material tidak lengkap atau tidak valid.");
+    }
+  }
+
   function requestResult(request) {
     return new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
@@ -344,6 +365,7 @@
       ensureStore(storeName);
       ensureGenericWriteAllowed(storeName, opts);
       if (storeName === "jobs") ensureValidJobRecord(record);
+      if (storeName === "materials") ensureValidMaterialRecord(record);
       const key = storeName === "meta" ? record && record.key : record && record.id;
       if (!record || typeof record !== "object" || key == null || key === "") {
         throw new Error("Record harus memiliki " + (storeName === "meta" ? "key." : "id."));
@@ -429,6 +451,10 @@
             return;
           }
           const updated = { ...request.result, ...changes, id };
+          if (storeName === "materials" && !isValidMaterialRecord(updated)) {
+            tx.abort();
+            return;
+          }
           if (storeName === "jobs") {
             const activeReservations = tx.objectStore("reservations").index("jobId").getAll(id);
             const activePlans = tx.objectStore("plans").index("jobId").getAll(id);

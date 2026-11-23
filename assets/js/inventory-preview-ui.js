@@ -312,12 +312,16 @@
     ).size;
     const movementErrors = report.movementHistoryIssues.filter(item => item.severity === "error").length;
     const movementWarnings = report.movementHistoryIssues.filter(item => item.severity === "warning").length;
-    const problems = report.orphanedReservations.length +
+    const referenceErrors = report.remainderReferenceIssues.filter(item => item.severity === "error").length +
+      report.reservationReferenceIssues.filter(item => item.severity === "error").length +
+      report.remainderLineageIssues.filter(item => item.severity === "error").length;
+    const problems = report.plansWithoutJob.length +
+      report.orphanedReservations.length +
       report.orphanedRemainders.length +
       report.multiplyReservedRemainders.length +
       report.reservationsWithoutSource.length +
       report.inconsistentPlans.length +
-      additionalReservationIssues + movementErrors;
+      additionalReservationIssues + referenceErrors + movementErrors;
     const notice = $("inventoryRecoveryNotice");
     if (problems || movementWarnings) {
       const parts = [];

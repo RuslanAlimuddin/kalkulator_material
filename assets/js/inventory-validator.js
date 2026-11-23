@@ -233,17 +233,26 @@
       });
 
       if (Array.isArray(plan.usableRemainders) && plan.sheets.length > 0) {
+        const claimedLeftovers = new Set();
         plan.usableRemainders.forEach((remainder, remainderIndex) => {
           const remainderPath = path + ".usableRemainders[" + remainderIndex + "]";
           if (!isObject(remainder)) {
             error(remainderPath, "Data sisa layak harus berupa objek.");
             return;
           }
-          const sheet = sheetById.get(String(remainder.sheetId));
+          const sheetKey = String(remainder.sheetId);
+          const sheet = sheetById.get(sheetKey);
           if (!sheet || !Array.isArray(sheet.leftovers)) {
             error(remainderPath + ".sheetId", "Sisa layak tidak merujuk lembar geometri yang tersedia.");
             return;
           }
+          const geometryKey = [sheetKey, remainder.x, remainder.y,
+            remainder.width, remainder.height].join("|");
+          if (claimedLeftovers.has(geometryKey)) {
+            error(remainderPath, "Satu bidang leftovers tidak boleh dicatat sebagai sisa layak lebih dari sekali.");
+            return;
+          }
+          claimedLeftovers.add(geometryKey);
           const matches = sheet.leftovers.filter(rect =>
             rect.x === remainder.x && rect.y === remainder.y &&
             rect.width === remainder.width && rect.height === remainder.height

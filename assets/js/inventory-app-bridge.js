@@ -99,7 +99,8 @@
       return workflow.preview({
         jobId: input.jobId,
         plannerInput,
-        timestamp: input.timestamp
+        timestamp: input.timestamp,
+        includeBaseline: input.includeBaseline === true
       });
     }
 

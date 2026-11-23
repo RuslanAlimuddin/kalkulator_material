@@ -73,6 +73,82 @@ test("paket inventaris valid diterima", () => {
   assert.deepEqual(result.errors, []);
 });
 
+test("snapshot rencana dengan geometri bidang yang terpisah diterima", () => {
+  const data = validPlanBundle();
+  data.plans.plans[0].plan = {
+    inventoryUsage: [{ remainderId: "REM-001" }],
+    sheets: [{
+      id: "INVENTORY-0-REM-001", source: "inventory",
+      remainderId: "REM-001", width: 42.5, height: 31,
+      placements: [{ x: 0, y: 0, width: 20, height: 20 }],
+      leftovers: [{ x: 20, y: 0, width: 22.5, height: 31 }]
+    }],
+    usableRemainders: [{
+      sheetId: "INVENTORY-0-REM-001", source: "inventory",
+      sourceRemainderId: "REM-001", x: 20, y: 0, width: 22.5, height: 31
+    }]
+  };
+  const result = validate(data);
+  assert.equal(result.valid, true, JSON.stringify(result.errors));
+});
+
+test("snapshot rencana menolak dua sisa yang saling bertumpuk", () => {
+  const data = validPlanBundle();
+  data.plans.plans[0].plan = {
+    inventoryUsage: [{ remainderId: "REM-001" }],
+    sheets: [{
+      id: "INVENTORY-0-REM-001", width: 42.5, height: 31,
+      placements: [],
+      leftovers: [
+        { x: 0, y: 0, width: 30, height: 20 },
+        { x: 20, y: 10, width: 20, height: 20 }
+      ]
+    }],
+    usableRemainders: []
+  };
+  const result = validate(data);
+  assert.ok(result.errors.some(item => /Bidang bertumpuk/.test(item.message)));
+});
+
+test("snapshot rencana menolak sisa yang menimpa potongan dan bidang di luar lembar", () => {
+  const data = validPlanBundle();
+  data.plans.plans[0].plan = {
+    inventoryUsage: [{ remainderId: "REM-001" }],
+    sheets: [{
+      id: "INVENTORY-0-REM-001", width: 42.5, height: 31,
+      placements: [{ x: 0, y: 0, width: 20, height: 20 }],
+      leftovers: [{ x: 10, y: 10, width: 20, height: 20 }]
+    }],
+    usableRemainders: []
+  };
+  let result = validate(data);
+  assert.ok(result.errors.some(item => /Bidang bertumpuk/.test(item.message)));
+
+  data.plans.plans[0].plan.sheets[0].leftovers = [
+    { x: 40, y: 0, width: 5, height: 20 }
+  ];
+  result = validate(data);
+  assert.ok(result.errors.some(item => /di luar batas lembar/.test(item.message)));
+});
+
+test("geometri sisa layak harus cocok dengan bidang leftovers pada lembar asal", () => {
+  const data = validPlanBundle();
+  data.plans.plans[0].plan = {
+    inventoryUsage: [{ remainderId: "REM-001" }],
+    sheets: [{
+      id: "INVENTORY-0-REM-001", width: 42.5, height: 31,
+      placements: [{ x: 0, y: 0, width: 20, height: 20 }],
+      leftovers: [{ x: 20, y: 0, width: 22.5, height: 31 }]
+    }],
+    usableRemainders: [{
+      sheetId: "INVENTORY-0-REM-001", source: "inventory",
+      sourceRemainderId: "REM-001", x: 0, y: 0, width: 22.5, height: 31
+    }]
+  };
+  const result = validate(data);
+  assert.ok(result.errors.some(item => /tidak cocok tepat/.test(item.message)));
+});
+
 test("rantai kondisi movement yang terputus ditolak", () => {
   const data = validBundle();
   const firstAt = "2026-11-18T04:01:00.000Z";

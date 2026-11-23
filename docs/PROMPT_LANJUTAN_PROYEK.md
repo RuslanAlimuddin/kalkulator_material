@@ -16,7 +16,7 @@ Mengembangkan Kalkulator Material Bangunan yang menghasilkan perhitungan kebutuh
 ## 3. Aturan pengerjaan
 
 1. Sebelum bekerja, periksa branch dan HEAD aktual repository.
-2. Gunakan dokumen ini sebagai konteks awal, tetapi utamakan kondisi kode terbaru di GitHub jika berbeda.
+2. Gunakan dokumen ini sebagai aturan dan riwayat induk. Untuk posisi kerja paling baru, baca juga `docs/STATUS_AUDIT_TERKINI.md`; utamakan kondisi repository terbaru jika berbeda.
 3. Jangan mengulang audit yang telah selesai tanpa alasan teknis.
 4. Prioritaskan konsistensi antar-modul, akurasi hitungan, dan keamanan data.
 5. Jangan mengubah kode hanya untuk menambah jumlah commit. Perubahan harus didukung temuan yang jelas.
@@ -58,7 +58,7 @@ Jangan mengubah perilaku harga sebelum makna bisnis ini ditetapkan. Audit beriku
 
 Pada pemeriksaan terakhir, commit `d70724cffba86dc755b838855d9d5c9add694a98` berhasil ditemukan dan dibaca. Branch `pengembangan-mesin-hitung` juga berhasil ditemukan, dan file-file pada branch tersebut dapat diambil.
 
-Pengguna sebelumnya melaporkan empat pemeriksaan CI lulus pada commit tersebut. Namun, pemeriksaan status GitHub yang tersedia pada sesi terakhir tidak menampilkan status individual (hasil kosong). Karena itu, jangan menyatakan empat CI telah diverifikasi ulang sampai hasil workflow/check yang sebenarnya dapat diperoleh.
+Pada HEAD `35f3d4dfbba54f936bcea0165ce30c2f91d7ec6a`, empat check-run GitHub berhasil diverifikasi langsung dan semuanya `completed/success`: `browser-indexeddb`, `batch-reservation`, `inventory-and-regression`, dan `test`. Status ini berlaku untuk SHA tersebut; periksa ulang setelah commit baru.
 
 ### D. Audit awal transaksi reservasi dan konsumsi
 
@@ -66,30 +66,19 @@ Pemeriksaan statis pada `inventory-storage.js`, `inventory-engine.js`, dan pengu
 
 Ini merupakan bukti cakupan desain dan pengujian yang baik, tetapi belum sama dengan verifikasi eksekusi CI terbaru. Audit berikutnya tetap perlu memeriksa jalur lain yang relevan dan status workflow aktual; jangan mengulang pengujian yang sudah tercakup tanpa alasan.
 
-### C. Pengujian browser belum tercantum dalam pipeline CI yang diperiksa
+### C. Status pengujian browser — sudah diverifikasi aktif di CI
 
-File `tests/browser/inventory-preview.test.js` berisi pengujian browser penting untuk integrasi harga dan alur inventaris. Namun, workflow `.github/workflows/test.yml` yang diperiksa hanya menjalankan `npm run test:inventory` dan `npm run test:regression`. Kedua skrip tersebut tidak menjalankan file pengujian browser itu. `package.json` juga belum mencantumkan Playwright sebagai dependensi pengujian.
-
-Artinya, keberadaan file uji browser belum membuktikan bahwa uji tersebut berjalan otomatis di CI. Periksa apakah ada workflow atau mekanisme CI lain yang memang menjalankannya. Jika tidak ada, rancang integrasi Playwright ke CI sebagai pekerjaan terpisah, dengan dependensi dan pemasangan browser yang jelas. Jangan menganggap pemeriksaan browser lulus hanya karena workflow unit/regresi lulus.
+Pemeriksaan seluruh direktori `.github/workflows` menemukan `.github/workflows/browser-indexeddb.yml`. Workflow ini memasang Playwright dan Chromium lalu menjalankan `tests/browser/indexeddb.test.js`, `tests/browser/inventory-plan-recovery.test.js`, `tests/browser/inventory-ui.test.js`, serta `tests/browser/inventory-preview.test.js`. Jadi pengujian browser sudah berjalan otomatis; tidak perlu membuat workflow Playwright baru hanya untuk menghubungkannya ke CI.
 
 ## 6. HEAD dan posisi repository
 
-- Commit kode terakhir yang menjadi acuan audit: `d70724cffba86dc755b838855d9d5c9add694a98` (`test: cover pricing engine and calculator UI integration`).
-- Riwayat commit dokumentasi yang diketahui dalam sesi audit ini: `6674a276ff5de045e0fc7d0082351f6bc4c6cadc`, `e219a6a39afde61f63d81a3afbe3146acb1ebd70`, dan `b5a57288f3b9c68c2884e4886eed325a335c2698` (prosedur penyelamatan konteks dan catatan audit), seluruhnya tanggal 2026-11-23.
-- Dokumen ini dapat diperbarui lagi setelah pencatatan di atas; karena itu, jangan menganggap daftar commit dokumentasi sebagai pointer HEAD terkini.
-- Catatan penting: commit dokumentasi terbaru adalah commit terakhir yang dibuat melalui sesi audit ini, tetapi pointer HEAD aktual branch belum dapat dibaca secara independen oleh alat yang tersedia. Setiap sesi baru wajib memeriksa HEAD aktual terlebih dahulu.
+- HEAD yang berhasil diverifikasi sebelum pembaruan dokumen posisi audit: `35f3d4dfbba54f936bcea0165ce30c2f91d7ec6a` (`docs: clarify handoff revision history`).
+- Pembaruan dokumen setelah itu akan menghasilkan commit baru; karena itu SHA tersebut bukan pointer permanen.
+- Sumber posisi kerja terkini adalah `docs/STATUS_AUDIT_TERKINI.md`. Setiap sesi baru wajib memeriksa pointer branch aktual dan status CI terbaru secara langsung.
 
 ## 7. Tahapan audit berikutnya
 
-1. Periksa HEAD aktual branch kerja dan pastikan tidak ada perubahan baru yang belum tercatat.
-2. Periksa workflow GitHub Actions/checks dan catat hasil empat CI secara eksplisit. Pastikan pengujian browser benar-benar dijalankan otomatis, bukan hanya tersimpan sebagai file.
-3. Telusuri alur perhitungan harga pada `index.html`, `pricing-engine.js`, dan `inventory-preview-ui.js`.
-4. Tetapkan perbedaan antara biaya pembelian baru dan nilai total kebutuhan material; jangan mengasumsikan keduanya sama.
-5. Jika ditemukan bug integrasi yang terbukti, tambahkan uji regresi terlebih dahulu atau bersamaan dengan perbaikan.
-6. Audit validasi input harga dan kebutuhan lembar pada batas antar-modul.
-7. Audit kegagalan penyimpanan, transaksi atomik, dan pemulihan agar stok tidak berubah sebagian.
-8. Setelah setiap perbaikan, jalankan seluruh rangkaian CI yang relevan dan catat hasilnya.
-9. Setelah audit teknis selesai, berikan ringkasan akhir dan daftar uji manual yang benar-benar perlu dilakukan pengguna.
+Ikuti urutan rinci dalam `docs/STATUS_AUDIT_TERKINI.md`. Secara ringkas: lanjutkan validasi input lintas modul, audit jalur kegagalan/pemulihan yang belum tercakup, lalu selesaikan definisi estimasi biaya vs penggunaan inventaris. Jangan mengulang verifikasi workflow browser atau empat CI pada SHA yang sama tanpa alasan; periksa lagi setelah commit baru.
 
 ## 8. Kalimat pemicu percakapan baru
 
@@ -97,7 +86,7 @@ Pengguna cukup menulis:
 
 **Lanjutkan proyek Kalkulator Material dari tahap terakhir.**
 
-Maknanya: baca dokumen ini, periksa repository/branch/HEAD aktual, ambil pekerjaan dari temuan terbuka, dan jangan mengulang tahap yang telah selesai tanpa alasan teknis.
+Maknanya: baca dokumen ini dan `docs/STATUS_AUDIT_TERKINI.md`, periksa repository/branch/HEAD aktual, ambil pekerjaan dari temuan terbuka, dan jangan mengulang tahap yang telah selesai tanpa alasan teknis.
 
 ## 9. Prosedur penyelamatan jika percakapan penuh
 
@@ -112,3 +101,8 @@ Jika percakapan berakhir sebelum dokumen ini sempat diperbarui:
 
 Pada akhir setiap tahap besar, perbarui dokumen ini. Jika belum sempat memperbarui, berikan pengguna catatan penyelamatan singkat yang memuat: branch, commit terakhir yang diketahui, file yang diperiksa/diubah, hasil sementara, temuan terbuka, dan langkah berikutnya.
 
+
+
+## 10. Dokumen posisi kerja terkini
+
+Gunakan `docs/STATUS_AUDIT_TERKINI.md` sebagai catatan operasional yang lebih rinci dan selalu diperbarui. Dokumen ini memuat tahap audit aktif, file yang diperiksa, temuan sementara, status CI yang terverifikasi, serta langkah berikutnya. Perbarui dokumen posisi audit setelah setiap tahap bermakna agar percakapan baru tidak bergantung pada ingatan percakapan lama.

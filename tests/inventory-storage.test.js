@@ -1466,6 +1466,15 @@ async function main() {
   });
 
 
+  await test("impor menolak versi sisa yang tidak aman sebelum mengubah data lokal", async () => {
+    const invalid = bundle("UNSAFE-VERSION");
+    invalid.remainders.remainders[0].version = Number.MAX_SAFE_INTEGER;
+    await assert.rejects(storage.importJSON(invalid, "replace"), /tidak valid/);
+    assert.notEqual(await storage.get("remainders", "REM-A"), null);
+    assert.equal(await storage.get("remainders", "REM-UNSAFE-VERSION"), null);
+    assert.equal(await storage.get("materials", "MAT-UNSAFE-VERSION"), null);
+  });
+
   await test("meta impor yang rusak ditolak tanpa menghapus data lokal", async () => {
     const invalid = bundle("META-INVALID");
     invalid.meta = { key: "schemaVersion", value: 2 };

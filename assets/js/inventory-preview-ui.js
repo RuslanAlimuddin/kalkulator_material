@@ -426,18 +426,30 @@
     ).size;
     const movementErrors = report.movementHistoryIssues.filter(item => item.severity === "error").length;
     const movementWarnings = report.movementHistoryIssues.filter(item => item.severity === "warning").length;
-    const referenceErrors = report.remainderReferenceIssues.filter(item => item.severity === "error").length +
-      report.reservationReferenceIssues.filter(item => item.severity === "error").length +
-      report.remainderLineageIssues.filter(item => item.severity === "error").length;
-    const planCatalogErrors = (report.planCatalogIssues || []).filter(item =>
+    const planCatalogErrorsList = (report.planCatalogIssues || []).filter(item =>
       item.severity === "error"
+    );
+    const planCatalogErrors = planCatalogErrorsList.length;
+    const closedCatalogJobIds = new Set(planCatalogErrorsList
+      .filter(item => item.type === "active_job_not_open" && item.jobId)
+      .map(item => item.jobId));
+    const reservationReferenceErrors = report.reservationReferenceIssues.filter(item =>
+      item.severity === "error" &&
+      !(item.type === "active_job_not_open" && closedCatalogJobIds.has(item.jobId))
+    ).length;
+    const referenceErrors = report.remainderReferenceIssues.filter(item => item.severity === "error").length +
+      reservationReferenceErrors +
+      report.remainderLineageIssues.filter(item => item.severity === "error").length;
+    const missingJobPlanIds = new Set(report.plansWithoutJob.map(item => item.id));
+    const inconsistentPlanErrors = report.inconsistentPlans.filter(item =>
+      !missingJobPlanIds.has(item.id)
     ).length;
     const problems = report.plansWithoutJob.length +
       report.orphanedReservations.length +
       report.orphanedRemainders.length +
       report.multiplyReservedRemainders.length +
       report.reservationsWithoutSource.length +
-      report.inconsistentPlans.length +
+      inconsistentPlanErrors +
       planCatalogErrors + additionalReservationIssues + referenceErrors + movementErrors;
     const notice = $("inventoryRecoveryNotice");
     if (problems || movementWarnings) {

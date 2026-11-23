@@ -33,13 +33,17 @@
     return (prefix || "ID") + "-" + randomPart;
   }
 
+  function ensureValidJobStatus(status) {
+    if (!JOB_STATUSES.includes(status)) {
+      throw new Error("Status pekerjaan harus open, completed, atau archived.");
+    }
+  }
+
   function ensureValidJobRecord(record) {
     if (!record || typeof record !== "object" || Array.isArray(record)) {
       throw new Error("Data pekerjaan tidak valid.");
     }
-    if (!JOB_STATUSES.includes(record.status)) {
-      throw new Error("Status pekerjaan harus open, completed, atau archived.");
-    }
+    ensureValidJobStatus(record.status);
     if (typeof record.name !== "string" || !record.name.trim()) {
       throw new Error("Nama pekerjaan wajib diisi.");
     }
@@ -463,7 +467,7 @@
         throw new Error("ID dan objek perubahan wajib diisi.");
       }
       if (storeName === "jobs" && Object.prototype.hasOwnProperty.call(changes, "status")) {
-        ensureValidJobRecord({ status: changes.status });
+        ensureValidJobStatus(changes.status);
       }
       const database = await db();
       const transactionStores = storeName === "materials"

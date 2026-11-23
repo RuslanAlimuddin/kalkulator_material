@@ -78,7 +78,7 @@ Pemeriksaan seluruh direktori `.github/workflows` menemukan `.github/workflows/b
 
 ## 7. Tahapan audit berikutnya
 
-Ikuti urutan rinci dalam `docs/STATUS_AUDIT_TERKINI.md`. Validasi batas adapter, input UI/katalog, CRUD material/pekerjaan, pemulihan snapshot, ID transaksi tunggal/massal, `planId`, dan ID pelepasan reservasi telah diaudit/diperbaiki sesuai catatan `docs/STATUS_AUDIT_TERKINI.md`. Pada HEAD kode `de0e8c7769bea3a9cd76b9c4884502f0a5fdfc0f`, empat CI telah diverifikasi `completed/success`. Berikutnya lanjutkan audit nilai ekstrem dan field transaksi tersisa, kemudian selesaikan definisi estimasi biaya vs penggunaan inventaris. Jangan mengulang verifikasi yang sudah selesai tanpa perubahan atau alasan teknis.
+Ikuti urutan rinci dalam `docs/STATUS_AUDIT_TERKINI.md`. Validasi batas adapter, input UI/katalog, CRUD material/pekerjaan, pemulihan snapshot, ID transaksi tunggal/massal, `planId`, ID pelepasan reservasi, dan nilai versi numerik inventaris telah diaudit/diperbaiki sesuai catatan `docs/STATUS_AUDIT_TERKINI.md`. Pada HEAD kode `4747f76dbcc9267da0822e35fa6210ea0d2c7165`, empat CI telah diverifikasi `completed/success`. Berikutnya tuntaskan penetapan makna estimasi biaya vs penggunaan inventaris; jangan mengubah formula sebelum konsekuensi kedua jenis estimasi dijelaskan. Jangan mengulang verifikasi yang sudah selesai tanpa perubahan atau alasan teknis.
 
 ## 8. Kalimat pemicu percakapan baru
 

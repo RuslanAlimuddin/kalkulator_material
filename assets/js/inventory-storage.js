@@ -377,15 +377,25 @@
         });
       }
       if (storeName === "jobs") {
-        return withTransaction(database, ["jobs", "reservations"], "readwrite", tx => {
-          const active = tx.objectStore("reservations").index("jobId").getAll(record.id);
-          active.onsuccess = () => {
-            if (record.status !== "open" && active.result.some(item => item.status === "active")) {
+        return withTransaction(database, ["jobs", "reservations", "plans"], "readwrite", tx => {
+          const activeReservations = tx.objectStore("reservations").index("jobId").getAll(record.id);
+          const activePlans = tx.objectStore("plans").index("jobId").getAll(record.id);
+          let pending = 2;
+          const validateAndSave = () => {
+            pending -= 1;
+            if (pending !== 0) return;
+            const hasActiveReservation = activeReservations.result.some(item => item.status === "active");
+            const hasPendingPlan = activePlans.result.some(item =>
+              item.status === "reserved" || item.status === "legacy_recovery"
+            );
+            if (record.status !== "open" && (hasActiveReservation || hasPendingPlan)) {
               tx.abort();
               return;
             }
             tx.objectStore("jobs").put(record);
           };
+          activeReservations.onsuccess = validateAndSave;
+          activePlans.onsuccess = validateAndSave;
           return record.id;
         });
       }
@@ -409,7 +419,7 @@
       const database = await db();
       const transactionStores = storeName === "materials"
         ? ["materials", "remainders"]
-        : storeName === "jobs" ? ["jobs", "reservations"] : [storeName];
+        : storeName === "jobs" ? ["jobs", "reservations", "plans"] : [storeName];
       return withTransaction(database, transactionStores, "readwrite", tx => {
         const store = tx.objectStore(storeName);
         const request = store.get(id);
@@ -420,15 +430,24 @@
           }
           const updated = { ...request.result, ...changes, id };
           if (storeName === "jobs") {
-            const active = tx.objectStore("reservations").index("jobId").getAll(id);
-            active.onsuccess = () => {
-              if (updated.status !== "open" &&
-                  active.result.some(item => item.status === "active")) {
+            const activeReservations = tx.objectStore("reservations").index("jobId").getAll(id);
+            const activePlans = tx.objectStore("plans").index("jobId").getAll(id);
+            let pending = 2;
+            const validateAndSave = () => {
+              pending -= 1;
+              if (pending !== 0) return;
+              const hasActiveReservation = activeReservations.result.some(item => item.status === "active");
+              const hasPendingPlan = activePlans.result.some(item =>
+                item.status === "reserved" || item.status === "legacy_recovery"
+              );
+              if (updated.status !== "open" && (hasActiveReservation || hasPendingPlan)) {
                 tx.abort();
                 return;
               }
               store.put(updated);
             };
+            activeReservations.onsuccess = validateAndSave;
+            activePlans.onsuccess = validateAndSave;
             return;
           }
           if (storeName !== "materials") {

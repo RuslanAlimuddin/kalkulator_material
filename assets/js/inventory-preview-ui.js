@@ -195,15 +195,27 @@
     }
 
     function estimate(sheetCount) {
-      if (sheetCount === 0) return { totalPrice: 0, packageCount: 0, sheetsPurchased: 0, unusedSheets: 0 };
-      return MaterialPricingEngine.calculatePricing({
-        totalSheets: sheetCount,
+      const result = MaterialPricingEngine.calculatePricing({
+        // Hitung satu lembar sebagai dasar harga satuan meskipun kebutuhan neto nol.
+        // Nilai pembelian tetap ditimpa nol di bawah; ini juga memastikan input kemasan divalidasi.
+        totalSheets: sheetCount === 0 ? 1 : sheetCount,
         areaMaterialM2,
         areaSurfaceM2,
         price,
         per: packageMode ? "package" : "sheet",
         packageSize: packageMode ? packageSize : undefined
       });
+      if (sheetCount === 0) {
+        return {
+          ...result,
+          packageCount: 0,
+          sheetsPurchased: 0,
+          unusedSheets: 0,
+          totalPrice: 0,
+          costPerM2Surface: 0
+        };
+      }
+      return result;
     }
 
     let gross, purchase;
@@ -242,6 +254,8 @@
       } else {
         detail += " × " + formatInventoryPrice(price) + " per lembar";
       }
+      detail += "\\nHarga material: " + formatInventoryPrice(row.result.pricePerM2) + " per m²";
+      detail += "\\nEstimasi biaya per m² bidang: " + formatInventoryPrice(row.result.costPerM2Surface);
       appendText(card, "small", detail);
       root.appendChild(card);
     });

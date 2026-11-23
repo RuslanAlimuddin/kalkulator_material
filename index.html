@@ -430,6 +430,7 @@ canvas{display:block}
 <script src="assets/js/engine.js"></script>
 <script src="assets/js/cutting-engine.js"></script>
 <script src="assets/js/cutting-adapter.js"></script>
+<script src="assets/js/pricing-engine.js"></script>
 <script src="assets/js/inventory-validator.js"></script>
 <script src="assets/js/inventory-storage.js"></script>
 <script src="assets/js/inventory-engine.js"></script>
@@ -638,19 +639,15 @@ function toggleKemasan(){
 function getInfoHarga(totalSheets,areaMaterialM2,areaBidangM2){
   const harga=parseFloat(document.getElementById('harga').value)||0;
   const per=document.getElementById('hargaPer').value;
-  const isi=Math.max(1,parseInt(document.getElementById('isiKemasan').value)||1);
-  if(harga<=0||areaMaterialM2<=0) return null;
-
-  const hargaPerLembar=per==='kemasan'?harga/isi:harga;
-  const hargaPerM2=hargaPerLembar/areaMaterialM2;
-  const jumlahKemasan=per==='kemasan'?Math.ceil(totalSheets/isi):0;
-  const lembarDibeli=per==='kemasan'?jumlahKemasan*isi:totalSheets;
-  const hargaTotal=per==='kemasan'?jumlahKemasan*harga:totalSheets*hargaPerLembar;
-  const sisaLembar=per==='kemasan'?Math.max(0,lembarDibeli-totalSheets):0;
-  const biayaPerM2Bidang=areaBidangM2>0?hargaTotal/areaBidangM2:0;
-
-  return {harga,per,isi,hargaPerLembar,hargaPerM2,jumlahKemasan,lembarDibeli,
-    sisaLembar,hargaTotal,biayaPerM2Bidang};
+  const isiRaw=document.getElementById('isiKemasan').value;
+  return MaterialPricingEngine.calculatePricing({
+    totalSheets,
+    areaMaterialM2,
+    areaSurfaceM2:areaBidangM2,
+    price:harga,
+    per:per==='kemasan'?'package':'sheet',
+    packageSize:isiRaw===''?NaN:Number(isiRaw)
+  });
 }
 
 // ============================================================

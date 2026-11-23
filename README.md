@@ -13,7 +13,7 @@ Aplikasi utama dibuat dengan HTML, CSS, dan JavaScript tanpa framework tambahan.
 - `index.html` — aplikasi aktif untuk pengembangan.
 - `backup/kalkulator_material_perbaikan.html` — salinan awal sebelum pengembangan lanjutan.
 - `docs/` — dokumentasi perencanaan, rumus, audit, dan pengujian.
-- `tests/` — pengujian mesin perhitungan.
+- `tests/` — pengujian mesin geometri, pemotongan, inventaris, dan browser.
 
 ## Status
-Tahap persiapan repositori selesai. Mesin perhitungan masih dalam tahap audit dan penyempurnaan. Hasil kalkulasi belum boleh dianggap sebagai optimasi pemotongan 2D yang sempurna sebelum seluruh skenario diuji.
+Mesin geometri, pemotongan, planner inventaris, reservasi, pembatalan, penyelesaian, dan pemulihan snapshot sudah terintegrasi pada branch `pengembangan-mesin-hitung`. Pengujian otomatis dijalankan melalui GitHub Actions. Algoritma pemotongan tetap bersifat heuristik (pendekatan praktis, bukan jaminan solusi paling optimal). Lihat folder `docs/` untuk rumus, batasan, dan panduan alur.

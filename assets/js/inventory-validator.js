@@ -160,9 +160,13 @@
     indexUnique(plans, "plans", planById);
 
     function validatePlanGeometry(plan, path) {
-      // Snapshot lama tidak menyimpan geometri lembar. Tetap izinkan format
-      // lama, tetapi snapshot baru yang menyertakan sheets wajib konsisten.
-      if (plan.sheets == null) return;
+      // Snapshot lama tetap didukung. Snapshot baru memakai marker versi agar
+      // geometri tidak bisa dihilangkan diam-diam saat paket dicadangkan.
+      if (plan.geometryVersion == null) return;
+      if (plan.geometryVersion !== 1) {
+        error(path + ".geometryVersion", "Versi geometri snapshot tidak didukung.");
+        return;
+      }
       if (!Array.isArray(plan.sheets)) {
         error(path + ".sheets", "Daftar lembar geometri harus berupa array.");
         return;

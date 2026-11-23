@@ -252,6 +252,22 @@
       !(material.grainRequired === true && remainder.rotationAllowed === true);
   }
 
+  // Snapshot rencana yang masih reserved memakai spesifikasi material saat
+  // pratinjau. Perubahan spesifikasi/status katalog harus menunggu rencana
+  // selesai atau dibatalkan agar konsumsi tidak macet atau membuat sisa usang.
+  function hasIncompatiblePendingMaterialPlan(plans, material) {
+    return plans.some(plan => {
+      const snapshot = plan && plan.material;
+      return plan && plan.status === "reserved" && snapshot &&
+        snapshot.id === material.id &&
+        (material.active === false ||
+         Number(snapshot.thicknessMm) !== Number(material.thicknessMm) ||
+         snapshot.motif !== material.motif ||
+         snapshot.rotationPolicy !== material.rotationPolicy ||
+         (snapshot.grainRequired === true) !== (material.grainRequired === true));
+    });
+  }
+
   // Sisa turunan tidak boleh melebihi ukuran sumber. Rotasi hanya
   // diperbolehkan jika karakteristik sumber memang mengizinkannya.
   function fitsWithinSourceRemainder(draft, source) {
@@ -417,15 +433,22 @@
       }
       const database = await db();
       if (storeName === "materials") {
-        return withTransaction(database, ["materials", "remainders"], "readwrite", tx => {
+        return withTransaction(database, ["materials", "remainders", "plans"], "readwrite", tx => {
           const references = tx.objectStore("remainders").index("materialId").getAll(record.id);
-          references.onsuccess = () => {
-            if (references.result.some(item => !isRemainderCompatibleWithMaterial(item, record))) {
+          const plans = tx.objectStore("plans").getAll();
+          let pending = 2;
+          const validateAndSave = () => {
+            pending -= 1;
+            if (pending !== 0) return;
+            if (references.result.some(item => !isRemainderCompatibleWithMaterial(item, record)) ||
+                hasIncompatiblePendingMaterialPlan(plans.result, record)) {
               tx.abort();
               return;
             }
             tx.objectStore("materials").put(record);
           };
+          references.onsuccess = validateAndSave;
+          plans.onsuccess = validateAndSave;
           return record.id;
         });
       }
@@ -471,7 +494,7 @@
       }
       const database = await db();
       const transactionStores = storeName === "materials"
-        ? ["materials", "remainders"]
+        ? ["materials", "remainders", "plans"]
         : storeName === "jobs" ? ["jobs", "reservations", "plans"] : [storeName];
       return withTransaction(database, transactionStores, "readwrite", tx => {
         const store = tx.objectStore(storeName);
@@ -518,13 +541,20 @@
             return;
           }
           const references = tx.objectStore("remainders").index("materialId").getAll(id);
-          references.onsuccess = () => {
-            if (references.result.some(item => !isRemainderCompatibleWithMaterial(item, updated))) {
+          const plans = tx.objectStore("plans").getAll();
+          let pending = 2;
+          const validateAndSaveMaterial = () => {
+            pending -= 1;
+            if (pending !== 0) return;
+            if (references.result.some(item => !isRemainderCompatibleWithMaterial(item, updated)) ||
+                hasIncompatiblePendingMaterialPlan(plans.result, updated)) {
               tx.abort();
               return;
             }
             store.put(updated);
           };
+          references.onsuccess = validateAndSaveMaterial;
+          plans.onsuccess = validateAndSaveMaterial;
         };
         return id;
       });
@@ -535,11 +565,14 @@
     async function removeCatalogRecordSafely(storeName, id) {
       const database = await db();
       const storeNames = storeName === "materials"
-        ? ["materials", "remainders"]
+        ? ["materials", "remainders", "plans"]
         : ["jobs", "remainders", "reservations", "movements", "plans"];
       return withTransaction(database, storeNames, "readwrite", tx => {
         const checks = storeName === "materials"
-          ? [tx.objectStore("remainders").index("materialId").getAll(id)]
+          ? [
+              tx.objectStore("remainders").index("materialId").getAll(id),
+              tx.objectStore("plans").getAll()
+            ]
           : [
               tx.objectStore("remainders").index("originJobId").getAll(id),
               tx.objectStore("reservations").index("jobId").getAll(id),
@@ -548,9 +581,15 @@
             ];
         let pending = checks.length;
         let referenced = false;
-        checks.forEach(request => {
+        checks.forEach((request, index) => {
           request.onsuccess = () => {
-            if (request.result.length) referenced = true;
+            if (storeName === "materials" && index === 1) {
+              if (request.result.some(plan => plan && plan.material && plan.material.id === id)) {
+                referenced = true;
+              }
+            } else if (request.result.length) {
+              referenced = true;
+            }
             pending -= 1;
             if (pending !== 0) return;
             if (referenced) {
@@ -567,11 +606,14 @@
     async function clearCatalogSafely(storeName) {
       const database = await db();
       const storeNames = storeName === "materials"
-        ? ["materials", "remainders"]
+        ? ["materials", "remainders", "plans"]
         : ["jobs", "remainders", "reservations", "movements", "plans"];
       return withTransaction(database, storeNames, "readwrite", tx => {
         const checks = storeName === "materials"
-          ? [tx.objectStore("remainders").getAll()]
+          ? [
+              tx.objectStore("remainders").getAll(),
+              tx.objectStore("plans").getAll()
+            ]
           : [
               tx.objectStore("remainders").getAll(),
               tx.objectStore("reservations").getAll(),
@@ -584,7 +626,10 @@
           request.onsuccess = () => {
             const records = request.result;
             if (storeName === "materials") {
-              if (records.length) referenced = true;
+              if (index === 0 ? records.length > 0 :
+                  records.some(plan => plan && plan.material && plan.material.id)) {
+                referenced = true;
+              }
             } else {
               const field = index === 0 ? "originJobId" : "jobId";
               if (records.some(record => record[field] != null)) referenced = true;

@@ -75,8 +75,8 @@ Artinya, keberadaan file uji browser belum membuktikan bahwa uji tersebut berjal
 ## 6. HEAD dan posisi repository
 
 - Commit kode terakhir yang menjadi acuan audit: `d70724cffba86dc755b838855d9d5c9add694a98` (`test: cover pricing engine and calculator UI integration`).
-- Commit dokumentasi terbaru yang dibuat dalam sesi ini: `e219a6a39afde61f63d81a3afbe3146acb1ebd70` (`docs: record browser test CI coverage gap`), tanggal 2026-11-23.
-- Commit dokumentasi sebelumnya: `6674a276ff5de045e0fc7d0082351f6bc4c6cadc`.
+- Riwayat commit dokumentasi yang diketahui dalam sesi audit ini: `6674a276ff5de045e0fc7d0082351f6bc4c6cadc`, `e219a6a39afde61f63d81a3afbe3146acb1ebd70`, dan `b5a57288f3b9c68c2884e4886eed325a335c2698` (prosedur penyelamatan konteks dan catatan audit), seluruhnya tanggal 2026-11-23.
+- Dokumen ini dapat diperbarui lagi setelah pencatatan di atas; karena itu, jangan menganggap daftar commit dokumentasi sebagai pointer HEAD terkini.
 - Catatan penting: commit dokumentasi terbaru adalah commit terakhir yang dibuat melalui sesi audit ini, tetapi pointer HEAD aktual branch belum dapat dibaca secara independen oleh alat yang tersedia. Setiap sesi baru wajib memeriksa HEAD aktual terlebih dahulu.
 
 ## 7. Tahapan audit berikutnya

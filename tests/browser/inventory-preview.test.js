@@ -405,12 +405,29 @@ async function main() {
         materialId: "MAT-AUDIT-UI-MISSING",
         originJobId: "JOB-AUDIT-UI-MISSING"
       });
+      await storage.add("plans", {
+        id: "PLAN-AUDIT-UI-STALE-MATERIAL",
+        jobId: "JOB-PREVIEW",
+        material: {
+          id: "MAT-PREVIEW", thicknessMm: 99, motif: "plain",
+          rotationPolicy: "free", grainRequired: false, active: true
+        },
+        plan: { inventoryUsage: [] },
+        reservationIds: [],
+        status: "reserved",
+        legacy: false
+      });
       await storage.close();
     });
     await page.reload();
     const recoveryNotice = page.locator("#inventoryRecoveryNotice");
     await recoveryNotice.waitFor({ state: "visible" });
     assert.match(await recoveryNotice.textContent(), /2 ketidaksesuaian/);
+    assert.match(await recoveryNotice.textContent(), /snapshot rencana tidak cocok dengan katalog/);
+    const stalePlanCard = page.locator('[data-plan-id="PLAN-AUDIT-UI-STALE-MATERIAL"]');
+    await stalePlanCard.waitFor();
+    assert.match(await stalePlanCard.textContent(), /Pemulihan diblokir/);
+    assert.match(await stalePlanCard.textContent(), /Spesifikasi material snapshot/);
 
     assert.deepEqual(errors, []);
     console.log("LULUS: pratinjau tidak mengubah stok; persetujuan mengunci sumber; reservasi pulih setelah reload; pembatalan melepas stok; penyelesaian mengonsumsi sumber dan mencatat sisa baru; tombol Hitung lama tetap bekerja; seluruh temuan referensi audit ditampilkan.");

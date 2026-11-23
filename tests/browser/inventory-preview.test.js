@@ -96,6 +96,8 @@ async function main() {
     await page.locator("#hargaPer").selectOption("satuan");
     await page.locator('button[onclick="calc()"]').click();
     await page.locator("#hargaTotalBox").waitFor({ state: "visible" });
+    assert.match(await page.locator("#hargaTotalBox .ht-label").textContent(), /Nilai kebutuhan material \(tanpa inventaris\)/);
+    assert.match(await page.locator("#hargaTotalDetail").textContent(), /tanpa mengurangi sisa inventaris/);
     assert.match(await page.locator("#hargaTotalVal").textContent(), /Rp\s*200\.000/);
     assert.match(await page.locator("#hargaTotalDetail").textContent(), /Kebutuhan: 2 lembar/);
 
@@ -123,6 +125,11 @@ async function main() {
     assert.match(previewPricing, /Rp\s*200\.000/);
     assert.match(previewPricing, /Estimasi pembelian baru \(setelah inventaris\)/);
     assert.match(previewPricing, /Rp\s*100\.000/);
+    await page.locator("#harga").fill("");
+    assert.match(await page.locator("#inventoryPreviewPricing").textContent(), /Masukkan harga material/);
+    await page.locator("#harga").fill("0");
+    assert.match(await page.locator("#inventoryPreviewPricing").textContent(), /Masukkan harga lebih dari nol/);
+    await page.locator("#harga").fill("100000");
     await page.locator("#harga").fill("200000");
     const updatedPricing = await page.locator("#inventoryPreviewPricing").textContent();
     assert.match(updatedPricing, /Rp\s*400\.000/);

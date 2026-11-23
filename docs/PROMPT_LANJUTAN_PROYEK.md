@@ -112,3 +112,21 @@ Pada akhir setiap tahap besar, perbarui dokumen ini. Jika belum sempat memperbar
 ## 10. Dokumen posisi kerja terkini
 
 Gunakan `docs/STATUS_AUDIT_TERKINI.md` sebagai catatan operasional yang lebih rinci dan selalu diperbarui. Dokumen ini memuat tahap audit aktif, file yang diperiksa, temuan sementara, status CI yang terverifikasi, serta langkah berikutnya. Perbarui dokumen posisi audit setelah setiap tahap bermakna agar percakapan baru tidak bergantung pada ingatan percakapan lama.
+
+
+## 11. Posisi lanjutan terbaru — 24 November 2026
+
+Catatan ini memperbarui urutan kerja pada bagian 7 berdasarkan audit terbaru. Sebelum melanjutkan, periksa HEAD branch aktual dan CI langsung di GitHub.
+
+- Branch kerja: `pengembangan-mesin-hitung`; jangan mengubah atau menggabungkan `main`.
+- HEAD kode terakhir yang diperiksa: `90474607e9f93fa48c83e49c4d72b4b3f82eee42`.
+- Audit terbaru memperbaiki penghitungan ganda pada pemberitahuan pemulihan dan memperjelas konfirmasi impor `replace`.
+- Tes browser ditambahkan untuk kedua perilaku tersebut.
+- Status terakhir saat dokumen ini diperbarui: `batch-reservation`, `inventory-and-regression`, dan `test` telah lulus; `browser-indexeddb` masih berjalan pada tahap pemasangan Chromium. Jangan menganggap CI lengkap sebelum memeriksa hasil akhirnya.
+- Checklist uji manual inventaris/harga telah diperluas. Setelah semua CI lulus, pengguna perlu menjalankannya pada salinan data.
+
+Langkah berikutnya:
+1. Verifikasi ulang empat workflow terhadap HEAD aktual; bila branch bergerak karena pembaruan dokumen, pastikan CI pada HEAD baru juga selesai.
+2. Jika semuanya hijau, serahkan checklist manual untuk dijalankan pada salinan database.
+3. Tunggu hasil uji manual pengguna, catat temuan aktual, lalu perbaiki hanya bila ada bukti cacat.
+4. Jangan mengulang audit import/replace, validasi snapshot, atau integrasi kalkulator yang sudah selesai kecuali muncul bukti baru.

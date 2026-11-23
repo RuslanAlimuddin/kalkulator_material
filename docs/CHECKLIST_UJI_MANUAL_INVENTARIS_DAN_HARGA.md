@@ -23,6 +23,8 @@ Dokumen ini adalah daftar uji singkat untuk pemeriksaan penggunaan nyata setelah
 - [ ] Ubah ukuran bidang/material, orientasi, jarak nat, pola, arah pola, alignment, mode, atau ambang sisa. Pastikan pratinjau lama hilang dan harus dibuat ulang.
 - [ ] Ganti pilihan material/pekerjaan atau arah serat. Pastikan pratinjau lama hilang.
 - [ ] Nonaktifkan material atau tutup pekerjaan pada katalog, lalu tekan Refresh. Pastikan pratinjau lama dan tombol persetujuannya hilang.
+- [ ] Saat ada rencana berstatus reserved, coba ubah ketebalan, motif, kebijakan rotasi, atau status aktif material. Pastikan perubahan yang membuat snapshot tidak cocok ditolak sampai rencana diselesaikan atau dibatalkan.
+- [ ] Pastikan perubahan nama material saja tetap dapat dilakukan karena tidak mengubah spesifikasi fisik snapshot.
 
 ## C. Reservasi dan penyelesaian
 

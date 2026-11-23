@@ -62,6 +62,38 @@ test("kerf menyisakan jarak antarpotongan", () => {
   assert.equal(r.sheetCount, 2);
 });
 
+test("penempatan dan seluruh bidang sisa selalu di dalam lembar serta tidak bertumpuk", () => {
+  const result = calculateCutting({
+    sheetW: 100, sheetH: 80, kerf: 1, allowRotation: true,
+    parts: [
+      { id: "A", width: 35, height: 25, quantity: 3 },
+      { id: "B", width: 20, height: 40, quantity: 2 },
+      { id: "C", width: 15, height: 15, quantity: 4 }
+    ]
+  });
+  const epsilon = 0.000001;
+  const overlaps = (a, b) =>
+    Math.min(a.x + a.width, b.x + b.width) > Math.max(a.x, b.x) + epsilon &&
+    Math.min(a.y + a.height, b.y + b.height) > Math.max(a.y, b.y) + epsilon;
+
+  for (const sheet of result.sheets) {
+    const rectangles = sheet.placements.concat(sheet.leftovers);
+    for (let i = 0; i < rectangles.length; i += 1) {
+      const rect = rectangles[i];
+      assert.ok(rect.x >= 0 && rect.y >= 0);
+      assert.ok(rect.width > 0 && rect.height > 0);
+      assert.ok(rect.x + rect.width <= sheet.width + epsilon);
+      assert.ok(rect.y + rect.height <= sheet.height + epsilon);
+      for (let j = i + 1; j < rectangles.length; j += 1) {
+        assert.equal(overlaps(rect, rectangles[j]), false,
+          "Bidang pada lembar " + sheet.id + " tidak boleh saling bertumpuk");
+      }
+    }
+  }
+  const accountedArea = result.totalPartArea + result.reusableArea + result.unclassifiedArea;
+  assert.ok(Math.abs(accountedArea - result.totalSheetArea) < 0.001);
+});
+
 test("ukuran, jumlah, dan kerf tidak valid ditolak", () => {
   assert.throws(() => calculateCutting({ sheetW: 0, sheetH: 100, parts: [{ width: 1, height: 1 }] }));
   assert.throws(() => calculateCutting({ sheetW: 100, sheetH: 100, kerf: -1, parts: [{ width: 1, height: 1 }] }));

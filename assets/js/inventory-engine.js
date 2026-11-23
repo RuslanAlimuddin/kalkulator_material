@@ -70,8 +70,16 @@
         if (plan.usableRemainders.length > 0 && plan.sheets.length === 0) {
           throw new Error("Snapshot memiliki sisa layak tetapi tidak memiliki geometri lembar sumber.");
         }
+        const claimedLeftovers = new Set();
         for (const remainder of plan.usableRemainders) {
-          const sheet = remainder && sheetById.get(String(remainder.sheetId));
+          const sheetKey = remainder && String(remainder.sheetId);
+          const sheet = sheetKey == null ? null : sheetById.get(sheetKey);
+          const geometryKey = [sheetKey, remainder && remainder.x, remainder && remainder.y,
+            remainder && remainder.width, remainder && remainder.height].join("|");
+          if (claimedLeftovers.has(geometryKey)) {
+            throw new Error("Satu bidang leftovers tidak boleh dicatat sebagai sisa layak lebih dari sekali.");
+          }
+          claimedLeftovers.add(geometryKey);
           if (!sheet || !Array.isArray(sheet.leftovers) ||
               sheet.leftovers.filter(rect =>
                 rect.x === remainder.x && rect.y === remainder.y &&

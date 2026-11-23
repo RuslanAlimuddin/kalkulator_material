@@ -462,6 +462,9 @@
       if (!id || !changes || typeof changes !== "object" || Array.isArray(changes)) {
         throw new Error("ID dan objek perubahan wajib diisi.");
       }
+      if (storeName === "jobs" && Object.prototype.hasOwnProperty.call(changes, "status")) {
+        ensureValidJobRecord({ status: changes.status });
+      }
       const database = await db();
       const transactionStores = storeName === "materials"
         ? ["materials", "remainders"]
